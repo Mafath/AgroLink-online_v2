@@ -51,10 +51,10 @@ const HomePage = () => {
     if (!isAuthenticated) {
       return (
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/signup" className="btn btn-primary text-center">
+          <Link to="/signup" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
             Get Started
           </Link>
-          <Link to="/login" className="btn btn-outline text-center">
+          <Link to="/login" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
             Sign In
           </Link>
         </div>
@@ -65,11 +65,11 @@ const HomePage = () => {
       case 'FARMER':
         return (
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/marketplace" className="btn btn-primary text-center">
+            <Link to="/marketplace" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               <TrendingUp className="inline w-5 h-5 mr-2" />
               View Marketplace
             </Link>
-            <Link to="/profile" className="btn btn-outline text-center">
+            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               Manage Profile
             </Link>
           </div>
@@ -77,11 +77,11 @@ const HomePage = () => {
       case 'BUYER':
         return (
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/marketplace" className="btn btn-primary text-center">
+            <Link to="/marketplace" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               <ShoppingCart className="inline w-5 h-5 mr-2" />
               Browse Products
             </Link>
-            <Link to="/profile" className="btn btn-outline text-center">
+            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               View Profile
             </Link>
           </div>
@@ -89,10 +89,10 @@ const HomePage = () => {
       case 'ADMIN':
         return (
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/admin" className="btn btn-primary text-center">
+            <Link to="/admin" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               Admin Dashboard
             </Link>
-            <Link to="/profile" className="btn btn-outline text-center">
+            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               Profile Settings
             </Link>
           </div>
@@ -100,11 +100,11 @@ const HomePage = () => {
       case 'DRIVER':
         return (
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/driver" className="btn btn-primary text-center">
+            <Link to="/driver" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               <Truck className="inline w-5 h-5 mr-2" />
               Driver Dashboard
             </Link>
-            <Link to="/profile" className="btn btn-outline text-center">
+            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
               Profile Settings
             </Link>
           </div>
@@ -147,7 +147,7 @@ const HomePage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Direct Connection */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-primary-600" />
               </div>
@@ -161,7 +161,7 @@ const HomePage = () => {
             </div>
 
             {/* Quality Assurance */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Star className="w-8 h-8 text-accent-600" />
               </div>
@@ -175,7 +175,7 @@ const HomePage = () => {
             </div>
 
             {/* Efficient Delivery */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Truck className="w-8 h-8 text-success" />
               </div>
@@ -189,7 +189,7 @@ const HomePage = () => {
             </div>
 
             {/* Market Insights */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-info/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="w-8 h-8 text-info" />
               </div>
@@ -203,7 +203,7 @@ const HomePage = () => {
             </div>
 
             {/* Local Focus */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MapPin className="w-8 h-8 text-warning" />
               </div>
@@ -217,7 +217,7 @@ const HomePage = () => {
             </div>
 
             {/* Secure Transactions */}
-            <div className="card-hover text-center">
+            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShoppingCart className="w-8 h-8 text-purple-600" />
               </div>

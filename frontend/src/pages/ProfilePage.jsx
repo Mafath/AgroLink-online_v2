@@ -17,7 +17,7 @@ const ProfilePage = () => {
     load()
   }, [])
 
-  if (error) return <div className='p-4 text-error'>{error}</div>
+  if (error) return <div className='p-4 text-red-600'>{error}</div>
   if (!me) return <div className='p-4'>Loading...</div>
 
   return (

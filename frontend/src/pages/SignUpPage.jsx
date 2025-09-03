@@ -58,12 +58,10 @@ const SignUpPage = () => {
       <form onSubmit={handleSubmit} className="space-y-4">
 
         {/* ROLE INPUT (limited to FARMER/BUYER) */}
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium text-xs">Role</span>
-          </label>
+        <div className="">
+          <label className="block mb-1 font-medium text-xs">Role</label>
           <select
-            className="select select-bordered w-full h-10 text-sm"
+            className="border rounded-md w-full h-10 text-sm px-2"
             value={formData.role}
             onChange={(e) => setFormData({ ...formData, role: e.target.value })}
           >
@@ -73,17 +71,15 @@ const SignUpPage = () => {
         </div>
 
         {/* EMAIL INPUT */}
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium text-xs">Email</span>
-          </label>
+        <div className="">
+          <label className="block mb-1 font-medium text-xs">Email</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
               <Mail className="size-4 text-base-content/40" />
             </div>
             <input
               type="email"
-              className="input input-bordered w-full pl-8 h-10 text-sm"
+              className="border rounded-md w-full pl-8 h-10 text-sm"
               placeholder="email"
               value={formData.email}
               onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -92,17 +88,15 @@ const SignUpPage = () => {
         </div>
 
         {/* PASSWORD INPUT */}
-        <div className="form-control">
-          <label className="label">
-            <span className="label-text font-medium text-xs">Password</span>
-          </label>
+        <div className="">
+          <label className="block mb-1 font-medium text-xs">Password</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
               <Lock className="size-4 text-base-content/40" />
             </div>
             <input
               type={showPassword ? "text" : "password"}
-              className="input input-bordered w-full pl-8 h-10 text-sm"
+              className="border rounded-md w-full pl-8 h-10 text-sm"
               // placeholder="••••••••"
               placeholder="password"  
               value={formData.password}
@@ -123,7 +117,7 @@ const SignUpPage = () => {
         </div>
 
         {/* SUBMIT BUTTON */}
-        <button type="submit" className="btn btn-primary w-full h-10 text-sm" disabled={isSigningUp}>
+        <button type="submit" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md w-full h-10 text-sm" disabled={isSigningUp}>
           {isSigningUp ? (
             <div className="flex items-center justify-center gap-2">
               <Loader2 className="size-4 animate-spin" />
@@ -139,7 +133,7 @@ const SignUpPage = () => {
       <div className="text-center">
         <p className="text-base-content/60 text-xs">
           Already have an account?{" "}
-          <Link to="/login" className="link link-primary text-sm">
+          <Link to="/login" className="text-primary-600 hover:underline text-sm">
             Sign in
           </Link>
         </p>

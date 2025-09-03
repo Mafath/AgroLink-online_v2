@@ -24,8 +24,8 @@ const Navbar = () => {
           <div className="flex items-center gap-2">
             {!authUser && (
               <>
-                <Link to="/signup" className={`btn btn-sm`}>Sign up</Link>
-                <Link to="/login" className={`btn btn-sm btn-primary`}>Log in</Link>
+                <Link to="/signup" className={`h-8 px-3 rounded-md border text-sm`}>Sign up</Link>
+                <Link to="/login" className={`h-8 px-3 rounded-md bg-primary-500 hover:bg-primary-600 text-white text-sm flex items-center`}>Log in</Link>
               </>
             )}
 
@@ -33,18 +33,18 @@ const Navbar = () => {
               <>
                 <Link
                   to={"/settings"}
-                  className={`btn btn-sm gap-2 transition-colors`}
+                  className={`h-8 px-3 rounded-md border text-sm flex items-center gap-2`}
                 >
                   <Settings className="w-4 h-4" />
                   <span className="hidden sm:inline">Settings</span>
                 </Link>
 
-                <Link to={"/profile"} className={`btn btn-sm gap-2`}>
+                <Link to={"/profile"} className={`h-8 px-3 rounded-md border text-sm flex items-center gap-2`}>
                   <User className="size-5" />
                   <span className="hidden sm:inline">Profile</span>
                 </Link>
 
-                <button className="flex gap-2 items-center" onClick={logout}>
+                <button className="flex gap-2 items-center h-8 px-3 rounded-md border text-sm" onClick={logout}>
                   <LogOut className="size-5" />
                   <span className="hidden sm:inline">Logout</span>
                 </button>
