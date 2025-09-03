@@ -1,35 +1,38 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare, User } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 
 
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: "",
     email: "",
     password: "",
+    role: "BUYER",
   });
 
   const { signup, isSigningUp } = useAuthStore();
+  const navigate = useNavigate();
 
   const validateForm = () => {
-    if (!formData.fullName.trim()) return toast.error("Full name is required");
     if (!formData.email.trim()) return toast.error("Email is required");
     if (!/\S+@\S+\.\S+/.test(formData.email)) return toast.error("Invalid email format"); //no need to understand. Generated using AI
     if (!formData.password) return toast.error("Password is required");
-    if (formData.password.length < 6) return toast.error("Password must be at least 6 characters");
+    if (formData.password.length < 8) return toast.error("Password must be at least 8 characters");
 
     return true;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const success = validateForm();
-    if (success === true) signup(formData);
+    if (success === true) {
+      const result = await signup(formData);
+      if (result?.success) navigate('/login');
+    }
   };
 
   return (
@@ -54,23 +57,19 @@ const SignUpPage = () => {
       {/* FORM */}
       <form onSubmit={handleSubmit} className="space-y-4">
 
-        {/* NAME INPUT */}
+        {/* ROLE INPUT (limited to FARMER/BUYER) */}
         <div className="form-control">
           <label className="label">
-            <span className="label-text font-medium text-xs">Full Name</span>
+            <span className="label-text font-medium text-xs">Role</span>
           </label>
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-              <User className="size-4 text-base-content/40" />
-            </div>
-            <input
-              type="text"
-              className="input input-bordered w-full pl-8 h-10 text-sm"
-              placeholder="fullname"
-              value={formData.fullName}
-              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-            />
-          </div>
+          <select
+            className="select select-bordered w-full h-10 text-sm"
+            value={formData.role}
+            onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+          >
+            <option value="BUYER">Buyer</option>
+            <option value="FARMER">Farmer</option>
+          </select>
         </div>
 
         {/* EMAIL INPUT */}

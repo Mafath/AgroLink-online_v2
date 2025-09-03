@@ -1,6 +1,6 @@
 // here we can have bunch of different states and functions that we can use in our components
 import { create } from "zustand";
-import { axiosInstance } from "../lib/axios.js";
+import { axiosInstance, setAccessToken, clearAccessToken } from "../lib/axios.js";
 import toast from "react-hot-toast";
 
 
@@ -13,31 +13,25 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
   isUpdatingProfile: false,
 
 
-  isCheckingAuth: true, //loading state
+  isCheckingAuth: false, //loading state
 
 
   checkAuth: async() => {
-    try {
-      const res = await axiosInstance.get('/auth/check');
-      set({authUser: res.data});
-    } catch (error) {
-      console.log("Error in checkAuth: ", error);
-      set({authUser: null});
-    } finally {
-      set({isCheckingAuth: false});
-    }
+    // For stateless JWT in memory: no-op on refresh unless token is persisted elsewhere.
+    set({ isCheckingAuth: false });
   },
 
 
   signup: async (data) => {
     set({ isSigningUp: true });
     try {
-      const res = await axiosInstance.post("/auth/signup", data);  //api me endpoint ekt call krnw, and we are passing the 'data' that user sents us
-      // uda const res kynne api user data backend ekt ywwt psse, backend eken ena response eka
-      set({ authUser: res.data });
-      toast.success("Account created successfully");
+      const res = await axiosInstance.post("/auth/signup", data);
+      toast.success("Account created successfully. Please login.");
+      return { success: true, user: res.data };
     } catch (error) {
-      toast.error(error.response.data.message); //this is how we can grab the message that we are sending from the signup
+      const msg = error?.response?.data?.error?.message || "Signup failed";
+      toast.error(msg);
+      return { success: false };
     } finally {
       set({ isSigningUp: false });
     }
@@ -48,9 +42,11 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
     try {
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
+      clearAccessToken();
       toast.success("Logged out successfully");
     } catch (error) {
-      toast.error(error.response.data.message);
+      const msg = error?.response?.data?.error?.message || "Logout failed";
+      toast.error(msg);
     }
   },
 
@@ -58,13 +54,14 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
   login: async (data) => {
     set({ isLoggingIn: true });
     try {
-      const res = await axiosInstance.post("/auth/login", data);
-      set({ authUser: res.data });
+      const res = await axiosInstance.post("/auth/signin", data);
+      const { accessToken, user } = res.data;
+      setAccessToken(accessToken);
+      set({ authUser: user });
       toast.success("Logged in successfully");
-
-      get().connectSocket();
     } catch (error) {
-      toast.error(error.response.data.message);
+      const msg = error?.response?.data?.error?.message || "Login failed";
+      toast.error(msg);
     } finally {
       set({ isLoggingIn: false });
     }
