@@ -147,7 +147,7 @@ const HomePage = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Direct Connection */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Users className="w-8 h-8 text-primary-600" />
               </div>
@@ -161,7 +161,7 @@ const HomePage = () => {
             </div>
 
             {/* Quality Assurance */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-accent-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Star className="w-8 h-8 text-accent-600" />
               </div>
@@ -175,7 +175,7 @@ const HomePage = () => {
             </div>
 
             {/* Efficient Delivery */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Truck className="w-8 h-8 text-success" />
               </div>
@@ -189,7 +189,7 @@ const HomePage = () => {
             </div>
 
             {/* Market Insights */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-info/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TrendingUp className="w-8 h-8 text-info" />
               </div>
@@ -203,7 +203,7 @@ const HomePage = () => {
             </div>
 
             {/* Local Focus */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-warning/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <MapPin className="w-8 h-8 text-warning" />
               </div>
@@ -217,7 +217,7 @@ const HomePage = () => {
             </div>
 
             {/* Secure Transactions */}
-            <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow duration-200 p-6 text-center">
+            <div className="bg-white rounded-xl shadow-sm shadow-md transition-shadow duration-200 p-6 text-center">
               <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <ShoppingCart className="w-8 h-8 text-purple-600" />
               </div>
