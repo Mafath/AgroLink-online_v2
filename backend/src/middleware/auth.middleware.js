@@ -1,44 +1,49 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/user.model.js';
 
-export const protectRoute = async(req,res,next) => {
+export const requireAuth = async (req, res, next) => {
   try {
-    // grab the token from the cookie
-    const token = req.cookies.jwt; // req.cookie.cookie name(use the cookie name we gave in the utils.js)
-    // if there's not a token
-    if(!token){
-      return res.status(401).json({message: "Unauthorized - No Token Provided"});
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized - No token provided' } });
     }
-    // if there's a token we can check it's valid or not
-    // to grab the token from the cookie we are gonna use the package called cookie parser- check index.js
-    // decode the token to grab the userId(Why userId? because we stored userId in the token when creating token)
-    // Api token eke encode krpu payload ek mehidi decode krnwa
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-    if(!decoded){
-      return res.status(401).json({message: "Unauthorized - Invalid Token"});
-    }
-    // if the token is valid, we search for that user in the database, with that particular userId
-    const user = await User.findById(decoded.userId).select("-password"); //we dont want to send the password to the frontend(client)
-
-    if(!user){
-      return res.status(404).json({message: "User not found"});
+    if (!decoded) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized - Invalid token' } });
     }
 
-    // Now user is authenticated
-
+    const user = await User.findById(decoded.userId).select('-passwordHash');
+    if (!user) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+    }
 
     req.user = user;
-
-    next(); //call the next function.(updateProfile)
-
-
-
-
-
-
+    next();
   } catch (error) {
-    console.log("Error in protectRoute middleware: ", error.message);
-    res.status(500).json({message: "Internal server error"});
+    console.log('Error in requireAuth middleware: ', error.message);
+    return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
   }
-}
+};
+
+export const requireRole = (...roles) => {
+  return (req, res, next) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'Unauthorized' } });
+      }
+      if (!roles.includes(req.user.role)) {
+        return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+      }
+      next();
+    } catch (error) {
+      console.log('Error in requireRole middleware: ', error.message);
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Forbidden' } });
+    }
+  };
+};
+
+// Backward compatibility export
+export const protectRoute = requireAuth;

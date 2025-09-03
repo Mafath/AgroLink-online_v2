@@ -35,3 +35,9 @@ The payload is the data you want to encode in the JWT. In this case, we are enco
 
 
 */
+
+// New: Stateless access token signer for Authorization: Bearer <token>
+export const signAccessToken = (payload, options = {}) => {
+  const defaultOptions = { expiresIn: process.env.JWT_EXPIRES_IN || '1h' };
+  return jwt.sign(payload, process.env.JWT_SECRET, { ...defaultOptions, ...options });
+};

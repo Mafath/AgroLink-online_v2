@@ -1,157 +1,144 @@
-import { generateToken } from "../lib/utils.js";
+import { signAccessToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
-import bcrypt from "bcryptjs"
+import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 
-
-export const signup = async (req,res) => {
-  const { email, fullName, password } = req.body; 
+export const signup = async (req, res) => {
   try {
-    
-    //check if all fields are filled
-    if (!email || !fullName || !password){
-      return res.status(400).json({message: "All fields are required"});
+    const { email, password, role } = req.body || {};
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Email and password are required" } });
     }
 
-    //check password length
-    if (password.length < 6){
-      return res.status(400).json({message: "Password must be at least 6 characters long"});
-    }
-    
-    //check if the email exist already
-    const user = await User.findOne({email: email});
-    if(user){
-      return res.status(400).json({message: "User already exists"});
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Invalid email format" } });
     }
 
-    //hash the password
-    const salt = await bcrypt.genSalt(10) // generates a random string (salt) to make the hash unique.
-    const hashedPassword = await bcrypt.hash(password,salt); // Combines the password and salt to generate a secure hashed version of the password.
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Password must be at least 8 characters" } });
+    }
 
-    //create a new user and save
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: { code: "EMAIL_IN_USE", message: "Email already registered" } });
+    }
+
+    // Only FARMER or BUYER can self-register; ADMIN/DRIVER are admin-created
+    const allowedPublicRoles = ["FARMER", "BUYER"];
+    const normalizedRole = (role || "BUYER").toUpperCase();
+    if (!allowedPublicRoles.includes(normalizedRole)) {
+      return res
+        .status(403)
+        .json({ error: { code: "ROLE_NOT_ALLOWED", message: "Only FARMER or BUYER can self-register" } });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
     const newUser = new User({
-      fullName,
-      email,
-      password: hashedPassword
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      role: normalizedRole,
     });
 
-    //if user created successfully
-    if(newUser){
-      //geneterate and return JWT token
-      generateToken(newUser._id, res);
+    await newUser.save();
 
-      //save the user to the database
-      await newUser.save();
-  
-      //send the user data to the frontend(client)
-      res.status(201).json({
-        _id:newUser._id,
-        fullName: newUser.fullName,
-        email: newUser.email,
-        profilePic: newUser.profilePic
-      })
-//       above JSON response allows the frontend to:
-
-//       Confirm that the user has been successfully registered.
-//       Access the newly created user's data (e.g., fullName and email).
-//       Use the user's _id for further operations like token generation or navigation.
-//       Optionally, display or use the profilePic if needed.
-    }
-
-    else{ //if couldn't create user
-      res.status(400).json({message: "invalid user data"});
-    }
-
+    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role });
   } catch (error) {
     console.log("Error in signup controller: ", error.message);
-    res.status(500).json({message: "Internal server error"});
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
 
-export const login = async(req, res) => {
-  const { email, password } = req.body;
+export const signin = async (req, res) => {
   try {
-    // whether the user exists?
-    const user = await User.findOne({email: email});
-    if(!user){
-      return res.status(400).json({message: "User does not exist"});
+    const { email, password } = req.body || {};
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Email and password are required" } });
     }
 
-    // if user exists check password is correct or not
-                                        // compare(password user enters ,one in the database)
-    const isPasswordCorrect = await bcrypt.compare(password, user.password)//this will return true or false
-    if(!isPasswordCorrect){
-      return res.status(400).json({message: "Invalid credentials"});
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    if (!user) {
+      return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
-    // if password is correct generate the token
-    generateToken(user._id, res);
+    const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
+    if (!isPasswordCorrect) {
+      return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
+    }
 
-    // send the user data to the frontend(client)
-    res.status(200).json({
-      _id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      profilePic: user.profilePic
+    const accessToken = signAccessToken({ userId: user._id.toString(), role: user.role });
+
+    return res.status(200).json({
+      accessToken,
+      user: { id: user._id, email: user.email, role: user.role },
     });
-
   } catch (error) {
-    console.log("Error in login controller: ", error.message);
-    res.status(500).json({message: "Internal server error"});
-  }
-}
-
-export const logout = (req,res) => {
-  try {
-    // clearing the JWT cookie
-    res.cookie("jwt","",{maxAge:0});
-    res.status(200).json({message: "Logged out successfully"});
-  } catch (error) {
-    console.log("Error in login controller: ", error.message);
-    res.status(500).json({message: "Internal server error"});
+    console.log("Error in signin controller: ", error.message);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
 
+// Backward-compat alias
+export const login = signin;
 
-export const updateProfile = async (req,res) => {
-  // here we only update the profile photo. Full name or email cant be edited according to our application
-  // to be able to update our profile pic, we need a service(cloudinary) so we can upload our images
-
+export const logout = (req, res) => {
   try {
-    // when user wants to update profile image, first they need to send us
-    const {profilePic} = req.body; //aluthen danna one photo eka
-    // check which user this is
+    return res.status(200).json({ message: "Logged out" });
+  } catch (error) {
+    console.log("Error in logout controller: ", error.message);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { profilePic } = req.body;
     const userId = req.user._id;
 
-    if(!profilePic){ //aluthen danna one photo eka user dunne nttn
-      return res.status(400).json({message: "Profile pic is required"});
+    if (!profilePic) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Profile pic is required" } });
     }
 
-    // if profile picture is provided, upload it to cloudinary(cloudinary is a bucket for our images)
     const uploadResponse = await cloudinary.uploader.upload(profilePic);
 
-    // Update the user in database
-    const updatedUser = await User.findByIdAndUpdate(userId, {profilePic: uploadResponse.secure_url}, {new:true});
-    // By default, findOneAndUpdate() returns the document as it was before update was applied. If you set new: true,
-    // findOneAndUpdate() will instead give you the object after update was applied.
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePic: uploadResponse.secure_url },
+      { new: true },
+    ).select("-passwordHash");
 
-    res.status(200).json(updatedUser);
-
+    return res.status(200).json(updatedUser);
   } catch (error) {
-    console.log("error in update profile: ",error);
-    res.status(500).json({message: "Internal server error"});
+    console.log("error in update profile: ", error);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
 
-
-export const checkAuth = (req,res) => {
-  // We r gonna be calling this function whenever we refresh the application. And we check if the user is authenticated or not
-  // user log wela nm req.user labenw. nttn "message": "Unauthorized - No Token Provided" labenw
+export const getCurrentUser = (req, res) => {
   try {
-    // send the user back to the client
-    res.status(200).json(req.user);
+    const { _id, email, role } = req.user;
+    return res.status(200).json({ id: _id, email, role });
   } catch (error) {
-    console.log("Error in checkAuth controller: ", error.message);
-    res.status(500).json({message: "Internal server error"});
+    console.log("Error in getCurrentUser controller: ", error.message);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
+
+// Backward-compat alias for existing route
+export const checkAuth = getCurrentUser;
