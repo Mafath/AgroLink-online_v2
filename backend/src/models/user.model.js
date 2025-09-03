@@ -6,15 +6,25 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       unique: true,
+      lowercase: true,
+      trim: true,
     },
     fullName: {
       type: String,
-      required: true,
+      required: false,
+      default: "",
+      trim: true,
     },
-    password: {
+    passwordHash: {
       type: String,
       required: true,
-      minlength: 6,
+      minlength: 8,
+    },
+    role: {
+      type: String,
+      enum: ["FARMER", "BUYER", "ADMIN", "DRIVER"],
+      default: "BUYER",
+      index: true,
     },
     profilePic: {
       type: String,
