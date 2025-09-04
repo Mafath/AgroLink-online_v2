@@ -73,7 +73,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center space-x-2">
                 <FiPhone className="w-4 h-4 text-gray-400" />
-                <span className="text-gray-600">+1 (555) 123-4567</span>
+                <span className="text-gray-600">(+94) 71 920 7688</span>
               </li>
               <li className="flex items-center space-x-2">
                 <FiMapPin className="w-4 h-4 text-gray-400" />
@@ -87,7 +87,7 @@ const Footer = () => {
         <div className="mt-8 pt-8 border-t border-gray-200">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <p className="text-gray-500 text-sm">
-              © 2024 AgroLink. All rights reserved.
+              © 2025 AgroLink. All rights reserved.
             </p>
             <div className="flex space-x-6 mt-4 md:mt-0">
               <a href="#" className="text-gray-500 hover:text-primary-500 text-sm transition-colors">

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
-import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare, User } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FiShield } from "react-icons/fi";
@@ -9,6 +9,7 @@ import { FiShield } from "react-icons/fi";
 const SignUpPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
+    fullName: "",
     email: "",
     password: "",
     role: "BUYER",
@@ -89,6 +90,23 @@ const SignUpPage = () => {
                     )}
                   </label>
                 ))}
+              </div>
+            </div>
+
+            {/* Full Name Field */}
+            <div>
+              <label className="form-label">
+                <User className="inline mr-2 h-4 w-4" />
+                Full Name
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={formData.fullName}
+                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  className={`input-field`}
+                  placeholder="Enter your full name"
+                />
               </div>
             </div>
 

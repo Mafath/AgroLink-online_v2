@@ -51,7 +51,7 @@ const Navbar = () => {
                       {authUser.email?.[0]?.toUpperCase()}
                     </span>
                   </div>
-                  <span className="hidden sm:block text-sm font-medium">{authUser.email}</span>
+                  <span className="hidden sm:block text-sm font-medium">{authUser.fullName || authUser.email}</span>
                 </button>
 
                 {isUserMenuOpen && (

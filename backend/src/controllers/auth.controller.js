@@ -5,7 +5,7 @@ import cloudinary from "../lib/cloudinary.js";
 
 export const signup = async (req, res) => {
   try {
-    const { email, password, role } = req.body || {};
+    const { email, password, role, fullName } = req.body || {};
 
     if (!email || !password) {
       return res
@@ -49,11 +49,12 @@ export const signup = async (req, res) => {
       email: email.toLowerCase().trim(),
       passwordHash,
       role: normalizedRole,
+      fullName: typeof fullName === 'string' ? fullName.trim() : "",
     });
 
     await newUser.save();
 
-    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role });
+    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role, fullName: newUser.fullName });
   } catch (error) {
     console.log("Error in signup controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
@@ -84,7 +85,7 @@ export const signin = async (req, res) => {
 
     return res.status(200).json({
       accessToken,
-      user: { id: user._id, email: user.email, role: user.role },
+      user: { id: user._id, email: user.email, role: user.role, fullName: user.fullName },
     });
   } catch (error) {
     console.log("Error in signin controller: ", error.message);
@@ -132,8 +133,8 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role } = req.user;
-    return res.status(200).json({ id: _id, email, role });
+    const { _id, email, role, fullName } = req.user;
+    return res.status(200).json({ id: _id, email, role, fullName });
   } catch (error) {
     console.log("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });

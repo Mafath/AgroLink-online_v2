@@ -54,7 +54,7 @@ const HomePage = () => {
           <Link to="/signup" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-12 px-6 flex items-center justify-center text-center">
             Get Started
           </Link>
-          <Link to="/login" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-12 px-6 flex items-center justify-center text-center">
+          <Link to="/login" className="border-2 border-primary-500 text-white-500 hover:bg-primary-500 hover:text-white rounded-md h-12 px-6 flex items-center justify-center text-center">
             Sign In
           </Link>
         </div>
