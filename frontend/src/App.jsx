@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import Navbar from './components/Navbar';
+import Footer from './components/Footer';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import SignupPage from './pages/SignupPage';
@@ -26,7 +27,7 @@ const App = () => {
   )
 
   return (
-    <div>
+    <div className='min-h-screen flex flex-col'>
 
       <Navbar />
       <Routes>
@@ -37,6 +38,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
       </Routes>
 
+      <Footer />
       <Toaster />
     </div>
   )
