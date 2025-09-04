@@ -36,17 +36,17 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Email Field */}
             <div>
-              <label className="form-label">Email Address</label>
+              <label className="form-label">
+                <Mail className="inline mr-2 h-4 w-4" />
+                Email Address
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`input-field pl-10`}
+                  className={`input-field`}
                   placeholder="Enter your email address"
                 />
               </div>
@@ -54,17 +54,17 @@ const LoginPage = () => {
 
             {/* Password Field */}
             <div>
-              <label className="form-label">Password</label>
+              <label className="form-label">
+                <Lock className="inline mr-2 h-4 w-4" />
+                Password
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
-                </div>
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`input-field pl-10 pr-10`}
+                  className={`input-field pr-10`}
                   placeholder="Enter your password"
                 />
                 <button

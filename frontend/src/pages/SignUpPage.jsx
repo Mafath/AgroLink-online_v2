@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
+import { FiShield } from "react-icons/fi";
 
 
 const SignUpPage = () => {
@@ -53,7 +54,10 @@ const SignUpPage = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Role Selection */}
             <div>
-              <label className="form-label">I want to join as a</label>
+              <label className="form-label">
+                <FiShield className="inline w-4 h-4 mr-2" />
+                I want to join as a
+              </label>
               <div className="grid grid-cols-2 gap-3">
                 {["FARMER", "BUYER"].map((role) => (
                   <label
@@ -90,17 +94,17 @@ const SignUpPage = () => {
 
             {/* Email Field */}
             <div>
-              <label className="form-label">Email Address</label>
+              <label className="form-label">
+                <Mail className="inline mr-2 h-4 w-4" />
+                Email Address
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                  <Mail className="size-4 text-gray-400" />
-                </div>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className={`input-field pl-8`}
+                  className={`input-field`}
                   placeholder="Enter your email address"
                 />
               </div>
@@ -108,17 +112,17 @@ const SignUpPage = () => {
 
             {/* Password Field */}
             <div>
-              <label className="form-label">Password</label>
+              <label className="form-label">
+                <Lock className="inline mr-2 h-4 w-4" />
+                Password
+              </label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                  <Lock className="size-4 text-gray-400" />
-                </div>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className={`input-field pl-8 pr-10`}
+                  className={`input-field pr-10`}
                   placeholder="Create a strong password"
                 />
                 <button
