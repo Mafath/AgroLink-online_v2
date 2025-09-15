@@ -1,5 +1,6 @@
 import express from 'express'
 import authRoutes from './routes/auth.route.js'
+import listingRoutes from './routes/listing.route.js'
 import dotenv from 'dotenv'
 dotenv.config()
 import { connectDB } from './lib/db.js'
@@ -25,6 +26,7 @@ app.use(cors({
   credentials: true
 }));
 app.use("/api/auth", authRoutes);
+app.use("/api/listings", listingRoutes);
 
 
 
