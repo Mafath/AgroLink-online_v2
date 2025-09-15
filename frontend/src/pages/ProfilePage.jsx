@@ -66,7 +66,7 @@ const ProfilePage = () => {
 
   return (
     <div className='p-4 mt-16 max-w-5xl mx-auto'>
-      <div className='grid grid-cols-1 md:grid-cols-4 gap-6 mt-20 mb-20'>
+      <div className='grid grid-cols-1 md:grid-cols-4 gap-6 mb-20'>
         {/* Left: Avatar card */}
         <div className='card h-full space-y-4 flex flex-col items-center overflow-visible md:h-[calc(100vh-16rem)]'>
           <div className='relative w-24 h-24 -mt-12'>

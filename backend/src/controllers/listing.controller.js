@@ -2,7 +2,7 @@ import Listing from "../models/listing.model.js";
 
 export const getAllListings = async (req, res) => {
   try {
-    const listings = await Listing.find({ status: 'ACTIVE' })
+    const listings = await Listing.find({ status: 'AVAILABLE' })
       .sort({ createdAt: -1 })
       .populate({ path: 'farmer', select: 'fullName email role' });
     return res.status(200).json(listings);
