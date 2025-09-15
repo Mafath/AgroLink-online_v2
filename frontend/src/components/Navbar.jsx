@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart } from 'lucide-react'
@@ -7,6 +7,8 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { authUser, logout } = useAuthStore();
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
@@ -21,6 +23,19 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
     setIsUserMenuOpen(false);
   };
+
+  useEffect(() => {
+    const onClickOutside = (e) => {
+      if (!isUserMenuOpen) return;
+      const m = menuRef.current;
+      const t = triggerRef.current;
+      if (m && !m.contains(e.target) && t && !t.contains(e.target)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [isUserMenuOpen]);
 
   return (
     <nav className="bg-white shadow-soft border-b border-gray-100 fixed w-full top-0 z-40">
@@ -60,6 +75,7 @@ const Navbar = () => {
                   <ShoppingCart className="w-5 h-5" />
                 </button>
                 <button
+                  ref={triggerRef}
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-primary-500 transition-colors"
                 >
@@ -72,7 +88,7 @@ const Navbar = () => {
                 </button>
 
                 {isUserMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
+                  <div ref={menuRef} className="absolute right-0 top-full mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
                     <button
                       onClick={() => handleNavigation('/profile')}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
