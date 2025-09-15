@@ -107,20 +107,25 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, fullName } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res
-        .status(400)
-        .json({ error: { code: "VALIDATION_ERROR", message: "Profile pic is required" } });
+    const updateFields = {};
+    if (typeof fullName === 'string') {
+      updateFields.fullName = fullName.trim();
+    }
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateFields.profilePic = uploadResponse.secure_url;
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    if (Object.keys(updateFields).length === 0) {
+      return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Nothing to update" } });
+    }
 
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      updateFields,
       { new: true },
     ).select("-passwordHash");
 
@@ -133,8 +138,8 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName } = req.user;
-    return res.status(200).json({ id: _id, email, role, fullName });
+    const { _id, email, role, fullName, profilePic, createdAt } = req.user;
+    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt });
   } catch (error) {
     console.log("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });

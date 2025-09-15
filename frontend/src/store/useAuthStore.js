@@ -13,12 +13,27 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
   isUpdatingProfile: false,
 
 
-  isCheckingAuth: false, //loading state
+  isCheckingAuth: true, // set true to block routes until check completes
 
 
   checkAuth: async() => {
-    // For stateless JWT in memory: no-op on refresh unless token is persisted elsewhere.
-    set({ isCheckingAuth: false });
+    set({ isCheckingAuth: true });
+    try {
+      const token = sessionStorage.getItem('accessToken');
+      if (!token) {
+        set({ authUser: null });
+        return;
+      }
+      setAccessToken(token);
+      const res = await axiosInstance.get('/auth/me');
+      set({ authUser: res.data });
+    } catch (error) {
+      clearAccessToken();
+      sessionStorage.removeItem('accessToken');
+      set({ authUser: null });
+    } finally {
+      set({ isCheckingAuth: false });
+    }
   },
 
 
@@ -43,6 +58,7 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
       await axiosInstance.post("/auth/logout");
       set({ authUser: null });
       clearAccessToken();
+      sessionStorage.removeItem('accessToken');
       toast.success("Logged out successfully");
     } catch (error) {
       const msg = error?.response?.data?.error?.message || "Logout failed";
@@ -57,6 +73,7 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
       const res = await axiosInstance.post("/auth/signin", data);
       const { accessToken, user } = res.data;
       setAccessToken(accessToken);
+      sessionStorage.setItem('accessToken', accessToken);
       set({ authUser: user });
       toast.success("Logged in successfully");
     } catch (error) {
