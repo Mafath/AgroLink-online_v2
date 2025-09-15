@@ -52,7 +52,7 @@ const Navbar = () => {
           </div>
 
           {/* Desktop navigation */}
-          <div className="hidden md:flex items-center space-x-16">
+          <div className="hidden md:flex items-center space-x-14">
             {authUser && (
               <>
                 <Link to="/" className="text-gray-700 hover:text-primary-500 text-sm font-medium">Home</Link>
