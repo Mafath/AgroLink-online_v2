@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
+import { ShoppingCart } from 'lucide-react'
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -35,13 +36,29 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Desktop navigation (placeholder for future links) */}
-          <div className="hidden md:flex items-center space-x-8" />
+          {/* Desktop navigation */}
+          <div className="hidden md:flex items-center space-x-16">
+            {authUser && (
+              <>
+                <Link to="/" className="text-gray-700 hover:text-primary-500 text-sm font-medium">Home</Link>
+                <Link to="/marketplace" className="text-gray-700 hover:text-primary-500 text-sm font-medium">Marketplace</Link>
+                <Link to="/my-listings" className="text-gray-700 hover:text-primary-500 text-sm font-medium">My Listings</Link>
+              </>
+            )}
+          </div>
 
           {/* User menu and auth */}
           <div className="flex items-center space-x-4">
             {authUser ? (
-              <div className="relative">
+              <div className="relative flex items-center gap-3">
+                <button
+                  onClick={() => handleNavigation('/cart')}
+                  className="p-2 rounded-md hover:bg-gray-100"
+                  aria-label="Cart"
+                  title="Cart"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                </button>
                 <button
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-primary-500 transition-colors"
@@ -109,6 +126,9 @@ const Navbar = () => {
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
             {authUser ? (
               <>
+                <button onClick={() => handleNavigation('/')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Home</button>
+                <button onClick={() => handleNavigation('/marketplace')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Marketplace</button>
+                <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
                 <button onClick={() => handleNavigation('/profile')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Profile</button>
                 <button onClick={() => handleNavigation('/settings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Settings</button>
                 <button onClick={handleLogout} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Logout</button>
