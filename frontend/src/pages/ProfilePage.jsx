@@ -9,6 +9,8 @@ const ProfilePage = () => {
   const [fullName, setFullName] = useState('')
   const [profilePic, setProfilePic] = useState('')
   const [saving, setSaving] = useState(false)
+  const [phone, setPhone] = useState('')
+  const [address, setAddress] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -16,6 +18,8 @@ const ProfilePage = () => {
         const res = await axiosInstance.get('/auth/me')
         setMe(res.data)
         setFullName(res.data.fullName || '')
+        setPhone(res.data.phone || '')
+        setAddress(res.data.address || '')
       } catch (err) {
         setError(err?.response?.data?.error?.message || 'Failed to load profile')
       }
@@ -36,7 +40,7 @@ const ProfilePage = () => {
   const handleSave = async () => {
     try {
       setSaving(true)
-      const payload = { fullName }
+      const payload = { fullName, phone, address }
       if (profilePic) payload.profilePic = profilePic
       const res = await axiosInstance.put('/auth/update-profile', payload)
       setMe(res.data)
@@ -52,7 +56,12 @@ const ProfilePage = () => {
   if (error) return <div className='p-4 text-red-600'>{error}</div>
   if (!me) return <div className='p-4'>Loading...</div>
 
-  const isChanged = (fullName.trim() !== (me.fullName || '')) || Boolean(profilePic)
+  const isChanged = (
+    fullName.trim() !== (me.fullName || '') ||
+    phone.trim() !== (me.phone || '') ||
+    address.trim() !== (me.address || '') ||
+    Boolean(profilePic)
+  )
 
   return (
     <div className='p-4 mt-16 max-w-3xl mx-auto'>
@@ -79,6 +88,14 @@ const ProfilePage = () => {
           <div>
             <label className='form-label'>Full Name</label>
             <input className='input-field' value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div>
+            <label className='form-label'>Phone Number</label>
+            <input className='input-field' value={phone} onChange={(e) => setPhone(e.target.value)} placeholder='+1 555 123 4567' />
+          </div>
+          <div>
+            <label className='form-label'>Address</label>
+            <textarea className='input-field' rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder='Street, City, State, ZIP' />
           </div>
           <div>
             <label className='form-label'>Email</label>
