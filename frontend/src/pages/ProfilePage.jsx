@@ -88,9 +88,10 @@ const ProfilePage = () => {
             <Mail className='w-3 h-3 text-gray-400' />
             {me.email}
           </div>
-          <div className='text-sm text-gray-700 text-center flex items-center justify-center gap-2 mt-1'>
-            <ShieldCheck className='w-4 h-4 text-primary-500' />
-            Registered as a <span className='font-semibold'>{me.role.toLowerCase()}</span>
+          <div className='mt-2'>
+            <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-primary-50 text-primary-700 border border-primary-100'>
+              <ShieldCheck className='w-3 h-3' /> {me.role.toLowerCase()}
+            </span>
           </div>
           <div className='flex-1' />
           <div className='w-full'>
@@ -104,21 +105,23 @@ const ProfilePage = () => {
         {/* Right: Details/Stats card */}
         <div className='card md:col-span-3 md:h-[calc(100vh-16rem)] overflow-y-auto'>
           {/* Top controls */}
-          <div className='flex items-center justify-end gap-2 mb-4'>
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`px-3 py-1 rounded-md text-sm border ${activeTab === 'info' ? 'bg-primary-500 text-white border-primary-500' : 'text-gray-700 hover:bg-gray-50'}`}
-              aria-label='User info'
-            >
-              Info
-            </button>
-            <button
-              onClick={() => setActiveTab('stats')}
-              className={`px-3 py-1 rounded-md text-sm border flex items-center gap-1 ${activeTab === 'stats' ? 'bg-primary-500 text-white border-primary-500' : 'text-gray-700 hover:bg-gray-50'}`}
-              aria-label='User stats'
-            >
-              <PieChart className='w-4 h-4' /> Stats
-            </button>
+          <div className='flex items-center justify-end mb-4'>
+            <div className='bg-gray-50 border rounded-lg p-1 flex gap-1'>
+              <button
+                onClick={() => setActiveTab('info')}
+                className={`px-3 py-1 rounded-md text-sm ${activeTab === 'info' ? 'bg-primary-500 text-white shadow' : 'text-gray-700 hover:bg-white'}`}
+                aria-label='User info'
+              >
+                Info
+              </button>
+              <button
+                onClick={() => setActiveTab('stats')}
+                className={`px-3 py-1 rounded-md text-sm flex items-center gap-1 ${activeTab === 'stats' ? 'bg-primary-500 text-white shadow' : 'text-gray-700 hover:bg-white'}`}
+                aria-label='User stats'
+              >
+                <PieChart className='w-4 h-4' /> Stats
+              </button>
+            </div>
           </div>
 
           {activeTab === 'info' && (
@@ -154,15 +157,15 @@ const ProfilePage = () => {
 
           {activeTab === 'stats' && (
             <div className='mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'>
-              <div className='card'>
+              <div className='card border border-primary-50 bg-gradient-to-br from-white to-primary-50/40'>
                 <div className='text-xs text-gray-500'>Orders completed</div>
                 <div className='text-2xl font-semibold'>-</div>
               </div>
-              <div className='card'>
+              <div className='card border border-primary-50 bg-gradient-to-br from-white to-primary-50/40'>
                 <div className='text-xs text-gray-500'>Listings</div>
                 <div className='text-2xl font-semibold'>-</div>
               </div>
-              <div className='card'>
+              <div className='card border border-primary-50 bg-gradient-to-br from-white to-primary-50/40'>
                 <div className='text-xs text-gray-500'>Ratings</div>
                 <div className='text-2xl font-semibold'>-</div>
               </div>
