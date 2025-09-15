@@ -115,8 +115,14 @@ export const updateProfile = async (req, res) => {
       updateFields.fullName = fullName.trim();
     }
     if (profilePic) {
-      const uploadResponse = await cloudinary.uploader.upload(profilePic);
-      updateFields.profilePic = uploadResponse.secure_url;
+      const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+      if (haveCloudinary) {
+        const uploadResponse = await cloudinary.uploader.upload(profilePic);
+        updateFields.profilePic = uploadResponse.secure_url;
+      } else {
+        // Fallback: store provided data URL directly
+        updateFields.profilePic = profilePic;
+      }
     }
 
     if (Object.keys(updateFields).length === 0) {

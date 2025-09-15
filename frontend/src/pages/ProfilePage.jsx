@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import { Camera } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 const ProfilePage = () => {
   const [me, setMe] = useState(null)
@@ -40,6 +41,7 @@ const ProfilePage = () => {
       const res = await axiosInstance.put('/auth/update-profile', payload)
       setMe(res.data)
       setProfilePic('')
+      toast.success('Profile updated')
     } catch (e) {
       setError(e?.response?.data?.error?.message || 'Failed to update profile')
     } finally {
@@ -50,13 +52,15 @@ const ProfilePage = () => {
   if (error) return <div className='p-4 text-red-600'>{error}</div>
   if (!me) return <div className='p-4'>Loading...</div>
 
+  const isChanged = (fullName.trim() !== (me.fullName || '')) || Boolean(profilePic)
+
   return (
     <div className='p-4 mt-16 max-w-3xl mx-auto'>
       <div className='card'>
         <div className='flex items-center gap-4'>
           <div className='relative'>
             <img
-              src={me.profilePic || 'https://ui-avatars.com/api/?background=0d7e79&color=fff&name=' + encodeURIComponent(me.fullName || me.email)}
+              src={profilePic || me.profilePic || 'https://ui-avatars.com/api/?background=0d7e79&color=fff&name=' + encodeURIComponent(me.fullName || me.email)}
               alt='avatar'
               className='w-20 h-20 rounded-full object-cover border'
             />
@@ -87,7 +91,9 @@ const ProfilePage = () => {
         </div>
 
         <div className='mt-6 flex gap-3'>
-          <button disabled={saving} onClick={handleSave} className='btn-primary'>{saving ? 'Saving...' : 'Save changes'}</button>
+          <button disabled={saving || !isChanged} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
+            {saving ? 'Saving...' : 'Save changes'}
+          </button>
         </div>
       </div>
     </div>

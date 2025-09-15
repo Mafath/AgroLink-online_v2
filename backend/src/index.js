@@ -8,11 +8,21 @@ import cors from 'cors'
 
 
 const app = express();
-app.use(express.json()); //allows to extract json data from the request body
+app.use(express.json({ limit: '10mb' })); // allow base64 image payloads
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+const allowedOrigins = [
+  process.env.CLIENT_URL || "http://localhost:5173",
+  process.env.CLIENT_URL_ALT || "http://localhost:5174",
+];
+
 app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true  //allow the cookies to be sent from the server to the client
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    if (allowedOrigins.includes(origin)) return cb(null, true);
+    return cb(new Error('Not allowed by CORS'));
+  },
+  credentials: true
 }));
 app.use("/api/auth", authRoutes);
 
