@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
+import defaultAvatar from '../assets/User Avatar.jpg'
 import logoImg from '../assets/AgroLink logo3.png'
 
 const Navbar = () => {
@@ -98,11 +99,7 @@ const Navbar = () => {
                   onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
                   className="flex items-center space-x-2 text-gray-700 hover:text-primary-500 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
-                    <span className="text-sm font-medium">
-                      {authUser.email?.[0]?.toUpperCase()}
-                    </span>
-                  </div>
+                  <img src={authUser.profilePic || defaultAvatar} alt="avatar" className="w-8 h-8 rounded-full object-cover border" />
                   <span className="hidden sm:block text-sm font-medium">{authUser.fullName || authUser.email}</span>
                 </button>
 

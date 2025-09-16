@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut } from 'lucide-react'
+import defaultAvatar from '../assets/User Avatar.jpg'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import toast from 'react-hot-toast'
@@ -17,7 +18,7 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity' | 'settings'
   const [isEditing, setIsEditing] = useState(false)
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
+  const { logout, checkAuth } = useAuthStore()
 
   useEffect(() => {
     const load = async () => {
@@ -55,6 +56,7 @@ const ProfilePage = () => {
       setProfilePic('')
       toast.success('Profile updated')
       setIsEditing(false)
+      try { await checkAuth() } catch {}
     } catch (e) {
       setError(e?.response?.data?.error?.message || 'Failed to update profile')
     } finally {
@@ -104,7 +106,7 @@ const ProfilePage = () => {
         <div className='absolute inset-x-0 -bottom-10 flex justify-center'>
           <div className='relative'>
             <img
-              src={profilePic || me.profilePic || 'https://ui-avatars.com/api/?background=0d7e79&color=fff&name=' + encodeURIComponent(me.fullName || me.email)}
+              src={profilePic || me.profilePic || defaultAvatar}
               alt='avatar'
               className='w-28 h-28 rounded-full object-cover ring-4 ring-white shadow-xl'
             />

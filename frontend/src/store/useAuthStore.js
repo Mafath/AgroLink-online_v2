@@ -74,7 +74,14 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
       const { accessToken, user } = res.data;
       setAccessToken(accessToken);
       sessionStorage.setItem('accessToken', accessToken);
-      set({ authUser: user });
+      // fetch full profile (including profilePic) from DB
+      try {
+        const meRes = await axiosInstance.get('/auth/me');
+        set({ authUser: meRes.data });
+      } catch {
+        // fallback to minimal user from login response
+        set({ authUser: user });
+      }
       toast.success("Logged in successfully");
     } catch (error) {
       const msg = error?.response?.data?.error?.message || "Login failed";
