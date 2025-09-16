@@ -32,7 +32,7 @@ const App = () => {
     <div className='min-h-screen flex flex-col'>
 
       <Navbar />
-      <main className='flex-1 pt-20 min-h-[90vh]'>
+      <main className='flex-1 pt-16 min-h-[90vh]'>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
