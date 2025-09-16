@@ -25,6 +25,11 @@ const Navbar = () => {
     setIsUserMenuOpen(false);
   };
 
+  const isActive = (path) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname.startsWith(path);
+  };
+
   useEffect(() => {
     const onClickOutside = (e) => {
       if (!isUserMenuOpen) return;
@@ -54,9 +59,24 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-14">
             {authUser && (
               <>
-                <Link to="/" className="text-gray-700 hover:text-primary-500 text-sm font-medium">Home</Link>
-                <Link to="/marketplace" className="text-gray-700 hover:text-primary-500 text-sm font-medium">Marketplace</Link>
-                <Link to="/my-listings" className="text-gray-700 hover:text-primary-500 text-sm font-medium">My Listings</Link>
+                <Link
+                  to="/"
+                  className={`${isActive('/') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                >
+                  Home
+                </Link>
+                <Link
+                  to="/marketplace"
+                  className={`${isActive('/marketplace') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                >
+                  Marketplace
+                </Link>
+                <Link
+                  to="/my-listings"
+                  className={`${isActive('/my-listings') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                >
+                  My Listings
+                </Link>
               </>
             )}
           </div>
