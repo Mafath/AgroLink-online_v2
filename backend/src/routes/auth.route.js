@@ -1,5 +1,5 @@
 import express from 'express'
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats } from '../controllers/auth.controller.js'
+import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser } from '../controllers/auth.controller.js'
 import { requireAuth, protectRoute, requireRole } from '../middleware/auth.middleware.js';
 
 
@@ -24,6 +24,11 @@ router.get("/admin/ping", requireAuth, requireRole("ADMIN"), (req, res) => {
 
 // Admin stats
 router.get("/admin/stats", requireAuth, requireRole("ADMIN"), getAdminStats)
+
+// Admin user management
+router.get("/admin/users", requireAuth, requireRole("ADMIN"), adminListUsers)
+router.put("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminUpdateUser)
+router.delete("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminDeleteUser)
 
 
 export default router;

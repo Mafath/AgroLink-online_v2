@@ -38,7 +38,7 @@ const SignUpPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg flex items-center justify-center py-7 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
@@ -149,8 +149,8 @@ const SignUpPage = () => {
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
-                <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters long</p>
               </div>
+              <p className="mt-1 text-xs text-gray-500">Must be at least 8 characters long</p>
             </div>
 
             {/* Submit Button */}

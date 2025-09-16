@@ -4,7 +4,10 @@ import Footer from './components/Footer';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AdminDashboard from './pages/AdminDashboard';
-import SignupPage from './pages/SignupPage';
+import AdminUsers from './pages/AdminUsers';
+import AdminRoles from './pages/AdminRoles';
+import AdminInventory from './pages/AdminInventory';
+import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
 import MyListings from './pages/MyListings';
@@ -40,6 +43,9 @@ const App = () => {
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
+          <Route path="/admin/users" element={authUser && authUser.role === 'ADMIN' ? <AdminUsers /> : <Navigate to="/" />} />
+          <Route path="/admin/roles" element={authUser && authUser.role === 'ADMIN' ? <AdminRoles /> : <Navigate to="/" />} />
+          <Route path="/admin/inventory" element={authUser && authUser.role === 'ADMIN' ? <AdminInventory /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
