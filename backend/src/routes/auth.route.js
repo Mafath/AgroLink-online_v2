@@ -1,5 +1,5 @@
 import express from 'express'
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth } from '../controllers/auth.controller.js'
+import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats } from '../controllers/auth.controller.js'
 import { requireAuth, protectRoute, requireRole } from '../middleware/auth.middleware.js';
 
 
@@ -21,6 +21,9 @@ router.get("/check", requireAuth, checkAuth)
 router.get("/admin/ping", requireAuth, requireRole("ADMIN"), (req, res) => {
   res.status(200).json({ ok: true, role: req.user.role });
 });
+
+// Admin stats
+router.get("/admin/stats", requireAuth, requireRole("ADMIN"), getAdminStats)
 
 
 export default router;

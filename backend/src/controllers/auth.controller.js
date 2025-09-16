@@ -1,5 +1,6 @@
 import { signAccessToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
+import Listing from "../models/listing.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 
@@ -163,3 +164,33 @@ export const getCurrentUser = (req, res) => {
 
 // Backward-compat alias for existing route
 export const checkAuth = getCurrentUser;
+
+// Admin: simple stats for dashboard
+export const getAdminStats = async (req, res) => {
+  try {
+    const [totalUsers, farmers, buyers, drivers, listingsTotal, listingsAvailable] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'FARMER' }),
+      User.countDocuments({ role: 'BUYER' }),
+      User.countDocuments({ role: 'DRIVER' }),
+      Listing.countDocuments(),
+      Listing.countDocuments({ status: 'AVAILABLE' }),
+    ]);
+
+    return res.status(200).json({
+      users: {
+        total: totalUsers,
+        farmers,
+        buyers,
+        drivers,
+      },
+      listings: {
+        total: listingsTotal,
+        available: listingsAvailable,
+      },
+    });
+  } catch (error) {
+    console.log('Error in getAdminStats: ', error.message);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};
