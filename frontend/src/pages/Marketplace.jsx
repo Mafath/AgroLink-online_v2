@@ -7,6 +7,7 @@ const Marketplace = () => {
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
+  const [q, setQ] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -23,16 +24,35 @@ const Marketplace = () => {
     load()
   }, [])
 
+  const filteredItems = (Array.isArray(items) ? items : []).filter((it) => {
+    const query = q.trim().toLowerCase()
+    if (!query) return true
+    const farmerName = it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : '')
+    return (
+      String(it.cropName || '').toLowerCase().includes(query) ||
+      String(it.details || '').toLowerCase().includes(query) ||
+      String(farmerName || '').toLowerCase().includes(query)
+    )
+  })
+
   return (
     <div className='p-4 mb-20 max-w-6xl mx-auto'>
-      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-10'>Marketplace</h2>
+      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>Marketplace</h2>
+      <div className='mb-6 max-w-md mx-auto'>
+        <input
+          className='input-field rounded-full'
+          placeholder='Search crops, farmers, details...'
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      </div>
       {loading ? (
         <div>Loading...</div>
-      ) : items.length === 0 ? (
-        <div className='text-gray-500 text-sm'>No listings available right now.</div>
+      ) : filteredItems.length === 0 ? (
+        <div className='text-gray-500 text-sm'>No matching products.</div>
       ) : (
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
-          {items.map(it => (
+          {filteredItems.map(it => (
             <div key={it._id} className='card flex flex-col'>
               {Array.isArray(it.images) && it.images.length > 0 ? (
                 <div className='overflow-hidden rounded-lg -mt-2 -mx-2 mb-3'>
