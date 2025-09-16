@@ -24,8 +24,8 @@ const Marketplace = () => {
   }, [])
 
   return (
-    <div className='p-4 mt-20 max-w-6xl mx-auto'>
-      <h2 className='text-xl font-semibold mb-4'>Marketplace</h2>
+    <div className='p-4 mb-20 max-w-6xl mx-auto'>
+      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-10'>Marketplace</h2>
       {loading ? (
         <div>Loading...</div>
       ) : items.length === 0 ? (

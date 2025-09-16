@@ -98,8 +98,8 @@ const MyListings = () => {
   return (
     <div className='p-4 mt-20 max-w-5xl mx-auto'>
       <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-xl font-semibold'>My Listings</h2>
-        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2'>
+        <h2 className='text-3xl md:text-4xl font-bold text-accent-600 text-center w-full'>My Listings</h2>
+        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 ml-4 whitespace-nowrap'>
           <Plus className='w-4 h-4' /> Add new post
         </button>
       </div>
