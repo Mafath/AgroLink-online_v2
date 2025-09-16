@@ -76,7 +76,7 @@ const ProfilePage = () => {
   )
 
   return (
-    <div className='p-4 max-w-5xl mx-auto'>
+    <div className='p-4 mt-5 max-w-5xl mx-auto'>
       {/* Header Section */}
       <div className='relative'>
         <div className='bg-gradient-primary rounded-2xl h-24 shadow-medium'></div>
@@ -123,8 +123,8 @@ const ProfilePage = () => {
       <div className='mt-14 text-center'>
         <div className='text-2xl font-semibold'>{me.fullName || (me.email ? me.email.split('@')[0] : '')}</div>
         <div className='mt-1'>
-          <span className='inline-flex items-center px-3 py-1 rounded-full text-xs font-medium capitalize bg-green-50 text-green-700 border border-green-200'>
-            {me.role.toLowerCase()}
+          <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium capitalize bg-green-50 text-green-700 border border-green-200'>
+            <ShieldCheck className='w-3 h-3' /> {me.role.toLowerCase()}
           </span>
         </div>
         <div className='text-xs text-gray-500 mt-1 flex items-center justify-center gap-1'>
