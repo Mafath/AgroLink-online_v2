@@ -1,0 +1,361 @@
+import React, { useEffect, useState } from 'react'
+import { axiosInstance } from '../lib/axios'
+import { Plus, X, Edit, Trash2 } from 'lucide-react'
+import toast from 'react-hot-toast'
+
+const MyListings = () => {
+  const [items, setItems] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+  const [saving, setSaving] = useState(false)
+  const [preview, setPreview] = useState(null)
+  const [confirmDelete, setConfirmDelete] = useState(null)
+  const [editForm, setEditForm] = useState(null)
+
+  const toInputDate = (value) => {
+    try {
+      const d = value ? new Date(value) : null
+      if (!d || isNaN(d.getTime())) return ''
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    } catch {
+      return ''
+    }
+  }
+
+  const toBackendStatus = (s) => {
+    if (s === 'ACTIVE') return 'AVAILABLE'
+    if (s === 'SOLD_OUT') return 'SOLD'
+    if (s === 'INACTIVE') return 'REMOVED'
+    return s
+  }
+
+  const handleOpenEdit = (it) => {
+    setPreview(it)
+    setEditForm({
+      cropName: it.cropName || '',
+      pricePerKg: it.pricePerKg ?? '',
+      capacityKg: it.capacityKg ?? '',
+      harvestedAt: toInputDate(it.harvestedAt),
+      details: it.details || '',
+      status: toBackendStatus(it.status || 'AVAILABLE'),
+      images: [], // selecting new images replaces existing ones; empty keeps current
+    })
+  }
+
+  const load = async () => {
+    try {
+      setLoading(true)
+      const res = await axiosInstance.get('/listings/mine')
+      setItems(res.data)
+    } catch (e) {
+      toast.error('Failed to load listings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+
+  const handleCreate = async (e) => {
+    e.preventDefault()
+    if (!form.cropName || !form.pricePerKg || !form.capacityKg || !form.harvestedAt) {
+      toast.error('Please fill all required fields')
+      return
+    }
+    try {
+      setSaving(true)
+      const payload = {
+        cropName: form.cropName,
+        pricePerKg: Number(form.pricePerKg),
+        capacityKg: Number(form.capacityKg),
+        details: form.details,
+        harvestedAt: form.harvestedAt,
+        images: form.images,
+      }
+      const res = await axiosInstance.post('/listings', payload)
+      toast.success('Listing created')
+      setShowForm(false)
+      setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+      setItems(prev => [res.data, ...prev])
+    } catch (e) {
+      toast.error(e?.response?.data?.error?.message || 'Failed to create')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const mapStatus = (s) => {
+    if (s === 'ACTIVE') return 'AVAILABLE'
+    if (s === 'SOLD_OUT') return 'SOLD'
+    if (s === 'INACTIVE') return 'REMOVED'
+    return s
+  }
+
+  return (
+    <div className='p-4 mt-20 max-w-5xl mx-auto'>
+      <div className='flex items-center justify-between mb-4'>
+        <h2 className='text-xl font-semibold'>My Listings</h2>
+        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2'>
+          <Plus className='w-4 h-4' /> Add new post
+        </button>
+      </div>
+
+      <div className='card'>
+        {loading ? (
+          <div>Loading...</div>
+        ) : items.length === 0 ? (
+          <div className='text-gray-500 text-sm'>No listings yet.</div>
+        ) : (
+          <div className='overflow-x-auto'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='text-left border-b'>
+                  <th className='py-2 pr-4'>Crop</th>
+                  <th className='py-2 pr-4'>Price/kg</th>
+                  <th className='py-2 pr-4'>Capacity (kg)</th>
+                  <th className='py-2 pr-4'>Harvested</th>
+                  <th className='py-2 pr-4'>Images</th>
+                  <th className='py-2'>Status</th>
+                  <th className='py-2 pl-4'>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(it => (
+                  <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
+                    <td className='py-2 pr-4'>{it.cropName}</td>
+                    <td className='py-2 pr-4'>{Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4'>{it.capacityKg}</td>
+                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4'>
+                      {Array.isArray(it.images) && it.images.length > 0 ? (
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                          {it.images.slice(0,4).map((src, idx) => (
+                            <img key={idx} src={src} alt={'img'+idx} className='w-10 h-10 object-cover rounded' />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400'>No images</span>
+                      )}
+                    </td>
+                    <td className='py-2'>{mapStatus(it.status)}</td>
+                    <td className='py-2 pl-4'>
+                      <div className='flex gap-2'>
+                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => handleOpenEdit(it)}><Edit className='w-3 h-3' /> Edit</button>
+                        <button className='border px-2 py-1 rounded-md text-xs text-red-600 flex items-center gap-1' onClick={() => setConfirmDelete(it)}><Trash2 className='w-3 h-3' /> Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {showForm && (
+        <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+          <div className='card w-full max-w-lg relative max-h-[85vh] overflow-y-auto mx-4'>
+            <button onClick={() => setShowForm(false)} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100'><X className='w-4 h-4' /></button>
+            <h3 className='text-lg font-semibold mb-4'>Create new post</h3>
+            <form onSubmit={handleCreate} className='space-y-4'>
+              <div>
+                <label className='form-label'>Crop Name</label>
+                <input className='input-field' value={form.cropName} onChange={e => setForm({ ...form, cropName: e.target.value })} />
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Price per kg</label>
+                  <input type='number' step='0.01' className='input-field' value={form.pricePerKg} onChange={e => setForm({ ...form, pricePerKg: e.target.value })} />
+                </div>
+                <div>
+                  <label className='form-label'>Capacity (kg)</label>
+                  <input type='number' className='input-field' value={form.capacityKg} onChange={e => setForm({ ...form, capacityKg: e.target.value })} />
+                </div>
+              </div>
+              <div>
+                <label className='form-label'>Harvested date</label>
+                <input type='date' className='input-field' value={form.harvestedAt} onChange={e => setForm({ ...form, harvestedAt: e.target.value })} />
+              </div>
+              <div>
+                <label className='form-label'>Images (up to 4)</label>
+                <input
+                  type='file'
+                  accept='image/*'
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 4)
+                    const readers = files.map(file => new Promise((resolve) => {
+                      const reader = new FileReader()
+                      reader.onload = () => resolve(reader.result)
+                      reader.readAsDataURL(file)
+                    }))
+                    Promise.all(readers).then((results) => {
+                      setForm(prev => ({ ...prev, images: results.slice(0, 4) }))
+                    })
+                  }}
+                  className='block w-full text-sm'
+                />
+                {form.images?.length > 0 && (
+                  <div className='mt-2 grid grid-cols-4 gap-2'>
+                    {form.images.map((src, idx) => (
+                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className='form-label'>Details</label>
+                <textarea rows={3} className='input-field' value={form.details} onChange={e => setForm({ ...form, details: e.target.value })} />
+              </div>
+              <div className='flex justify-end gap-2'>
+                <button type='button' onClick={() => setShowForm(false)} className='border px-4 py-2 rounded-lg'>Cancel</button>
+                <button disabled={saving} className='btn-primary'>{saving ? 'Posting...' : 'Post'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {preview && editForm && (
+        <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+          <div className='card w-full max-w-lg relative max-h-[85vh] overflow-y-auto mx-4 p-4 sm:p-5 text-sm'>
+            <button onClick={() => { setPreview(null); setEditForm(null) }} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100'><X className='w-4 h-4' /></button>
+            <h3 className='text-base font-semibold mb-3'>Edit listing</h3>
+            <div className='space-y-3'>
+              <div>
+                <label className='form-label'>Crop Name</label>
+                <input className='input-field py-2 px-3 text-sm' value={editForm.cropName} onChange={(e) => setEditForm({ ...editForm, cropName: e.target.value })} />
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                <div>
+                  <label className='form-label'>Price per kg</label>
+                  <input type='number' step='0.01' className='input-field py-2 px-3 text-sm' value={editForm.pricePerKg} onChange={(e) => setEditForm({ ...editForm, pricePerKg: e.target.value })} />
+                </div>
+                <div>
+                  <label className='form-label'>Capacity (kg)</label>
+                  <input type='number' className='input-field py-2 px-3 text-sm' value={editForm.capacityKg} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} />
+                </div>
+              </div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+                <div>
+                  <label className='form-label'>Harvested date</label>
+                  <input type='date' className='input-field py-2 px-3 text-sm' value={editForm.harvestedAt} onChange={(e) => setEditForm({ ...editForm, harvestedAt: e.target.value })} />
+                </div>
+                <div>
+                  <label className='form-label'>Status</label>
+                  <input className='input-field py-2 px-3 text-sm bg-gray-100' value={editForm.status} readOnly disabled />
+                </div>
+              </div>
+              <div>
+                <label className='form-label'>Current images</label>
+                {Array.isArray(preview.images) && preview.images.length > 0 ? (
+                  <div className='grid grid-cols-2 sm:grid-cols-4 gap-2'>
+                    {preview.images.slice(0, 4).map((src, idx) => (
+                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                    ))}
+                  </div>
+                ) : (
+                  <div className='text-sm text-gray-500'>No images</div>
+                )}
+              </div>
+              <div>
+                <label className='form-label'>Replace images (up to 4)</label>
+                <input
+                  type='file'
+                  accept='image/*'
+                  multiple
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []).slice(0, 4)
+                    const readers = files.map(file => new Promise((resolve) => {
+                      const reader = new FileReader()
+                      reader.onload = () => resolve(reader.result)
+                      reader.readAsDataURL(file)
+                    }))
+                    Promise.all(readers).then((results) => {
+                      setEditForm(prev => ({ ...prev, images: results.slice(0, 4) }))
+                    })
+                  }}
+                  className='block w-full text-sm'
+                />
+                {editForm.images?.length > 0 && (
+                  <div className='mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2'>
+                    {editForm.images.map((src, idx) => (
+                      <img key={idx} src={src} alt={'new'+idx} className='w-full h-16 object-cover rounded-md border' />
+                    ))}
+                  </div>
+                )}
+                <div className='text-xs text-gray-500 mt-1'>If you select new images, they will replace the current images.</div>
+              </div>
+              <div>
+                <label className='form-label'>Details</label>
+                <textarea rows={3} className='input-field py-2 px-3 text-sm' value={editForm.details} onChange={(e) => setEditForm({ ...editForm, details: e.target.value })} />
+              </div>
+              <div className='flex justify-end'>
+                <button
+                  onClick={async () => {
+                    try {
+                      setSaving(true)
+                      const payload = {
+                        cropName: editForm.cropName,
+                        pricePerKg: Number(editForm.pricePerKg),
+                        capacityKg: Number(editForm.capacityKg),
+                        details: editForm.details,
+                        harvestedAt: editForm.harvestedAt,
+                      }
+                      if (Array.isArray(editForm.images) && editForm.images.length > 0) {
+                        payload.images = editForm.images
+                      }
+                      const res = await axiosInstance.put(`/listings/${preview._id}`, payload)
+                      setItems(items.map(i => i._id === res.data._id ? res.data : i))
+                      toast.success('Listing updated')
+                      setPreview(null)
+                      setEditForm(null)
+                    } catch (e) {
+                      toast.error(e?.response?.data?.error?.message || 'Failed to update')
+                    } finally {
+                      setSaving(false)
+                    }
+                  }}
+                  className='btn-primary py-2 px-4 text-sm'
+                  disabled={saving}
+                >
+                  {saving ? 'Saving...' : 'Save changes'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+          <div className='card w-full max-w-sm'>
+            <h3 className='text-lg font-semibold mb-2'>Delete listing</h3>
+            <p className='text-sm text-gray-600'>Are you sure you want to delete this listing?</p>
+            <div className='mt-4 flex justify-end gap-2'>
+              <button className='border px-4 py-2 rounded-lg' onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button className='btn-primary bg-red-600 hover:bg-red-700' onClick={async () => {
+                try {
+                  await axiosInstance.delete(`/listings/${confirmDelete._id}`)
+                  setItems(items.filter(i => i._id !== confirmDelete._id))
+                  setConfirmDelete(null)
+                  toast.success('Listing deleted')
+                } catch (e) {
+                  toast.error('Failed to delete')
+                }
+              }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default MyListings
+
+

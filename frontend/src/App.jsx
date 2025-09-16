@@ -6,6 +6,8 @@ import HomePage from './pages/HomePage';
 import SignupPage from './pages/SignupPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
+import MyListings from './pages/MyListings';
+import Marketplace from './pages/Marketplace';
 import ProfilePage from './pages/ProfilePage';
 import { useAuthStore } from './store/useAuthStore';
 import { Loader } from "lucide-react";
@@ -30,13 +32,17 @@ const App = () => {
     <div className='min-h-screen flex flex-col'>
 
       <Navbar />
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
-        <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
-      </Routes>
+      <main className='flex-1 pt-20 min-h-[90vh]'>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
+          <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
+        </Routes>
+      </main>
 
       <Footer />
       <Toaster />
