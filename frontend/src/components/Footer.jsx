@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FiMail, FiPhone, FiMapPin, FiGithub, FiTwitter, FiLinkedin } from 'react-icons/fi';
+import logoImg from '../assets/AgroLink logo3.png'
 
 const Footer = () => {
   return (
@@ -10,9 +11,7 @@ const Footer = () => {
           {/* Company Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">A</span>
-              </div>
+              <img src={logoImg} alt="AgroLink logo" className="h-8 w-auto" />
               <span className="text-xl font-bold text-gradient">AgroLink</span>
             </div>
             <p className="text-gray-600 mb-4 max-w-md">

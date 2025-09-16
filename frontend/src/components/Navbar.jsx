@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
+import logoImg from '../assets/AgroLink logo3.png'
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -44,9 +45,7 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-accent-500 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-lg">A</span>
-              </div>
+              <img src={logoImg} alt="AgroLink logo" className="h-8 sm:h-10 w-auto" />
               <span className="text-xl font-bold text-gradient">AgroLink</span>
             </Link>
           </div>
@@ -93,18 +92,21 @@ const Navbar = () => {
                       onClick={() => handleNavigation('/profile')}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >
+                      <UserIcon className="w-4 h-4 mr-2" />
                       Profile
                     </button>
                     <button
                       onClick={() => handleNavigation('/settings')}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                     >
+                      <SettingsIcon className="w-4 h-4 mr-2" />
                       Settings
                     </button>
                     <button
                       onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"
                     >
+                      <LogOut className="w-4 h-4 mr-2 text-red-600" />
                       Logout
                     </button>
                   </div>

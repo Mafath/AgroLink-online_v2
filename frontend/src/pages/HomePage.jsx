@@ -117,7 +117,7 @@ const HomePage = () => {
   const { title, subtitle } = getWelcomeMessage();
 
   return (
-    <div className="min-h-screen bg-base-100 mt-16">
+    <div className="min-h-screen bg-base-100 -mt-18">
       {/* Hero Section */}
       <section className="relative bg-gradient-to-br from-primary-500 to-accent-500 text-white py-20">
         <div className="absolute inset-0 bg-black opacity-10"></div>

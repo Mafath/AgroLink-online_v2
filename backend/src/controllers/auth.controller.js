@@ -107,7 +107,7 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic, fullName, phone, address } = req.body;
+    const { profilePic, fullName, phone, address, bio } = req.body;
     const userId = req.user._id;
 
     const updateFields = {};
@@ -119,6 +119,9 @@ export const updateProfile = async (req, res) => {
     }
     if (typeof address === 'string') {
       updateFields.address = address.trim();
+    }
+    if (typeof bio === 'string') {
+      updateFields.bio = bio.trim();
     }
     if (profilePic) {
       const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
@@ -150,8 +153,8 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address } = req.user;
-    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt, phone, address });
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio } = req.user;
+    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt, phone, address, bio });
   } catch (error) {
     console.log("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
