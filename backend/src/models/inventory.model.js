@@ -9,10 +9,19 @@ const inventoryProductSchema = new mongoose.Schema(
       maxlength: 200,
       index: true,
     },
-    price: {
-      type: Number,
+    category: {
+      type: String,
       required: true,
-      min: 0,
+      enum: [
+        'seeds',
+        'fertilizers',
+        'pesticides',
+        'chemicals',
+        'equipment',
+        'irrigation',
+      ],
+      lowercase: true,
+      index: true,
     },
     description: {
       type: String,
@@ -20,20 +29,27 @@ const inventoryProductSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
-    images: {
-      type: [String],
-      default: [],
-      validate: {
-        validator: function (val) {
-          return Array.isArray(val) && val.length <= 4;
-        },
-        message: "You can upload at most 4 images per product.",
-      },
+    image: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    stockQuantity: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+      index: true,
+    },
+    price: {
+      type: Number,
+      required: true,
+      min: 0,
     },
     status: {
       type: String,
-      enum: ["ACTIVE", "HIDDEN"],
-      default: "ACTIVE",
+      enum: ['Available', 'Low stock', 'Out of stock'],
+      default: 'Available',
       index: true,
     },
   },
