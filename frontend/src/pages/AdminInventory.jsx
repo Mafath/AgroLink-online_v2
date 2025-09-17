@@ -53,6 +53,7 @@ const Sparkline = () => (
 
 const AdminInventory = () => {
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isAddInventory, setIsAddInventory] = useState(false)
   const [viewItem, setViewItem] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [rentalForm, setRentalForm] = useState({
@@ -66,6 +67,9 @@ const AdminInventory = () => {
 
   const [rentalItems, setRentalItems] = useState([])
   const [isLoadingRentals, setIsLoadingRentals] = useState(false)
+  const [inventoryItems, setInventoryItems] = useState([])
+  const [isLoadingInventory, setIsLoadingInventory] = useState(false)
+  const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', image: '', stockQuantity: '', price: '', description: '' })
 
   const loadRentals = async () => {
     try {
@@ -80,6 +84,20 @@ const AdminInventory = () => {
   }
 
   useEffect(() => { loadRentals() }, [])
+
+  const loadInventory = async () => {
+    try {
+      setIsLoadingInventory(true)
+      const { data } = await axiosInstance.get('inventory')
+      setInventoryItems(Array.isArray(data?.data) ? data.data : [])
+    } catch (e) {
+      setInventoryItems([])
+    } finally {
+      setIsLoadingInventory(false)
+    }
+  }
+
+  useEffect(() => { loadInventory() }, [])
 
   const handleSubmitRental = async (e) => {
     e.preventDefault()
@@ -98,6 +116,28 @@ const AdminInventory = () => {
       loadRentals()
     } catch (err) {
       // handle error later; keep silent for now
+    }
+  }
+
+  const handleSubmitInventory = async (e) => {
+    e.preventDefault()
+    try {
+      const payload = {
+        name: inventoryForm.name,
+        category: inventoryForm.category,
+        description: inventoryForm.description,
+        image: inventoryForm.image,
+        stockQuantity: Number(inventoryForm.stockQuantity || 0),
+        price: Number(inventoryForm.price || 0),
+        status: 'Available',
+      }
+      await axiosInstance.post('inventory', payload)
+      setIsAddOpen(false)
+      setIsAddInventory(false)
+      setInventoryForm({ name: '', category: 'seeds', image: '', stockQuantity: '', price: '', description: '' })
+      loadInventory()
+    } catch (err) {
+      // optional: surface error
     }
   }
 
@@ -209,6 +249,63 @@ const AdminInventory = () => {
                 </table>
               </div>
             </div>
+
+            {/* Inventory table */}
+            <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
+              <div className='px-4 py-3 border-b border-gray-100 flex items-center justify-between'>
+                <div>
+                  <div className='text-sm font-medium text-gray-700'>Inventory</div>
+                  <div className='text-xs text-gray-500 mt-0.5'>Initially empty</div>
+                </div>
+                <button className='btn-primary whitespace-nowrap' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
+              </div>
+              <div className='overflow-x-auto'>
+                <table className='min-w-full text-sm'>
+                  <thead>
+                    <tr className='text-left text-gray-500'>
+                      <th className='py-3 px-4 text-center'>Name</th>
+                      <th className='py-3 px-4 text-center'>Category</th>
+                      <th className='py-3 px-4 text-center'>Image</th>
+                      <th className='py-3 px-4 text-center'>Stock Qty</th>
+                      <th className='py-3 px-4 text-center'>Price</th>
+                      <th className='py-3 px-4 text-center'>Status</th>
+                      <th className='py-3 px-4 text-center'>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoadingInventory ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>Loading…</td></tr>
+                    ) : inventoryItems.length === 0 ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>No data yet</td></tr>
+                    ) : (
+                      inventoryItems.map((it) => (
+                        <tr key={it._id} className='border-t'>
+                          <td className='py-3 px-4 text-center'>{it.name}</td>
+                          <td className='py-3 px-4 text-center capitalize'>{it.category}</td>
+                          <td className='py-3 px-4 text-center'>{it.image ? <img src={it.image} alt={it.name} className='w-10 h-10 rounded object-cover inline-block'/> : <span className='text-gray-400'>—</span>}</td>
+                          <td className='py-3 px-4 text-center'>{it.stockQuantity}</td>
+                          <td className='py-3 px-4 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
+                          <td className='py-3 px-4 text-center'>{it.status}</td>
+                          <td className='py-3 px-4 text-center'>
+                            <div className='inline-flex items-center gap-2'>
+                              <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isInventory:true }); setIsEditing(false); }}>
+                                <Info className='w-3.5 h-3.5' /> Info
+                              </button>
+                              <button className='px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isInventory:true }); setIsEditing(true); }}>
+                                <Pencil className='w-3.5 h-3.5' /> Edit
+                              </button>
+                              <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this item?')){ try{ await axiosInstance.delete(`inventory/${it._id}`); loadInventory(); }catch(_){ } } }}>
+                                <Trash2 className='w-3.5 h-3.5' /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
     {/* View/Edit Modal */}
     {viewItem && (
       <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
@@ -218,42 +315,80 @@ const AdminInventory = () => {
             <button onClick={()=>{ setViewItem(null); setIsEditing(false); }} className='text-gray-500'>Close</button>
           </div>
           {isEditing ? (
-            <form onSubmit={async (e)=>{ e.preventDefault(); try{ const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); setViewItem(null); setIsEditing(false); loadRentals(); }catch(_){}}} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, image:viewItem.image, stockQuantity:Number(viewItem.stockQuantity), price:Number(viewItem.price), status:viewItem.status }; await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(_){}}} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
-                <label className='form-label'>Product name</label>
-                <input className='input-field' value={viewItem.productName||''} onChange={(e)=>setViewItem(v=>({...v, productName:e.target.value}))} required />
+                <label className='form-label'>{viewItem.isInventory ? 'Name' : 'Product name'}</label>
+                <input className='input-field' value={(viewItem.isInventory ? viewItem.name : viewItem.productName) || ''} onChange={(e)=>setViewItem(v=> v.isInventory ? ({...v, name:e.target.value}) : ({...v, productName:e.target.value}))} required />
               </div>
-              <div>
-                <label className='form-label'>Rental / Day</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
-              </div>
-              <div className='md:col-span-2'>
-                <label className='form-label'>Description</label>
-                <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
-              </div>
-              <div>
-                <label className='form-label'>Rental / Week</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerWeek||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerWeek:e.target.value}))} required />
-              </div>
-              <div>
-                <label className='form-label'>Total Qty</label>
-                <input type='number' min='0' className='input-field' value={viewItem.totalQty||''} onChange={(e)=>setViewItem(v=>({...v, totalQty:e.target.value}))} required />
-              </div>
-              <div className='md:col-span-2'>
-                <label className='form-label'>Images (up to 4)</label>
-                <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
-                  const files = Array.from(e.target.files||[]).slice(0,4)
-                  const readers = files.map(file=> new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(file) }))
-                  Promise.all(readers).then(results=> setViewItem(v=>({...v, images: results})))
-                }} />
-                {Array.isArray(viewItem.images) && viewItem.images.length>0 && (
-                  <div className='mt-2 grid grid-cols-6 gap-2'>
-                    {viewItem.images.map((src, idx)=> (
-                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
-                    ))}
+              {viewItem.isInventory ? (
+                <>
+                  <div>
+                    <label className='form-label'>Category</label>
+                    <select className='input-field' value={viewItem.category||'seeds'} onChange={(e)=>setViewItem(v=>({...v, category:e.target.value}))}>
+                      {['seeds','fertilizers','pesticides','chemicals','equipment','irrigation'].map(c=> <option key={c} value={c}>{c}</option>)}
+                    </select>
                   </div>
-                )}
-              </div>
+                  <div className='md:col-span-2'>
+                    <label className='form-label'>Description</label>
+                    <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className='form-label'>Image</label>
+                    <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{
+                      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setViewItem(v=>({...v, image:r.result})); r.readAsDataURL(f);
+                    }} />
+                    {viewItem.image && <img src={viewItem.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
+                  </div>
+                  <div>
+                    <label className='form-label'>Stock Qty</label>
+                    <input type='number' min='0' className='input-field' value={viewItem.stockQuantity||0} onChange={(e)=>setViewItem(v=>({...v, stockQuantity:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className='form-label'>Price</label>
+                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.price||0} onChange={(e)=>setViewItem(v=>({...v, price:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className='form-label'>Status</label>
+                    <select className='input-field' value={viewItem.status||'Available'} onChange={(e)=>setViewItem(v=>({...v, status:e.target.value}))}>
+                      {['Available','Low stock','Out of stock'].map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className='form-label'>Total Qty</label>
+                    <input type='number' min='0' className='input-field' value={viewItem.totalQty||''} onChange={(e)=>setViewItem(v=>({...v, totalQty:e.target.value}))} required />
+                  </div>
+                  <div className='md:col-span-2'>
+                    <label className='form-label'>Description</label>
+                    <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className='form-label'>Rental / Day</label>
+                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
+                  </div>
+                  <div>
+                    <label className='form-label'>Rental / Week</label>
+                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerWeek||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerWeek:e.target.value}))} required />
+                  </div>
+                  <div className='md:col-span-2'>
+                    <label className='form-label'>Images (up to 4)</label>
+                    <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
+                      const files = Array.from(e.target.files||[]).slice(0,4)
+                      const readers = files.map(file=> new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(file) }))
+                      Promise.all(readers).then(results=> setViewItem(v=>({...v, images: results})))
+                    }} />
+                    {Array.isArray(viewItem.images) && viewItem.images.length>0 && (
+                      <div className='mt-2 grid grid-cols-6 gap-2'>
+                        {viewItem.images.map((src, idx)=> (
+                          <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
               <div className='md:col-span-2 flex justify-end gap-2 pt-2'>
                 <button type='button' className='border px-3 py-2 rounded-md' onClick={()=>{ setViewItem(null); setIsEditing(false); }}>Cancel</button>
                 <button type='submit' className='btn-primary'>Save</button>
@@ -261,24 +396,39 @@ const AdminInventory = () => {
             </form>
           ) : (
             <div className='space-y-3 text-sm'>
-              <div><span className='text-gray-500'>Product name:</span> <span className='font-medium'>{viewItem.productName}</span></div>
+              <div><span className='text-gray-500'>{viewItem.isInventory ? 'Name' : 'Product name'}:</span> <span className='font-medium'>{viewItem.isInventory ? viewItem.name : viewItem.productName}</span></div>
               <div><span className='text-gray-500'>Description:</span> <span className='font-medium'>{viewItem.description||'—'}</span></div>
               <div className='grid grid-cols-2 gap-4'>
-                <div><span className='text-gray-500'>Rental / Day:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</span></div>
-                <div><span className='text-gray-500'>Rental / Week:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</span></div>
-                <div><span className='text-gray-500'>Total Qty:</span> <span className='font-medium'>{viewItem.totalQty}</span></div>
-                <div><span className='text-gray-500'>Available Qty:</span> <span className='font-medium'>{viewItem.availableQty}</span></div>
+                {viewItem.isInventory ? (
+                  <>
+                    <div><span className='text-gray-500'>Category:</span> <span className='font-medium capitalize'>{viewItem.category}</span></div>
+                    <div><span className='text-gray-500'>Stock Qty:</span> <span className='font-medium'>{viewItem.stockQuantity}</span></div>
+                    <div><span className='text-gray-500'>Price:</span> <span className='font-medium'>LKR {Number(viewItem.price||0).toLocaleString()}</span></div>
+                    <div><span className='text-gray-500'>Status:</span> <span className='font-medium'>{viewItem.status}</span></div>
+                  </>
+                ) : (
+                  <>
+                    <div><span className='text-gray-500'>Rental / Day:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</span></div>
+                    <div><span className='text-gray-500'>Rental / Week:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</span></div>
+                    <div><span className='text-gray-500'>Total Qty:</span> <span className='font-medium'>{viewItem.totalQty}</span></div>
+                    <div><span className='text-gray-500'>Available Qty:</span> <span className='font-medium'>{viewItem.availableQty}</span></div>
+                  </>
+                )}
               </div>
               <div>
                 <div className='text-gray-500 mb-1'>Images</div>
-                {Array.isArray(viewItem.images)&&viewItem.images.length>0 ? (
-                  <div className='grid grid-cols-6 gap-2'>
-                    {viewItem.images.map((src, idx)=> (
-                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
-                    ))}
-                  </div>
+                {viewItem.isInventory ? (
+                  viewItem.image ? <img src={viewItem.image} alt='img' className='w-24 h-24 object-cover rounded-md border'/> : <div className='text-gray-400'>No image</div>
                 ) : (
-                  <div className='text-gray-400'>No images</div>
+                  Array.isArray(viewItem.images)&&viewItem.images.length>0 ? (
+                    <div className='grid grid-cols-6 gap-2'>
+                      {viewItem.images.map((src, idx)=> (
+                        <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='text-gray-400'>No images</div>
+                  )
                 )}
               </div>
             </div>
@@ -408,14 +558,15 @@ const AdminInventory = () => {
           </div>
         </div>
       </div>
-      {/* Add Rental Item Modal */}
+      {/* Add Item Modal */}
       {isAddOpen && (
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-2xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Add Rental Item</h2>
+              <h2 className='text-lg font-semibold'>{isAddInventory ? 'Add Inventory Item' : 'Add Rental Item'}</h2>
               <button onClick={() => setIsAddOpen(false)} className='text-gray-500'>Close</button>
             </div>
+            {!isAddInventory ? (
             <form onSubmit={handleSubmitRental} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <label className='form-label'>Product name</label>
@@ -457,6 +608,41 @@ const AdminInventory = () => {
                 <button type='submit' className='btn-primary'>Save</button>
               </div>
             </form>
+            ) : (
+            <form onSubmit={handleSubmitInventory} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+              <div>
+                <label className='form-label'>Product name</label>
+                <input className='input-field' value={inventoryForm.name} onChange={(e)=>setInventoryForm(f=>({...f, name:e.target.value}))} required />
+              </div>
+              <div>
+                <label className='form-label'>Product category</label>
+                <select className='input-field' value={inventoryForm.category} onChange={(e)=>setInventoryForm(f=>({...f, category:e.target.value}))}>
+                  {['seeds','fertilizers','pesticides','chemicals','equipment','irrigation'].map(c=> <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className='form-label'>Stock quantity</label>
+                <input type='number' min='0' className='input-field' value={inventoryForm.stockQuantity} onChange={(e)=>setInventoryForm(f=>({...f, stockQuantity:e.target.value}))} required />
+              </div>
+              <div>
+                <label className='form-label'>Price</label>
+                <input type='number' min='0' step='0.01' className='input-field' value={inventoryForm.price} onChange={(e)=>setInventoryForm(f=>({...f, price:e.target.value}))} required />
+              </div>
+              <div className='md:col-span-2'>
+                <label className='form-label'>Image</label>
+                <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setInventoryForm(v=>({...v, image:r.result})); r.readAsDataURL(f); }} />
+                {inventoryForm.image && <img src={inventoryForm.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
+              </div>
+              <div className='md:col-span-2'>
+                <label className='form-label'>Description</label>
+                <textarea className='input-field' rows={3} value={inventoryForm.description} onChange={(e)=>setInventoryForm(f=>({...f, description:e.target.value}))} />
+              </div>
+              <div className='md:col-span-2 flex justify-end gap-2 pt-2'>
+                <button type='button' className='border px-3 py-2 rounded-md' onClick={()=>setIsAddOpen(false)}>Cancel</button>
+                <button type='submit' className='btn-primary'>Save</button>
+              </div>
+            </form>
+            )}
           </div>
         </div>
       )}

@@ -35,7 +35,7 @@ const AdminDashboard = () => {
           <a href='/admin/roles' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Roles & Permissions</a>
           <a href='/admin/inventory' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Inventory</a>
           <a href='/admin/listings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Listings</a>
-          <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
+          <a href='/admin/rentals' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Rentals</a>
           <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
           <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
           <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
