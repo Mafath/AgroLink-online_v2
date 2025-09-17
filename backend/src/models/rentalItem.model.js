@@ -42,8 +42,8 @@ const rentalItemSchema = new mongoose.Schema(
     },
     availableQty: {
       type: Number,
-      required: true,
       min: 0,
+      default: function () { return this.totalQty || 0 },
       validate: {
         validator: function (v) {
           return typeof this.totalQty === "number" ? v <= this.totalQty : true;

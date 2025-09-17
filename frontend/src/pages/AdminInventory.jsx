@@ -1,5 +1,7 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Chart from 'react-apexcharts'
+import { axiosInstance } from '../lib/axios'
+import { Info, Pencil, Trash2 } from 'lucide-react'
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
@@ -60,11 +62,41 @@ const AdminInventory = () => {
     totalQty: '',
   })
 
-  const handleSubmitRental = (e) => {
+  const [rentalItems, setRentalItems] = useState([])
+  const [isLoadingRentals, setIsLoadingRentals] = useState(false)
+
+  const loadRentals = async () => {
+    try {
+      setIsLoadingRentals(true)
+      const { data } = await axiosInstance.get('rentals')
+      setRentalItems(Array.isArray(data?.data) ? data.data : [])
+    } catch (e) {
+      setRentalItems([])
+    } finally {
+      setIsLoadingRentals(false)
+    }
+  }
+
+  useEffect(() => { loadRentals() }, [])
+
+  const handleSubmitRental = async (e) => {
     e.preventDefault()
-    // For now, just close the modal. Hook to API later.
-    setIsAddOpen(false)
-    setRentalForm({ productName: '', description: '', rentalPerDay: '', rentalPerWeek: '', images: [], totalQty: '' })
+    try {
+      const payload = {
+        productName: rentalForm.productName,
+        description: rentalForm.description,
+        rentalPerDay: Number(rentalForm.rentalPerDay),
+        rentalPerWeek: Number(rentalForm.rentalPerWeek),
+        images: rentalForm.images,
+        totalQty: Number(rentalForm.totalQty),
+      }
+      await axiosInstance.post('rentals', payload)
+      setIsAddOpen(false)
+      setRentalForm({ productName: '', description: '', rentalPerDay: '', rentalPerWeek: '', images: [], totalQty: '' })
+      loadRentals()
+    } catch (err) {
+      // handle error later; keep silent for now
+    }
   }
 
   return (
@@ -112,8 +144,7 @@ const AdminInventory = () => {
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
               <div className='px-4 py-3 border-b border-gray-100 flex items-center justify-between'>
                 <div>
-                  <div className='text-sm font-medium text-gray-700'>Rental Items</div>
-                  <div className='text-xs text-gray-500 mt-0.5'>Initially empty</div>
+                  <div className='text-lg font-medium text-gray-700'>Rental Items</div>
                 </div>
                 <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
               </div>
@@ -121,17 +152,57 @@ const AdminInventory = () => {
                 <table className='min-w-full text-sm'>
                   <thead>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-4'>Product name</th>
-                      <th className='py-3 px-4'>Rental / Day</th>
-                      <th className='py-3 px-4'>Rental / Week</th>
-                      <th className='py-3 px-4'>Images</th>
-                      <th className='py-3 px-4'>Total Qty</th>
+                      <th className='py-3 px-4 text-center'>Product name</th>
+                      <th className='py-3 px-4 text-center'>Rental / Day</th>
+                      <th className='py-3 px-4 text-center'>Rental / Week</th>
+                      <th className='py-3 px-4 text-center'>Images</th>
+                      <th className='py-3 px-4 text-center'>Total Qty</th>
+                      <th className='py-3 px-4 text-center'>Available Qty</th>
+                      <th className='py-3 px-4 text-center'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr>
-                      <td className='py-10 text-center text-gray-400' colSpan={6}>No data yet</td>
-                    </tr>
+                    {isLoadingRentals ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>Loading…</td></tr>
+                    ) : rentalItems.length === 0 ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>No data yet</td></tr>
+                    ) : (
+                      rentalItems.map((it) => (
+                        <tr key={it._id} className='border-t'>
+                          <td className='py-3 px-4 text-center'>
+                            {it.productName}
+                          </td>
+                          <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerDay || 0).toLocaleString()}</td>
+                          <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerWeek || 0).toLocaleString()}</td>
+                          <td className='py-3 px-4 text-center'>
+                            {Array.isArray(it.images) && it.images.filter(Boolean).length > 0 ? (
+                              <div className='inline-grid grid-cols-4 gap-1'>
+                                {it.images.filter(Boolean).slice(0,4).map((src, idx) => (
+                                  <img key={idx} src={src} alt={'img'+idx} className='w-8 h-8 object-cover rounded' />
+                                ))}
+                              </div>
+                            ) : (
+                              <span className='text-gray-400'>—</span>
+                            )}
+                          </td>
+                          <td className='py-3 px-4 text-center'>{it.totalQty}</td>
+                          <td className='py-3 px-4 text-center'>{it.availableQty}</td>
+                          <td className='py-3 px-4 text-center'>
+                            <div className='inline-flex items-center gap-2'>
+                              <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1'>
+                                <Info className='w-3.5 h-3.5' /> Info
+                              </button>
+                              <button className='px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs inline-flex items-center gap-1'>
+                                <Pencil className='w-3.5 h-3.5' /> Edit
+                              </button>
+                              <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1'>
+                                <Trash2 className='w-3.5 h-3.5' /> Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -140,7 +211,7 @@ const AdminInventory = () => {
             <div className='grid grid-cols-4 gap-6'>
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
-                  <div>
+                    <div>
                     <div className='text-sm text-gray-600'>Ratings</div>
                     <div className='text-2xl font-semibold mt-1'>13k <span className='text-green-600 text-xs align-middle'>+15.6%</span></div>
                     <div className='mt-3'>
@@ -237,8 +308,8 @@ const AdminInventory = () => {
                           <div className='text-gray-500'>{t[1]}</div>
                         </div>
                         <div className='text-gray-500 text-xs text-right'>{t[2]}</div>
-                      </div>
-                    ))}
+                </div>
+              ))}
                   </div>
                 </div>
               </Card>
