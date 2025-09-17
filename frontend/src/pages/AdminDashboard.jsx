@@ -27,14 +27,18 @@ const AdminDashboard = () => {
   return (
     <div className='p-4 max-w-7xl mx-auto flex gap-6'>
       {/* Sidebar */}
-      <aside className='w-56 shrink-0 hidden md:block'>
-        <nav className='space-y-2 sticky top-20'>
-          <a href='/admin' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Dashboard</a>
-          <a href='/admin/users' className='block px-3 py-2 rounded-md hover:bg-gray-50'>User & Role Management</a>
-          <a href='/admin/roles' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Roles & Permissions</a>
-          <a href='/admin/inventory' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Inventory</a>
-          <a href='/admin/listings' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Listings</a>
-          <a href='/admin/settings' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Settings</a>
+
+      <aside className='w-56 h-50 shrink-0 hidden md:block bg-black text-white border border-gray-800 rounded-md p-2 sticky self-start'>
+        <nav className='space-y-3 text-sm'>
+          <a href='/admin' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10 mt-6'>Dashboard</a>
+          <a href='/admin/users' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Users & Roles Management</a>
+          <a href='/admin/roles' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Roles & Permissions</a>
+          <a href='/admin/inventory' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Inventory</a>
+          <a href='/admin/listings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Listings</a>
+          <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
+          <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
+          <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
+          <a href='/admin/settings' className='block px-3 py-2 rounded-md text-gray-200 bg-white/10'>Settings</a>
         </nav>
       </aside>
       <div className='flex-1'>

@@ -47,21 +47,11 @@ const AdminUsers = () => {
   }
 
   return (
-    <div className='p-4 max-w-7xl mx-auto flex gap-6'>
-      {/* Sidebar */}
-      <aside className='w-56 shrink-0 hidden md:block'>
-        <nav className='space-y-2 sticky top-20'>
-          <a href='/admin' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Dashboard</a>
-          <a href='/admin/users' className='block px-3 py-2 rounded-md bg-gray-100'>User & Role Management</a>
-          <a href='/admin/listings' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Listings</a>
-          <a href='/admin/settings' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Settings</a>
-        </nav>
-      </aside>
-
-      <div className='flex-1'>
+    <div className='p-4 max-w-7xl mx-auto'>
+      <div className='w-full'>
         <div className='flex items-center justify-between mb-4'>
           <h1 className='text-2xl font-semibold'>User & Role Management</h1>
-          <div className='text-sm text-gray-500'>Total: {filteredItems.length}</div>
+          <div className='text-sm text-gray-500'>Total Registered Users: {filteredItems.length}</div>
         </div>
 
         {/* Filters */}
