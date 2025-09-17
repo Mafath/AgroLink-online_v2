@@ -91,6 +91,9 @@ export const signin = async (req, res) => {
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
+    // Update last login timestamp
+    try { await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }); } catch (_) {}
+
     const accessToken = signAccessToken({ userId: user._id.toString(), role: user.role });
 
     return res.status(200).json({

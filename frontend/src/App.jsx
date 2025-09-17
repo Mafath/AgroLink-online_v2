@@ -5,6 +5,8 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminUsers from './pages/AdminUsers';
+import AdminDrivers from './pages/AdminDrivers';
+import AdminLogistics from './pages/AdminLogistics';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
 import AdminRentals from './pages/AdminRentals';
@@ -48,6 +50,8 @@ const App = () => {
           <Route path="/admin/roles" element={authUser && authUser.role === 'ADMIN' ? <AdminRoles /> : <Navigate to="/" />} />
           <Route path="/admin/inventory" element={authUser && authUser.role === 'ADMIN' ? <AdminInventory /> : <Navigate to="/" />} />
           <Route path="/admin/rentals" element={authUser && authUser.role === 'ADMIN' ? <AdminRentals /> : <Navigate to="/" />} />
+          <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
+          <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={<Marketplace />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />

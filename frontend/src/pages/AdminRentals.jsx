@@ -23,15 +23,37 @@ const AdminRentals = () => {
   const [rentalItems, setRentalItems] = useState([])
   const [isLoadingRentals, setIsLoadingRentals] = useState(false)
   const [search, setSearch] = useState('')
+  const [sortMode, setSortMode] = useState('newest')
   const filteredRentals = useMemo(() => {
     const q = search.trim().toLowerCase()
-    if (!q) return rentalItems
-    return rentalItems.filter(it => {
-      const name = (it.productName||'').toLowerCase()
-      const desc = (it.description||'').toLowerCase()
-      return name.includes(q) || desc.includes(q)
+    let list = rentalItems
+    if (q) {
+      list = list.filter(it => {
+        const name = (it.productName||'').toLowerCase()
+        const desc = (it.description||'').toLowerCase()
+        return name.includes(q) || desc.includes(q)
+      })
+    }
+    const arr = [...list]
+    arr.sort((a,b)=>{
+      const timeA = new Date(a.createdAt||0).getTime()
+      const timeB = new Date(b.createdAt||0).getTime()
+      const priceA = Number(a.rentalPerDay||0)
+      const priceB = Number(b.rentalPerDay||0)
+      switch (sortMode) {
+        case 'oldest':
+          return timeA - timeB
+        case 'priceAsc':
+          return priceA - priceB
+        case 'priceDesc':
+          return priceB - priceA
+        case 'newest':
+        default:
+          return timeB - timeA
+      }
     })
-  }, [rentalItems, search])
+    return arr
+  }, [rentalItems, search, sortMode])
   const [viewItem, setViewItem] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
 
@@ -79,30 +101,36 @@ const AdminRentals = () => {
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
-          {/* Sidebar (match AdminInventory) */}
+          {/* Sidebar (match Dashboard) */}
           <div className='bg-white rounded-xl border border-gray-200 p-2'>
-            <div className='space-y-1'>
-              {[
-                'Dashboards','CRM','Analytics','eCommerce','Academy','Logistics','Front Pages','Apps & Pages','Email','Chat','Calendar','Kanban','Invoice','User','Roles & Permissions','Pages',
-              ].map((item, i) => (
-                <div key={i} className={`px-3 py-2 rounded-lg ${item==='CRM' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-50 text-gray-700'}`}>{item}</div>
-              ))}
-            </div>
+            <nav className='space-y-1 text-gray-700 text-sm'>
+              <a href='/admin' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Dashboards</a>
+              <a href='/admin/users' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Users & Roles</a>
+              <a href='/admin/inventory' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Inventory</a>
+              <a href='/admin/rentals' className='block px-3 py-2 rounded-lg bg-green-100 text-green-700'>Rentals</a>
+              <a href='/admin/drivers' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Driver Management</a>
+              <a href='/admin/logistics' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Logistics</a>
+            </nav>
           </div>
 
           {/* Main content */}
           <div className='space-y-6'>
             {/* Rentals table */}
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
-              <div className='px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-3'>
-                <div className='flex items-center gap-3'>
-                  <div className='text-lg font-medium text-gray-700'>Rental Items</div>
-                </div>
-                <div className='flex items-center gap-3'>
+              <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
+                <div className='text-md font-medium text-gray-700'>Rental Items</div>
+                <div className='flex justify-center'>
                   <div className='relative hidden sm:block'>
-                    <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm'>🔍</span>
-                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-9 pr-3 w-72 text-sm outline-none' placeholder='Search by name or description' value={search} onChange={(e)=>setSearch(e.target.value)} />
+                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={search} onChange={(e)=>setSearch(e.target.value)} />
                   </div>
+                </div>
+                <div className='flex items-center justify-end gap-3'>
+                  <select className='input-field h-9 py-1 text-sm hidden sm:block' value={sortMode} onChange={(e)=>setSortMode(e.target.value)}>
+                    <option value='newest'>Newest</option>
+                    <option value='oldest'>Oldest</option>
+                    <option value='priceAsc'>Price: Low to High</option>
+                    <option value='priceDesc'>Price: High to Low</option>
+                  </select>
                   <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
                 </div>
               </div>
@@ -163,6 +191,86 @@ const AdminRentals = () => {
                 </table>
               </div>
             </div>
+            {/* View/Edit Modal */}
+            {viewItem && (
+              <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+                <div className='bg-white rounded-lg w-full max-w-2xl p-4'>
+                  <div className='flex items-center justify-between mb-3'>
+                    <h2 className='text-lg font-semibold'>{isEditing ? 'Edit Rental Item' : 'Rental Item Info'}</h2>
+                    <button onClick={()=>{ setViewItem(null); setIsEditing(false); }} className='text-gray-500'>Close</button>
+                  </div>
+                  {isEditing ? (
+                    <form onSubmit={async (e)=>{ e.preventDefault(); try { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); setViewItem(null); setIsEditing(false); } catch(_){} }} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                      <div>
+                        <label className='form-label'>Product name</label>
+                        <input className='input-field' value={viewItem.productName||''} onChange={(e)=>setViewItem(v=>({...v, productName:e.target.value}))} required />
+                      </div>
+                      <div>
+                        <label className='form-label'>Total Qty</label>
+                        <input type='number' min='0' className='input-field' value={viewItem.totalQty||''} onChange={(e)=>setViewItem(v=>({...v, totalQty:e.target.value}))} required />
+                      </div>
+                      <div className='md:col-span-2'>
+                        <label className='form-label'>Description</label>
+                        <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
+                      </div>
+                      <div>
+                        <label className='form-label'>Rental / Day</label>
+                        <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
+                      </div>
+                      <div>
+                        <label className='form-label'>Rental / Week</label>
+                        <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerWeek||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerWeek:e.target.value}))} required />
+                      </div>
+                      <div className='md:col-span-2'>
+                        <label className='form-label'>Images (up to 4)</label>
+                        <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
+                          const files = Array.from(e.target.files||[]).slice(0,4)
+                          const readers = files.map(file=> new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(file) }))
+                          Promise.all(readers).then(results=> setViewItem(v=>({...v, images: results})))
+                        }} />
+                        {Array.isArray(viewItem.images) && viewItem.images.length>0 && (
+                          <div className='mt-2 grid grid-cols-6 gap-2'>
+                            {viewItem.images.map((src, idx)=> (
+                              <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className='md:col-span-2 flex justify-end gap-2 pt-2'>
+                        <button type='button' className='border px-3 py-2 rounded-md' onClick={()=>{ setViewItem(null); setIsEditing(false); }}>Cancel</button>
+                        <button type='submit' className='btn-primary'>Save</button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className='space-y-3 text-sm'>
+                      <div><span className='text-gray-500'>Product name:</span> <span className='font-medium'>{viewItem.productName}</span></div>
+                      <div><span className='text-gray-500'>Description:</span> <span className='font-medium'>{viewItem.description||'—'}</span></div>
+                      <div className='grid grid-cols-2 gap-4'>
+                        <div><span className='text-gray-500'>Rental / Day:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</span></div>
+                        <div><span className='text-gray-500'>Rental / Week:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</span></div>
+                        <div><span className='text-gray-500'>Total Qty:</span> <span className='font-medium'>{viewItem.totalQty}</span></div>
+                        <div><span className='text-gray-500'>Available Qty:</span> <span className='font-medium'>{viewItem.availableQty}</span></div>
+                      </div>
+                      <div>
+                        <div className='text-gray-500 mb-1'>Images</div>
+                        {Array.isArray(viewItem.images)&&viewItem.images.length>0 ? (
+                          <div className='grid grid-cols-6 gap-2'>
+                            {viewItem.images.map((src, idx)=> (
+                              <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                            ))}
+                          </div>
+                        ) : (
+                          <div className='text-gray-400'>No images</div>
+                        )}
+                      </div>
+                      <div className='flex justify-end pt-2'>
+                        <button className='btn-primary' onClick={()=>setIsEditing(true)}>Edit</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Top cards row: 1-1-2 */}
             <div className='grid grid-cols-4 gap-6'>

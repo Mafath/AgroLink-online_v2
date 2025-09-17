@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
 import { Info, Pencil, Trash2 } from 'lucide-react'
@@ -69,6 +69,7 @@ const AdminInventory = () => {
   const [isLoadingRentals, setIsLoadingRentals] = useState(false)
   const [inventoryItems, setInventoryItems] = useState([])
   const [isLoadingInventory, setIsLoadingInventory] = useState(false)
+  const [inventorySortMode, setInventorySortMode] = useState('newest')
   const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', image: '', stockQuantity: '', price: '', description: '' })
 
   const loadRentals = async () => {
@@ -98,6 +99,28 @@ const AdminInventory = () => {
   }
 
   useEffect(() => { loadInventory() }, [])
+
+  const inventorySorted = useMemo(() => {
+    const arr = [...inventoryItems]
+    arr.sort((a,b)=>{
+      const timeA = new Date(a.createdAt||0).getTime()
+      const timeB = new Date(b.createdAt||0).getTime()
+      const priceA = Number(a.price||0)
+      const priceB = Number(b.price||0)
+      switch (inventorySortMode) {
+        case 'oldest':
+          return timeA - timeB
+        case 'priceAsc':
+          return priceA - priceB
+        case 'priceDesc':
+          return priceB - priceA
+        case 'newest':
+        default:
+          return timeB - timeA
+      }
+    })
+    return arr
+  }, [inventoryItems, inventorySortMode])
 
   const handleSubmitRental = async (e) => {
     e.preventDefault()
@@ -147,117 +170,45 @@ const AdminInventory = () => {
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>Inventory</h1>
-          <div className='relative hidden sm:block'>
-            <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm'>🔍</span>
-            <input className='bg-white border border-gray-200 rounded-full h-9 pl-9 pr-3 w-72 text-sm outline-none' placeholder='Search' />
-          </div>
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
-          {/* Sidebar */}
+          {/* Sidebar (match Dashboard) */}
           <div className='bg-white rounded-xl border border-gray-200 p-2'>
-            <div className='space-y-1'>
-              {[
-                'Dashboards',
-                'CRM',
-                'Analytics',
-                'eCommerce',
-                'Academy',
-                'Logistics',
-                'Front Pages',
-                'Apps & Pages',
-                'Email',
-                'Chat',
-                'Calendar',
-                'Kanban',
-                'Invoice',
-                'User',
-                'Roles & Permissions',
-                'Pages',
-              ].map((item, i) => (
-                <div key={i} className={`px-3 py-2 rounded-lg ${item==='CRM' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-50 text-gray-700'}`}>{item}</div>
-              ))}
-            </div>
+          <nav className='space-y-1 text-gray-700 text-sm'>
+              <a href='/admin' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Dashboards</a>
+              <a href='/admin/users' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Users & Roles</a>
+              <a href='/admin/inventory' className='block px-3 py-2 rounded-lg bg-green-100 text-green-700'>Inventory</a>
+              <a href='/admin/rentals' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Rentals</a>
+              <a href='/admin/drivers' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Driver Management</a>
+              <a href='/admin/logistics' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Logistics</a>
+            </nav>
           </div>
 
           {/* Main content */}
           <div className='space-y-6'>
-            {/* Rentals table */}
-            <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
-              <div className='px-4 py-3 border-b border-gray-100 flex items-center justify-between'>
-                <div>
-                  <div className='text-lg font-medium text-gray-700'>Rental Items</div>
-                </div>
-                <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
-              </div>
-              <div className='overflow-x-auto'>
-                <table className='min-w-full text-sm'>
-                  <thead>
-                    <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-4 text-center'>Product name</th>
-                      <th className='py-3 px-4 text-center'>Rental / Day</th>
-                      <th className='py-3 px-4 text-center'>Rental / Week</th>
-                      <th className='py-3 px-4 text-center'>Images</th>
-                      <th className='py-3 px-4 text-center'>Total Qty</th>
-                      <th className='py-3 px-4 text-center'>Available Qty</th>
-                      <th className='py-3 px-4 text-center'>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {isLoadingRentals ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>Loading…</td></tr>
-                    ) : rentalItems.length === 0 ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>No data yet</td></tr>
-                    ) : (
-                      rentalItems.map((it) => (
-                        <tr key={it._id} className='border-t'>
-                          <td className='py-3 px-4 text-center'>
-                            {it.productName}
-                          </td>
-                          <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerDay || 0).toLocaleString()}</td>
-                          <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerWeek || 0).toLocaleString()}</td>
-                          <td className='py-3 px-4 text-center'>
-                            {Array.isArray(it.images) && it.images.filter(Boolean).length > 0 ? (
-                              <div className='inline-grid grid-cols-4 gap-1'>
-                                {it.images.filter(Boolean).slice(0,4).map((src, idx) => (
-                                  <img key={idx} src={src} alt={'img'+idx} className='w-8 h-8 object-cover rounded' />
-                                ))}
-                              </div>
-                            ) : (
-                              <span className='text-gray-400'>—</span>
-                            )}
-                          </td>
-                          <td className='py-3 px-4 text-center'>{it.totalQty}</td>
-                          <td className='py-3 px-4 text-center'>{it.availableQty}</td>
-                          <td className='py-3 px-4 text-center'>
-                            <div className='inline-flex items-center gap-2'>
-                              <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem(it); setIsEditing(false); }}>
-                                <Info className='w-3.5 h-3.5' /> Info
-                              </button>
-                              <button className='px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem(it); setIsEditing(true); }}>
-                                <Pencil className='w-3.5 h-3.5' /> Edit
-                              </button>
-                              <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this item?')){ try{ await axiosInstance.delete(`rentals/${it._id}`); loadRentals(); }catch(_){ } } }}>
-                                <Trash2 className='w-3.5 h-3.5' /> Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            
 
             {/* Inventory table */}
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
-              <div className='px-4 py-3 border-b border-gray-100 flex items-center justify-between'>
+              <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
                 <div>
-                  <div className='text-sm font-medium text-gray-700'>Inventory</div>
-                  <div className='text-xs text-gray-500 mt-0.5'>Initially empty</div>
+                  <div className='text-md font-medium text-gray-700'>Inventory Items</div>
                 </div>
-                <button className='btn-primary whitespace-nowrap' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
+                <div className='hidden sm:flex justify-center'>
+                  <div className='relative'>
+                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-9 pr-3 w-72 text-sm outline-none' placeholder='Search' />
+                  </div>
+                </div>
+                <div className='flex items-center justify-end gap-3'>
+                  <select className='input-field h-9 py-1 text-sm hidden sm:block' value={inventorySortMode} onChange={(e)=>setInventorySortMode(e.target.value)}>
+                    <option value='newest'>Newest</option>
+                    <option value='oldest'>Oldest</option>
+                    <option value='priceAsc'>Price: Low to High</option>
+                    <option value='priceDesc'>Price: High to Low</option>
+                  </select>
+                  <button className='btn-primary whitespace-nowrap' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
+                </div>
               </div>
               <div className='overflow-x-auto'>
                 <table className='min-w-full text-sm'>
@@ -278,7 +229,7 @@ const AdminInventory = () => {
                     ) : inventoryItems.length === 0 ? (
                       <tr><td className='py-10 text-center text-gray-400' colSpan={7}>No data yet</td></tr>
                     ) : (
-                      inventoryItems.map((it) => (
+                      inventorySorted.map((it) => (
                         <tr key={it._id} className='border-t'>
                           <td className='py-3 px-4 text-center'>{it.name}</td>
                           <td className='py-3 px-4 text-center capitalize'>{it.category}</td>
@@ -328,17 +279,6 @@ const AdminInventory = () => {
                       {['seeds','fertilizers','pesticides','chemicals','equipment','irrigation'].map(c=> <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
-                  <div className='md:col-span-2'>
-                    <label className='form-label'>Description</label>
-                    <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
-                  </div>
-                  <div>
-                    <label className='form-label'>Image</label>
-                    <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{
-                      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setViewItem(v=>({...v, image:r.result})); r.readAsDataURL(f);
-                    }} />
-                    {viewItem.image && <img src={viewItem.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
-                  </div>
                   <div>
                     <label className='form-label'>Stock Qty</label>
                     <input type='number' min='0' className='input-field' value={viewItem.stockQuantity||0} onChange={(e)=>setViewItem(v=>({...v, stockQuantity:e.target.value}))} />
@@ -348,10 +288,15 @@ const AdminInventory = () => {
                     <input type='number' min='0' step='0.01' className='input-field' value={viewItem.price||0} onChange={(e)=>setViewItem(v=>({...v, price:e.target.value}))} />
                   </div>
                   <div>
-                    <label className='form-label'>Status</label>
-                    <select className='input-field' value={viewItem.status||'Available'} onChange={(e)=>setViewItem(v=>({...v, status:e.target.value}))}>
-                      {['Available','Low stock','Out of stock'].map(s=> <option key={s} value={s}>{s}</option>)}
-                    </select>
+                    <label className='form-label'>Image</label>
+                    <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{
+                      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setViewItem(v=>({...v, image:r.result})); r.readAsDataURL(f);
+                    }} />
+                    {viewItem.image && <img src={viewItem.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
+                  </div>
+                  <div className='md:col-span-2'>
+                    <label className='form-label'>Description</label>
+                    <textarea className='input-field' rows={3} value={viewItem.description||''} onChange={(e)=>setViewItem(v=>({...v, description:e.target.value}))} />
                   </div>
                 </>
               ) : (
