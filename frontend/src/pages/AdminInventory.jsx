@@ -128,6 +128,8 @@ const AdminInventory = () => {
   const [inventoryItems, setInventoryItems] = useState([])
   const [isLoadingInventory, setIsLoadingInventory] = useState(false)
   const [inventorySortMode, setInventorySortMode] = useState('newest')
+  const [query, setQuery] = useState('')
+  const [statusSortMode, setStatusSortMode] = useState('none') // none | availableFirst | lowFirst | outFirst
   const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', images: [], stockQuantity: '', price: '', description: '' })
 
   const loadRentals = async () => {
@@ -177,8 +179,36 @@ const AdminInventory = () => {
           return timeB - timeA
       }
     })
+    if (statusSortMode !== 'none') {
+      const rank = (status) => {
+        const s = String(status||'')
+        if (statusSortMode === 'availableFirst') return s === 'Available' ? 0 : (s === 'Low stock' ? 1 : 2)
+        if (statusSortMode === 'lowFirst') return s === 'Low stock' ? 0 : (s === 'Available' ? 1 : 2)
+        if (statusSortMode === 'outFirst') return s === 'Out of stock' ? 0 : (s === 'Low stock' ? 1 : 2)
+        return 0
+      }
+      arr.sort((a,b)=> rank(a.status) - rank(b.status))
+    }
     return arr
-  }, [inventoryItems, inventorySortMode])
+  }, [inventoryItems, inventorySortMode, statusSortMode])
+
+  // Filter by search query
+  const filteredInventory = useMemo(() => {
+    const q = (query || '').trim().toLowerCase()
+    if (!q) return inventorySorted
+    return inventorySorted.filter((it) => {
+      const name = String(it.name || '').toLowerCase()
+      const category = String(it.category || '').toLowerCase()
+      const price = String(it.price || '')
+      const stock = String(it.stockQuantity || '')
+      return (
+        name.includes(q) ||
+        category.includes(q) ||
+        price.includes(q) ||
+        stock.includes(q)
+      )
+    })
+  }, [inventorySorted, query])
 
   // Inventory metrics
   const inventoryMetrics = useMemo(() => {
@@ -221,14 +251,42 @@ const AdminInventory = () => {
       }))
   }, [inventoryItems])
 
-  // Mock inventory value trend data (in real app, this would come from historical data)
+  // Inventory value added per day (sum of price * stockQuantity for items created each day)
   const inventoryValueData = useMemo(() => {
-    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-    return days.map((day, index) => ({
-      date: day,
-      value: Math.floor(inventoryMetrics.totalValue * (0.8 + Math.random() * 0.4))
+    // helper to format date to YYYY-MM-DD
+    const toKey = (d) => {
+      const year = d.getFullYear()
+      const month = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    // last 7 days including today
+    const today = new Date()
+    const days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(today)
+      d.setDate(today.getDate() - (6 - i))
+      return d
+    })
+
+    // aggregate value per day from inventoryItems.createdAt
+    const dayToValue = new Map()
+    for (const d of days) dayToValue.set(toKey(d), 0)
+
+    inventoryItems.forEach((item) => {
+      const created = item?.createdAt ? new Date(item.createdAt) : null
+      if (!created || isNaN(created.getTime())) return
+      const key = toKey(created)
+      if (!dayToValue.has(key)) return
+      const itemValue = Number(item.price || 0) * Number(item.stockQuantity || 0)
+      dayToValue.set(key, dayToValue.get(key) + itemValue)
+    })
+
+    return days.map((d) => ({
+      date: `${d.getMonth() + 1}/${d.getDate()}`,
+      value: dayToValue.get(toKey(d)) || 0,
     }))
-  }, [inventoryMetrics.totalValue])
+  }, [inventoryItems])
 
   const handleSubmitRental = async (e) => {
     e.preventDefault()
@@ -315,7 +373,9 @@ const AdminInventory = () => {
                   <div>
                     <div className='text-sm text-gray-600'>Low Stock Items</div>
                     <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.lowStockItems}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Need Restocking</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full'>Needs Restocking</span>
+                    </div>
                   </div>
                   <div className='w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center'>
                     <AlertTriangle className='w-6 h-6 text-red-600' />
@@ -327,7 +387,9 @@ const AdminInventory = () => {
                   <div>
                     <div className='text-sm text-gray-600'>Total Value</div>
                     <div className='text-2xl font-semibold mt-1'>LKR {inventoryMetrics.totalValue.toLocaleString()}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Inventory Worth</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full'>Inventory Worth</span>
+                    </div>
                   </div>
                   <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
                     <DollarSign className='w-6 h-6 text-green-600' />
@@ -339,7 +401,9 @@ const AdminInventory = () => {
                   <div>
                     <div className='text-sm text-gray-600'>Categories</div>
                     <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.allCategoriesCount}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Total Categories</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full'>Total Categories</span>
+                    </div>
                   </div>
                   <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center'>
                     <BarChart3 className='w-6 h-6 text-purple-600' />
@@ -356,7 +420,7 @@ const AdminInventory = () => {
                 </div>
                 <div className='hidden sm:flex justify-center'>
                   <div className='relative'>
-                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-9 pr-3 w-72 text-sm outline-none' placeholder='Search' />
+                    <input value={query} onChange={(e)=>setQuery(e.target.value)} className='bg-white border border-gray-200 rounded-full h-9 pl-9 pr-3 w-72 text-sm outline-none' placeholder='Search' />
                   </div>
                 </div>
                 <div className='flex items-center justify-end gap-3'>
@@ -366,7 +430,13 @@ const AdminInventory = () => {
                     <option value='priceAsc'>Price: Low to High</option>
                     <option value='priceDesc'>Price: High to Low</option>
                   </select>
-                  <button className='btn-primary whitespace-nowrap' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
+                  <select className='input-field h-9 py-1 text-sm hidden sm:block' value={statusSortMode} onChange={(e)=>setStatusSortMode(e.target.value)}>
+                    <option value='none'>Status: Default</option>
+                    <option value='availableFirst'>Available first</option>
+                    <option value='lowFirst'>Low stock first</option>
+                    <option value='outFirst'>Out of stock first</option>
+                  </select>
+                  <button className='btn-primary whitespace-nowrap px-3 py-2 text-sm' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
                 </div>
               </div>
               <div className='max-h-[240px] overflow-y-auto'>
@@ -377,7 +447,7 @@ const AdminInventory = () => {
                       <th className='py-3 px-3 text-center'>Category</th>
                       <th className='py-3 px-3 text-center'>Image</th>
                       <th className='py-3 px-3 text-center'>Stock Qty</th>
-                      <th className='py-3 px-3 text-center'>Price</th>
+                      <th className='py-3 px-3 text-center'>Price/qty</th>
                       <th className='py-3 px-3 text-center'>Status</th>
                       <th className='py-3 px-3 text-center'>Actions</th>
                     </tr>
@@ -388,7 +458,7 @@ const AdminInventory = () => {
                     ) : inventoryItems.length === 0 ? (
                       <tr><td className='py-10 text-center text-gray-400' colSpan={7}>No data yet</td></tr>
                     ) : (
-                      inventorySorted.map((it) => (
+                      filteredInventory.map((it) => (
                         <tr key={it._id} className='border-t'>
                           <td className='py-1 px-3 ml-3 text-left'>{it.name}</td>
                           <td className='py-1 px-3 text-left capitalize'>{it.category}</td>
@@ -566,7 +636,7 @@ const AdminInventory = () => {
 
             {/* Middle cards: Inventory Charts */}
             <div className='grid grid-cols-4 gap-6'>
-              <Card className='col-span-1'>
+              <Card className='col-span-2'>
                 <div className='p-4'>
                   <div className='text-sm text-gray-700 font-medium mb-2'>Inventory Value Trend</div>
                   <div className='rounded-lg border border-dashed'>
@@ -574,7 +644,7 @@ const AdminInventory = () => {
                   </div>
                 </div>
               </Card>
-              <Card className='col-span-1'>
+              <Card className='col-span-2'>
                 <div className='p-4'>
                   <div className='text-sm text-gray-700 font-medium mb-2'>Low Stock Alert</div>
                   <div className='rounded-lg border border-dashed'>
@@ -582,46 +652,7 @@ const AdminInventory = () => {
                   </div>
                 </div>
               </Card>
-              <Card className='col-span-2'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Category Distribution</div>
-                  <div className='grid grid-cols-[1fr,240px] gap-4'>
-                    <div className='grid place-items-center'>
-                      <div className='rounded-lg border border-dashed w-full max-w-[220px]'>
-                        <CategoryDistributionChart data={categoryData} />
-                      </div>
-                    </div>
-                    <div className='text-sm'>
-                      <div className='flex items-center gap-3 mb-3'>
-                        <span className='w-9 h-9 rounded-lg bg-purple-100 grid place-items-center text-purple-600'>
-                          <Package className='w-5 h-5' />
-                        </span>
-                        <div>
-                          <div className='text-xs text-gray-500'>Total Items</div>
-                          <div className='font-semibold text-base'>{inventoryMetrics.totalItems}</div>
-                        </div>
-                      </div>
-                      <div className='border-t border-gray-200 my-3'></div>
-                      <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
-                        {categoryData.slice(0, 4).map((item, index) => (
-                          <div key={index}>
-                            <div className='flex items-center gap-2 text-gray-700'>
-                              <span className={`w-2 h-2 rounded-full ${
-                                index === 0 ? 'bg-purple-500' :
-                                index === 1 ? 'bg-green-500' :
-                                index === 2 ? 'bg-blue-500' :
-                                'bg-yellow-500'
-                              }`}></span>
-                              {item.category}
-                            </div>
-                            <div className='text-xs text-gray-500 mt-0.5'>{item.count} items</div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
+              
             </div>
 
             {/* Bottom row: Additional Inventory Insights */}
@@ -631,39 +662,27 @@ const AdminInventory = () => {
                   <div className='text-sm text-gray-700 font-medium mb-2'>Recent Inventory Activity</div>
                   <div className='space-y-4 text-sm'>
                     {inventoryItems.slice(0, 4).map((item, i) => (
-                      <div key={i} className='grid grid-cols-[16px,1fr,100px] gap-3 items-start'>
-                        <span className={`w-3 h-3 rounded-full mt-1 ${
-                          Number(item.stockQuantity || 0) < 10 ? 'bg-red-500' :
-                          Number(item.stockQuantity || 0) < 20 ? 'bg-yellow-500' :
-                          'bg-green-500'
-                        }`} />
+                      <div key={i}>
+                        <div className='grid grid-cols-[1fr,110px,120px] gap-3 items-start'>
                         <div>
-                          <div className='font-medium'>{item.name}</div>
-                          <div className='text-gray-500'>{item.category} • Stock: {item.stockQuantity}</div>
+                            <div className='font-medium'>{item.name}</div>
+                            <div className='text-gray-500'>{item.category} • Stock: {item.stockQuantity} items added</div>
+                          </div>
+                          <div className='text-gray-600 text-xs mt-0.5 ml-5'>LKR {Number(item.price || 0).toLocaleString()} / qty</div>
+                          <div className='text-gray-700 text-right text-xs font-medium'>
+                            LKR {(Number(item.price || 0) * Number(item.stockQuantity || 0)).toLocaleString()}
+                          </div>
                         </div>
-                        <div className='text-gray-500 text-xs text-right'>LKR {Number(item.price || 0).toLocaleString()}</div>
-                      </div>
-                    ))}
+                        {i !== Math.min(inventoryItems.length, 4) - 1 && (
+                          <div className='h-px bg-gray-200 mx-2 my-2'></div>
+                        )}
+                </div>
+              ))}
                   </div>
                 </div>
               </Card>
-              <Card className='col-span-1'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Price Range Distribution</div>
-                  <div className='rounded-lg border border-dashed'>
-                    <BarChart />
-                  </div>
-                </div>
-              </Card>
-              <Card className='col-span-1'>
-                <div className='p-4'>
-                  <div className='text-2xl font-semibold'>LKR {inventoryMetrics.totalValue.toLocaleString()}</div>
-                  <div className='text-xs text-gray-500 mt-1'>Total Inventory Value</div>
-                  <div className='mt-2 rounded-lg border border-dashed'>
-                    <Sparkline />
-                  </div>
-                </div>
-              </Card>
+              
+              
             </div>
           </div>
         </div>

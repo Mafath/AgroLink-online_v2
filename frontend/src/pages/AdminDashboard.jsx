@@ -191,7 +191,8 @@ const AdminDashboard = () => {
               </Card>
               <Card className='col-span-1'>
                 <div className='p-4'>
-                  <div className='text-2xl font-semibold'>42.5k</div>
+                  <div className='text-sm text-gray-700 font-medium mb-1'>Total Inventory Value</div>
+                  <div className='text-2xl font-semibold'>LKR 0</div>
                   <div className='mt-2 rounded-lg border border-dashed'><Sparkline /></div>
                 </div>
               </Card>
