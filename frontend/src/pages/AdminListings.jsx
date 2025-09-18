@@ -41,6 +41,19 @@ const AdminListings = () => {
     })
   }, [items, query.search])
 
+  const topFarmersByListings = useMemo(() => {
+    const counter = new Map()
+    for (const it of (Array.isArray(items) ? items : [])) {
+      const farmerLabel = it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Unknown')
+      counter.set(farmerLabel, (counter.get(farmerLabel) || 0) + 1)
+    }
+    const sorted = Array.from(counter.entries()).sort((a,b)=> b[1]-a[1]).slice(0,5)
+    return {
+      categories: sorted.map(([name]) => name),
+      series: [{ name: 'Listings', data: sorted.map(([,count]) => count) }]
+    }
+  }, [items])
+
   return (
     <div className='min-h-screen bg-gray-50'>
       <div className='max-w-none mx-0 w-full px-8 py-6'>
@@ -65,64 +78,7 @@ const AdminListings = () => {
 
           {/* Main content (copied layout) */}
           <div className='space-y-6'>
-            <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
-              <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
-                <div>
-                  <div className='text-md font-medium text-gray-700'>Listings</div>
-                </div>
-                <div className='flex justify-center'>
-                  <div className='relative hidden sm:block'>
-                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={query.search || ''} onChange={e => setQuery(q => ({ ...q, search: e.target.value }))} />
-                  </div>
-                </div>
-                <div className='flex items-center justify-end gap-3'></div>
-              </div>
-              <div className='max-h-[320px] overflow-y-auto'>
-                <table className='min-w-full text-sm'>
-                  <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
-                    <tr className='text-center text-gray-500 border-b align-middle h-12'>
-                      <th className='py-3 px-3 text-left align-middle'>Crop</th>
-                      <th className='py-3 px-3 text-left align-middle'>Farmer</th>
-                      <th className='py-3 px-3 text-center align-middle'>Price/kg</th>
-                      <th className='py-3 px-3 text-center align-middle'>Capacity (kg)</th>
-                      <th className='py-3 px-3 text-center align-middle'>Harvested</th>
-                      <th className='py-3 px-3 text-center align-middle'>Status</th>
-                      <th className='py-3 px-3 text-center align-middle'>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>Loading…</td></tr>
-                    ) : filteredItems.length === 0 ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>No listings</td></tr>
-                    ) : filteredItems.map((it) => (
-                      <tr key={it._id} className='border-t align-middle'>
-                        <td className='py-2 px-3 text-left align-middle'>{it.cropName}</td>
-                        <td className='py-2 px-3 text-left align-middle'>{it.farmer?.fullName || it.farmer?.email || '—'}</td>
-                        <td className='py-2 px-3 text-center align-middle'>LKR {Number(it.pricePerKg || 0).toLocaleString()}</td>
-                        <td className='py-2 px-3 text-center align-middle'>{it.capacityKg} kg</td>
-                        <td className='py-2 px-3 text-center align-middle'>{it.harvestedAt ? new Date(it.harvestedAt).toLocaleDateString() : '—'}</td>
-                        <td className='py-2 px-3 text-center align-middle'>
-                          <span className='inline-flex items-center justify-center h-6 px-2 text-xs bg-yellow-100 text-yellow-700 rounded-full'>{it.status}</span>
-                        </td>
-                        <td className='py-2 px-3 text-center align-middle'>
-                          <div className='inline-flex items-center gap-2'>
-                            <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setSelected(it); }}>
-                              <Info className='w-3.5 h-3.5' /> Info
-                            </button>
-                            <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this listing?')){ try{ await axiosInstance.delete(`/listings/${it._id}`); setItems(prev=> prev.filter(x => x._id !== it._id)); toast.success('Listing deleted'); }catch(_){ toast.error('Failed to delete'); } } }}>
-                              <Trash2 className='w-3.5 h-3.5' /> Delete
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Example summary cards to mirror layout */}
+            {/* Summary cards above table */}
             <div className='grid grid-cols-4 gap-6'>
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
@@ -148,6 +104,67 @@ const AdminListings = () => {
                   </div>
                 </div>
               </Card>
+            </div>
+
+            <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
+              <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
+                <div>
+                  <div className='text-md font-medium text-gray-700'>Listings</div>
+                </div>
+                <div className='flex justify-center'>
+                  <div className='relative hidden sm:block'>
+                    <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={query.search || ''} onChange={e => setQuery(q => ({ ...q, search: e.target.value }))} />
+                  </div>
+                </div>
+                <div className='flex items-center justify-end gap-3'></div>
+              </div>
+              <div className='max-h-[280px] overflow-y-auto'>
+                <table className='min-w-full text-sm'>
+                  <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
+                    <tr className='text-center text-gray-500 border-b align-middle h-12'>
+                      <th className='py-3 pl-6 pr-3 text-left align-middle'>Crop</th>
+                      <th className='py-3 px-3 text-left align-middle'>Farmer</th>
+                      <th className='py-3 px-3 text-center align-middle'>Price/kg</th>
+                      <th className='py-3 px-3 text-center align-middle'>Capacity (kg)</th>
+                      <th className='py-3 px-3 text-center align-middle'>Harvested</th>
+                      <th className='py-3 px-3 text-center align-middle'>Status</th>
+                      <th className='py-3 px-3 text-center align-middle'>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>Loading…</td></tr>
+                    ) : filteredItems.length === 0 ? (
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={7}>No listings</td></tr>
+                    ) : filteredItems.map((it) => (
+                      <tr key={it._id} className='border-t align-middle'>
+                        <td className='py-2 pl-6 pr-3 text-left align-middle'>{it.cropName}</td>
+                        <td className='py-2 px-3 text-left align-middle'>{it.farmer?.fullName || it.farmer?.email || '—'}</td>
+                        <td className='py-2 px-3 text-center align-middle'>LKR {Number(it.pricePerKg || 0).toLocaleString()}</td>
+                        <td className='py-2 px-3 text-center align-middle'>{it.capacityKg} kg</td>
+                        <td className='py-2 px-3 text-center align-middle'>{it.harvestedAt ? new Date(it.harvestedAt).toLocaleDateString() : '—'}</td>
+                        <td className='py-2 px-3 text-center align-middle'>
+                          <span className='inline-flex items-center justify-center h-6 px-2 text-xs bg-yellow-100 text-yellow-700 rounded-full'>{it.status}</span>
+                        </td>
+                        <td className='py-2 px-3 text-center align-middle'>
+                          <div className='inline-flex items-center gap-2'>
+                            <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setSelected(it); }}>
+                              <Info className='w-3.5 h-3.5' /> Info
+                            </button>
+                            <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this listing?')){ try{ await axiosInstance.delete(`/listings/${it._id}`); setItems(prev=> prev.filter(x => x._id !== it._id)); toast.success('Listing deleted'); }catch(_){ toast.error('Failed to delete'); } } }}>
+                              <Trash2 className='w-3.5 h-3.5' /> Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Recent Listings and Top 5 Farmers cards */}
+            <div className='grid grid-cols-4 gap-6'>
               <Card className='col-span-2'>
                 <div className='p-4'>
                   <div className='text-sm text-gray-700 font-medium'>Recent Listings</div>
@@ -160,6 +177,28 @@ const AdminListings = () => {
                         <div className='text-gray-700 text-right text-xs'>{new Date(it.createdAt||it.harvestedAt||0).toLocaleDateString()}</div>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-2'>
+                <div className='p-4'>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Top 5 Farmers by Listings</div>
+                  <div className='rounded-lg border border-dashed'>
+                    <Chart
+                      type='bar'
+                      height={260}
+                      options={{
+                        chart:{toolbar:{show:false}},
+                        plotOptions:{ bar:{ columnWidth:'55%', borderRadius:4 }},
+                        colors:['#22c55e'],
+                        grid:{ borderColor:'#eee' },
+                        xaxis:{ categories: topFarmersByListings.categories, labels:{ style:{ colors:'#9ca3af' }, rotate: -15 } },
+                        yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                        dataLabels:{ enabled:false },
+                        legend:{ show:false }
+                      }}
+                      series={topFarmersByListings.series}
+                    />
                   </div>
                 </div>
               </Card>

@@ -1,9 +1,55 @@
 import InventoryProduct from "../models/inventory.model.js";
 
-export const listInventory = async (_req, res) => {
+export const listInventory = async (req, res) => {
   try {
-    const items = await InventoryProduct.find().sort({ createdAt: -1 });
-    return res.json({ success: true, data: items });
+    const { 
+      page = 1, 
+      limit = 50, 
+      category, 
+      status, 
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    // Build query object
+    const query = {};
+    
+    // Add filters
+    if (category) query.category = category;
+    if (status) query.status = status;
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Execute query with pagination and sorting
+    const items = await InventoryProduct.find(query)
+      .sort(sortOptions)
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean(); // Use lean() for better performance
+
+    // Get total count for pagination
+    const total = await InventoryProduct.countDocuments(query);
+
+    return res.json({ 
+      success: true, 
+      data: items,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        totalItems: total,
+        itemsPerPage: parseInt(limit)
+      }
+    });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -78,6 +124,77 @@ export const deleteInventory = async (req, res) => {
     return res.json({ success: true });
   } catch (err) {
     return res.status(400).json({ success: false, message: err.message });
+  }
+};
+
+export const getInventoryStats = async (_req, res) => {
+  try {
+    // Get statistics without fetching all documents
+    const stats = await InventoryProduct.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalItems: { $sum: 1 },
+          totalStock: { $sum: '$stockQuantity' },
+          availableItems: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Available'] }, 1, 0]
+            }
+          },
+          lowStockItems: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Low stock'] }, 1, 0]
+            }
+          },
+          outOfStockItems: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'Out of stock'] }, 1, 0]
+            }
+          },
+          avgPrice: { $avg: '$price' },
+          totalValue: { $sum: { $multiply: ['$price', '$stockQuantity'] } }
+        }
+      }
+    ]);
+
+    // Get category distribution
+    const categoryStats = await InventoryProduct.aggregate([
+      {
+        $group: {
+          _id: '$category',
+          count: { $sum: 1 },
+          totalStock: { $sum: '$stockQuantity' }
+        }
+      },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Get recent items (last 5)
+    const recentItems = await InventoryProduct.find()
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select('name category status createdAt')
+      .lean();
+
+    return res.json({
+      success: true,
+      data: {
+        overview: stats[0] || {
+          totalItems: 0,
+          totalStock: 0,
+          availableItems: 0,
+          lowStockItems: 0,
+          outOfStockItems: 0,
+          avgPrice: 0,
+          totalValue: 0
+        },
+        categoryDistribution: categoryStats,
+        recentItems
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
   }
 };
 

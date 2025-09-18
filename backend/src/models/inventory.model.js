@@ -61,7 +61,15 @@ const inventoryProductSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-const InventoryProduct = mongoose.model("InventoryProduct", inventoryProductSchema);
+// Add indexes for better query performance
+inventoryProductSchema.index({ createdAt: -1 });
+inventoryProductSchema.index({ category: 1 });
+inventoryProductSchema.index({ status: 1 });
+inventoryProductSchema.index({ name: 'text', description: 'text' }); // Text search index
+inventoryProductSchema.index({ category: 1, status: 1 }); // Compound index for common filters
+inventoryProductSchema.index({ stockQuantity: 1 }); // For stock-based queries
+
+const InventoryProduct = mongoose.model("Inventoryitem", inventoryProductSchema);
 
 export default InventoryProduct;
 
