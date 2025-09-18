@@ -498,9 +498,29 @@ const AdminDrivers = () => {
               {/* Right: actions */}
               <div className='space-y-3'>
                 <div>
-                  <label className='text-xs text-gray-500'>Change Role</label>
-                  <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchDrivers(); setSelected(s => ({ ...s, role })); }}>
-                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                  <label className='text-xs text-gray-500'>Service Area</label>
+                  <select
+                    className='input-field mt-1'
+                    value={selected.service_area || ''}
+                    onChange={async (e) => {
+                      const service_area = e.target.value
+                      try {
+                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { service_area })
+                        fetchDrivers()
+                        setSelected(s => ({ ...s, service_area }))
+                      } catch (_) { /* silent */ }
+                    }}
+                  >
+                    <option value=''>Select a province</option>
+                    <option value='Northern'>Northern</option>
+                    <option value='North Central'>North Central</option>
+                    <option value='North Western'>North Western</option>
+                    <option value='Western'>Western</option>
+                    <option value='Central'>Central</option>
+                    <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                    <option value='Eastern'>Eastern</option>
+                    <option value='Uva'>Uva</option>
+                    <option value='Southern'>Southern</option>
                   </select>
                 </div>
                 <div className='grid grid-cols-2 gap-2'>
