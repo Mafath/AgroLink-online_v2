@@ -9,7 +9,9 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { authUser, logout } = useAuthStore();
-  const isAdmin = String(authUser?.role || '').toUpperCase() === 'ADMIN';
+  const userRole = String(authUser?.role || '').toUpperCase();
+  const isAdmin = userRole === 'ADMIN';
+  const isDriver = userRole === 'DRIVER';
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -59,7 +61,7 @@ const Navbar = () => {
 
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {authUser && !isAdmin && (
+            {authUser && !isAdmin && !isDriver && (
               <>
                 <Link
                   to="/"
@@ -87,7 +89,7 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {authUser ? (
               <div className="relative flex items-center gap-3">
-                {!isAdmin && (
+                {!isAdmin && !isDriver && (
                   <button
                     onClick={() => handleNavigation('/cart')}
                     className="p-2 rounded-md hover:bg-gray-100"
@@ -144,22 +146,24 @@ const Navbar = () => {
             )}
 
             {/* Mobile menu button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
-            >
-              {isMobileMenuOpen ? (
-                <span className="block h-6 w-6">✕</span>
-              ) : (
-                <span className="block h-6 w-6">☰</span>
-              )}
-            </button>
+            {!isDriver && (
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
+              >
+                {isMobileMenuOpen ? (
+                  <span className="block h-6 w-6">✕</span>
+                ) : (
+                  <span className="block h-6 w-6">☰</span>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {/* Mobile menu */}
-            {isMobileMenuOpen && (
+            {isMobileMenuOpen && !isDriver && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
                   {authUser ? (

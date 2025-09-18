@@ -4,6 +4,7 @@ import Footer from './components/Footer';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import AdminDashboard from './pages/AdminDashboard';
+import DriverDashboard from './pages/DriverDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminDrivers from './pages/AdminDrivers';
 import AdminLogistics from './pages/AdminLogistics';
@@ -41,9 +42,10 @@ const App = () => {
       <Navbar />
       <main className='flex-1 pt-16 min-h-[90vh]'>
         <Routes>
-          <Route path="/" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <HomePage />} />
+          <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
           <Route path="/admin/users" element={authUser && authUser.role === 'ADMIN' ? <AdminUsers /> : <Navigate to="/" />} />
