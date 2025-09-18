@@ -120,8 +120,12 @@ export const updateListing = async (req, res) => {
 export const deleteListing = async (req, res) => {
   try {
     const userId = req.user._id;
+    const userRole = req.user.role;
     const { id } = req.params;
-    const listing = await Listing.findOneAndDelete({ _id: id, farmer: userId });
+    const query = String(userRole).toUpperCase() === 'ADMIN'
+      ? { _id: id }
+      : { _id: id, farmer: userId };
+    const listing = await Listing.findOneAndDelete(query);
     if (!listing) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Listing not found' } });
     }

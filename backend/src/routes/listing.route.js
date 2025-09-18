@@ -9,7 +9,7 @@ router.get('/', getAllListings)
 router.get('/mine', requireAuth, requireRole('FARMER'), getMyListings)
 router.post('/', requireAuth, requireRole('FARMER'), createListing)
 router.put('/:id', requireAuth, requireRole('FARMER'), updateListing)
-router.delete('/:id', requireAuth, requireRole('FARMER'), deleteListing)
+router.delete('/:id', requireAuth, requireRole('FARMER', 'ADMIN'), deleteListing)
 
 export default router
 

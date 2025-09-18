@@ -24,6 +24,7 @@ const AdminRoles = () => {
         <nav className='space-y-2 sticky top-20'>
           <a href='/admin' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Dashboard</a>
           <a href='/admin/users' className='block px-3 py-2 rounded-md hover:bg-gray-50'>User & Role Management</a>
+          <a href='/admin/listings' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Listings</a>
           <a href='/admin/roles' className='block px-3 py-2 rounded-md bg-gray-100'>Roles & Permissions</a>
         </nav>
       </aside>
