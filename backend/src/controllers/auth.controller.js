@@ -242,7 +242,7 @@ export const adminUpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = {};
-    const allowed = ['role', 'status', 'availability'];
+    const allowed = ['role', 'status', 'availability', 'service_area'];
     for (const key of allowed) {
       if (req.body[key] != null) {
         updates[key] = typeof req.body[key] === 'string' ? req.body[key].toUpperCase?.() || req.body[key] : req.body[key];
@@ -282,7 +282,7 @@ export const adminDeleteUser = async (req, res) => {
 // Admin: create user (ADMIN/DRIVER/others) with password
 export const adminCreateUser = async (req, res) => {
   try {
-    const { email, password, role = 'DRIVER', fullName, availability } = req.body || {};
+    const { email, password, role = 'DRIVER', fullName, availability, service_area } = req.body || {};
 
     if (!email || !password) {
       return res
@@ -323,6 +323,7 @@ export const adminCreateUser = async (req, res) => {
       fullName: typeof fullName === 'string' ? fullName.trim() : '',
       profilePic: defaultAvatar,
       availability: normalizedRole === 'DRIVER' ? (String(availability || 'UNAVAILABLE').toUpperCase()) : undefined,
+      service_area: normalizedRole === 'DRIVER' ? (typeof service_area === 'string' ? service_area : '') : undefined,
     });
 
     await newUser.save();
