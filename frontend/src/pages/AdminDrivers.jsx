@@ -108,6 +108,12 @@ const AdminDrivers = () => {
   const suspendedUsersCount = useMemo(() => {
     return (Array.isArray(items) ? items : []).filter(u => String(u.status).toUpperCase() === 'SUSPENDED').length
   }, [items])
+  const availableDriversCount = useMemo(() => {
+    return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE').length
+  }, [items])
+  const unavailableDriversCount = useMemo(() => {
+    return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() !== 'AVAILABLE').length
+  }, [items])
   const userGrowth = useMemo(() => {
     const now = new Date()
     const buckets = []
@@ -212,6 +218,7 @@ const AdminDrivers = () => {
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
+                    <th className='py-3 px-3 text-center align-middle'>Availability</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
                   </tr>
@@ -219,10 +226,10 @@ const AdminDrivers = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className='py-6 text-center text-gray-500' colSpan={4}>Loading…</td>
+                      <td className='py-6 text-center text-gray-500' colSpan={5}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={4}>No drivers</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={5}>No drivers</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -240,6 +247,9 @@ const AdminDrivers = () => {
                         <div>{u.email}</div>
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
+                    <td className='py-2 px-3 text-center align-middle'>
+                      <span className={`px-2 py-0.5 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
+                    </td>
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
@@ -270,14 +280,12 @@ const AdminDrivers = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>New Signups</div>
-                    <div className='text-2xl font-semibold mt-1'>{recentSignupsCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>last 24h</span></div>
-                    <div className='mt-3'>
-                      <span className='text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full'>Rolling 24 hours</span>
-                    </div>
+                    <div className='text-sm text-gray-600'>Drivers Availability</div>
+                    <div className='text-2xl font-semibold mt-1'>{availableDriversCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>available</span></div>
+                    <div className='mt-2 text-sm text-gray-700'>Unavailable: <span className='font-semibold'>{unavailableDriversCount.toLocaleString()}</span></div>
                   </div>
-                  <div className='w-24 h-24 bg-violet-100 rounded-lg grid place-items-center'>
-                    <TrendingUp className='w-12 h-12 text-violet-600' />
+                  <div className='w-24 h-24 bg-green-100 rounded-lg grid place-items-center'>
+                    <Truck className='w-12 h-12 text-green-600' />
                   </div>
                 </div>
               </Card>
@@ -392,7 +400,7 @@ const AdminDrivers = () => {
                   className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center'
                   onClick={async () => {
                     try {
-                      const payload = { ...createForm, role: 'DRIVER' };
+                      const payload = { ...createForm, role: 'DRIVER', availability: 'UNAVAILABLE' };
                       await axiosInstance.post('auth/admin/users', payload);
                       setCreating(false);
                       setCreateForm({ fullName: '', email: '', password: '' });
