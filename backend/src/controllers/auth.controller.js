@@ -224,7 +224,25 @@ export const adminListUsers = async (req, res) => {
     if (req.query.status) filter.status = String(req.query.status).toUpperCase();
     if (req.query.availability) {
       filter.role = 'DRIVER';
-      filter.availability = String(req.query.availability).toUpperCase();
+      const avail = String(req.query.availability).toUpperCase();
+      if (avail === 'UNAVAILABLE') {
+        filter.$or = [
+          { availability: 'UNAVAILABLE' },
+          { availability: { $exists: false } },
+          { availability: '' },
+          { availability: null },
+        ];
+      } else {
+        filter.availability = avail;
+      }
+    }
+    if (req.query.service_area) {
+      filter.role = 'DRIVER';
+      const val = String(req.query.service_area || '').trim();
+      if (val) {
+        const escaped = val.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        filter.service_area = { $regex: new RegExp(`^${escaped}$`, 'i') };
+      }
     }
     const users = await User.find(filter)
       .sort({ createdAt: -1 })

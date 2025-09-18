@@ -61,17 +61,17 @@ const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver'], series = [5,
 const BarChart = ({ categories = [], series = [] }) => (
   <Chart type='bar' height={260} options={{
     chart:{toolbar:{show:false}},
-    plotOptions:{bar:{columnWidth:'40%', borderRadius:4}},
-    colors:['#22c55e'],
+    plotOptions:{bar:{columnWidth:'60%', borderRadius:4}},
+    colors:['#22c55e','#9ca3af'],
     grid:{borderColor:'#eee'},
     xaxis:{categories, labels:{style:{colors:'#9ca3af'}}},
     yaxis:{labels:{style:{colors:'#9ca3af'}}},
-    legend:{show:false}
+    legend:{show:true}
   }} series={series} />
 )
 
 const AdminDrivers = () => {
-  const [query, setQuery] = useState({ role: 'Driver', status: '' })
+  const [query, setQuery] = useState({ role: 'Driver', status: '' , availability: '', service_area: ''})
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
@@ -93,7 +93,7 @@ const AdminDrivers = () => {
     }
   }
 
-  useEffect(() => { fetchDrivers() }, [query.role, query.status])
+  useEffect(() => { fetchDrivers() }, [query.role, query.status, query.availability, query.service_area])
 
   const items = resp.data
   const filteredItems = useMemo(() => {
@@ -159,15 +159,21 @@ const AdminDrivers = () => {
 
   const serviceAreaData = useMemo(() => {
     const provinces = ['Northern','North Central','North Western','Western','Central','Sabaragamuwa','Eastern','Uva','Southern']
-    const counter = Object.fromEntries(provinces.map(p => [p, 0]))
+    const available = Object.fromEntries(provinces.map(p => [p, 0]))
+    const unavailable = Object.fromEntries(provinces.map(p => [p, 0]))
     for (const u of (Array.isArray(items) ? items : [])) {
       if (String(u.role || '').toUpperCase() !== 'DRIVER') continue
       const p = typeof u.service_area === 'string' && u.service_area.trim() ? u.service_area.trim() : null
-      if (p && counter[p] != null) counter[p] += 1
+      if (!p || available[p] == null) continue
+      const isAvail = String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE'
+      if (isAvail) available[p] += 1; else unavailable[p] += 1
     }
     const categories = provinces
-    const data = categories.map(p => counter[p])
-    return { categories, series: [{ name: 'Drivers', data }] }
+    const series = [
+      { name: 'Available', data: categories.map(p => available[p]) },
+      { name: 'Unavailable', data: categories.map(p => unavailable[p]) },
+    ]
+    return { categories, series }
   }, [items])
 
   function formatRelativeTime(input) {
@@ -219,14 +225,36 @@ const AdminDrivers = () => {
                 <div className='text-md font-medium text-gray-700'>Drivers</div>
               </div>
               <div className='flex justify-center'>
+                <div />
+              </div>
+              <div className='flex items-center justify-end gap-3'>
                 <div className='relative hidden sm:block'>
                   <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={query.search || ''} onChange={e => setQuery(q => ({ ...q, search: e.target.value }))} />
                 </div>
-              </div>
-              <div className='flex items-center justify-end gap-3'>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
                   <option value=''>Any Status</option>
-                  {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                  {statuses.map(s => {
+                    const val = s.toUpperCase();
+                    const label = s;
+                    return (<option key={val} value={val}>{label}</option>)
+                  })}
+                </select>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.service_area || ''} onChange={e => setQuery(q => ({ ...q, service_area: e.target.value }))}>
+                  <option value=''>Any Service Area</option>
+                  <option value='Northern'>Northern</option>
+                  <option value='North Central'>North Central</option>
+                  <option value='North Western'>North Western</option>
+                  <option value='Western'>Western</option>
+                  <option value='Central'>Central</option>
+                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                  <option value='Eastern'>Eastern</option>
+                  <option value='Uva'>Uva</option>
+                  <option value='Southern'>Southern</option>
+                </select>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.availability || ''} onChange={e => setQuery(q => ({ ...q, availability: e.target.value }))}>
+                  <option value=''>Any Availability</option>
+                  <option value='AVAILABLE'>Available</option>
+                  <option value='UNAVAILABLE'>Unavailable</option>
                 </select>
                 <button
                   className='btn-primary h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 hover:opacity-95 active:opacity-90 focus:ring-2 focus:ring-green-300 whitespace-nowrap'
@@ -278,12 +306,12 @@ const AdminDrivers = () => {
                       {u.service_area || '—'}
                     </td>
                     <td className='py-2 px-3 text-center align-middle'>
-                      <span className={`px-2 py-0.5 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
+                      <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
                     </td>
                     <td className='py-2 px-3 text-center align-middle'>
-                      <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
+                      <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
-                    <td className='py-2 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
+                    <td className='py-2 px-3 flex items-center justify-center gap-3 align-middle'>
                         <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
@@ -347,56 +375,7 @@ const AdminDrivers = () => {
               </Card>
             </div>
 
-            {/* Middle cards: 1-1-2 */}
-            <div className='grid grid-cols-4 gap-6'>
-               <Card className='col-span-2'><div className='p-4'><div className='text-sm text-gray-700 font-medium mb-2'>Driver Growth</div><div className='rounded-lg border border-dashed'><LineChart categories={userGrowth.categories} series={[{ name: 'Drivers', data: userGrowth.data }]} color={'#22c55e'} /></div></div></Card>
-              <Card className='col-span-2'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Role Distribution</div>
-                    <div className='grid grid-cols-[1fr,240px] gap-4'>
-                    <div className='grid place-items-center'>
-                      <div className='rounded-lg border border-dashed w-full max-w-[220px] relative'>
-                        <DonutChart labels={['Admin','Farmer','Buyer','Driver']} series={[roleCounts.ADMIN, roleCounts.FARMER, roleCounts.BUYER, roleCounts.DRIVER]} />
-                        <div className='absolute inset-0 grid place-items-center pointer-events-none'>
-                          <div className='text-center'>
-                            <div className='text-xs text-gray-500'>Total drivers</div>
-                            <div className='text-lg font-semibold'>{filteredItems.length.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className='text-sm'>
-                      <div className='flex items-center gap-3 mb-3'>
-                        <span className='w-9 h-9 rounded-lg bg-violet-100 grid place-items-center text-violet-600'>🚚</span>
-                        <div>
-                          <div className='text-xs text-gray-500'>Total Drivers</div>
-                          <div className='font-semibold text-base'>{filteredItems.length}</div>
-                        </div>
-                      </div>
-                      <div className='border-t border-gray-200 my-3'></div>
-                      <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#8b5cf6'}}></span>Admin</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.ADMIN.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#22c55e'}}></span>Farmer</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.FARMER.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#3b82f6'}}></span>Buyer</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.BUYER.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#f59e0b'}}></span>Driver</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.DRIVER.toLocaleString()}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+            
 
             {/* Drivers by Service Area */}
             <div className='grid grid-cols-4 gap-6'>
