@@ -58,6 +58,18 @@ const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver'], series = [5,
   }} series={series} />
 )
 
+const BarChart = ({ categories = [], series = [] }) => (
+  <Chart type='bar' height={260} options={{
+    chart:{toolbar:{show:false}},
+    plotOptions:{bar:{columnWidth:'40%', borderRadius:4}},
+    colors:['#22c55e'],
+    grid:{borderColor:'#eee'},
+    xaxis:{categories, labels:{style:{colors:'#9ca3af'}}},
+    yaxis:{labels:{style:{colors:'#9ca3af'}}},
+    legend:{show:false}
+  }} series={series} />
+)
+
 const AdminDrivers = () => {
   const [query, setQuery] = useState({ role: 'Driver', status: '' })
   const [resp, setResp] = useState({ data: [] })
@@ -143,6 +155,19 @@ const AdminDrivers = () => {
       if (counts[r] != null) counts[r] += 1
     }
     return counts
+  }, [items])
+
+  const serviceAreaData = useMemo(() => {
+    const provinces = ['Northern','North Central','North Western','Western','Central','Sabaragamuwa','Eastern','Uva','Southern']
+    const counter = Object.fromEntries(provinces.map(p => [p, 0]))
+    for (const u of (Array.isArray(items) ? items : [])) {
+      if (String(u.role || '').toUpperCase() !== 'DRIVER') continue
+      const p = typeof u.service_area === 'string' && u.service_area.trim() ? u.service_area.trim() : null
+      if (p && counter[p] != null) counter[p] += 1
+    }
+    const categories = provinces
+    const data = categories.map(p => counter[p])
+    return { categories, series: [{ name: 'Drivers', data }] }
   }, [items])
 
   function formatRelativeTime(input) {
@@ -368,6 +393,18 @@ const AdminDrivers = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Drivers by Service Area */}
+            <div className='grid grid-cols-4 gap-6'>
+              <Card className='col-span-4'>
+                <div className='p-4'>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Drivers by Service Area</div>
+                  <div className='rounded-lg border border-dashed'>
+                    <BarChart categories={serviceAreaData.categories} series={serviceAreaData.series} />
                   </div>
                 </div>
               </Card>
