@@ -52,6 +52,18 @@ const userSchema = new mongoose.Schema(
       default: "ACTIVE",
       index: true,
     },
+    availability: {
+      type: String,
+      enum: ["AVAILABLE", "UNAVAILABLE"],
+      index: true,
+    },
+    // Driver-only field (populated only when role === 'DRIVER')
+    service_area: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
     lastLogin: {
       type: Date,
       default: null,

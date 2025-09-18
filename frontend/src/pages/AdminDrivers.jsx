@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
@@ -58,13 +58,26 @@ const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver'], series = [5,
   }} series={series} />
 )
 
+const BarChart = ({ categories = [], series = [] }) => (
+  <Chart type='bar' height={260} options={{
+    chart:{toolbar:{show:false}},
+    plotOptions:{bar:{columnWidth:'60%', borderRadius:4}},
+    colors:['#22c55e','#9ca3af'],
+    grid:{borderColor:'#eee'},
+    xaxis:{categories, labels:{style:{colors:'#9ca3af'}}},
+    yaxis:{labels:{style:{colors:'#9ca3af'}}},
+    legend:{show:true}
+  }} series={series} />
+)
+
 const AdminDrivers = () => {
-  const [query, setQuery] = useState({ role: 'Driver', status: '' })
+  const [query, setQuery] = useState({ role: 'Driver', status: '' , availability: '', service_area: ''})
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '' })
+  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', service_area: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   const fetchDrivers = async () => {
     setLoading(true)
@@ -80,7 +93,7 @@ const AdminDrivers = () => {
     }
   }
 
-  useEffect(() => { fetchDrivers() }, [query.role, query.status])
+  useEffect(() => { fetchDrivers() }, [query.role, query.status, query.availability, query.service_area])
 
   const items = resp.data
   const filteredItems = useMemo(() => {
@@ -107,6 +120,12 @@ const AdminDrivers = () => {
   }, [items])
   const suspendedUsersCount = useMemo(() => {
     return (Array.isArray(items) ? items : []).filter(u => String(u.status).toUpperCase() === 'SUSPENDED').length
+  }, [items])
+  const availableDriversCount = useMemo(() => {
+    return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE').length
+  }, [items])
+  const unavailableDriversCount = useMemo(() => {
+    return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() !== 'AVAILABLE').length
   }, [items])
   const userGrowth = useMemo(() => {
     const now = new Date()
@@ -136,6 +155,25 @@ const AdminDrivers = () => {
       if (counts[r] != null) counts[r] += 1
     }
     return counts
+  }, [items])
+
+  const serviceAreaData = useMemo(() => {
+    const provinces = ['Northern','North Central','North Western','Western','Central','Sabaragamuwa','Eastern','Uva','Southern']
+    const available = Object.fromEntries(provinces.map(p => [p, 0]))
+    const unavailable = Object.fromEntries(provinces.map(p => [p, 0]))
+    for (const u of (Array.isArray(items) ? items : [])) {
+      if (String(u.role || '').toUpperCase() !== 'DRIVER') continue
+      const p = typeof u.service_area === 'string' && u.service_area.trim() ? u.service_area.trim() : null
+      if (!p || available[p] == null) continue
+      const isAvail = String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE'
+      if (isAvail) available[p] += 1; else unavailable[p] += 1
+    }
+    const categories = provinces
+    const series = [
+      { name: 'Available', data: categories.map(p => available[p]) },
+      { name: 'Unavailable', data: categories.map(p => unavailable[p]) },
+    ]
+    return { categories, series }
   }, [items])
 
   function formatRelativeTime(input) {
@@ -187,14 +225,36 @@ const AdminDrivers = () => {
                 <div className='text-md font-medium text-gray-700'>Drivers</div>
               </div>
               <div className='flex justify-center'>
+                <div />
+              </div>
+              <div className='flex items-center justify-end gap-3'>
                 <div className='relative hidden sm:block'>
                   <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={query.search || ''} onChange={e => setQuery(q => ({ ...q, search: e.target.value }))} />
                 </div>
-              </div>
-              <div className='flex items-center justify-end gap-3'>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
                   <option value=''>Any Status</option>
-                  {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                  {statuses.map(s => {
+                    const val = s.toUpperCase();
+                    const label = s;
+                    return (<option key={val} value={val}>{label}</option>)
+                  })}
+                </select>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.service_area || ''} onChange={e => setQuery(q => ({ ...q, service_area: e.target.value }))}>
+                  <option value=''>Any Service Area</option>
+                  <option value='Northern'>Northern</option>
+                  <option value='North Central'>North Central</option>
+                  <option value='North Western'>North Western</option>
+                  <option value='Western'>Western</option>
+                  <option value='Central'>Central</option>
+                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                  <option value='Eastern'>Eastern</option>
+                  <option value='Uva'>Uva</option>
+                  <option value='Southern'>Southern</option>
+                </select>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.availability || ''} onChange={e => setQuery(q => ({ ...q, availability: e.target.value }))}>
+                  <option value=''>Any Availability</option>
+                  <option value='AVAILABLE'>Available</option>
+                  <option value='UNAVAILABLE'>Unavailable</option>
                 </select>
                 <button
                   className='btn-primary h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 hover:opacity-95 active:opacity-90 focus:ring-2 focus:ring-green-300 whitespace-nowrap'
@@ -212,6 +272,8 @@ const AdminDrivers = () => {
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
+                    <th className='py-3 px-3 text-center align-middle'>Service Area</th>
+                    <th className='py-3 px-3 text-center align-middle'>Availability</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
                   </tr>
@@ -219,10 +281,10 @@ const AdminDrivers = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className='py-6 text-center text-gray-500' colSpan={4}>Loading…</td>
+                      <td className='py-6 text-center text-gray-500' colSpan={6}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={4}>No drivers</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No drivers</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -241,9 +303,15 @@ const AdminDrivers = () => {
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
                     <td className='py-2 px-3 text-center align-middle'>
-                      <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
+                      {u.service_area || '—'}
+                    </td>
+                    <td className='py-2 px-3 text-center align-middle'>
+                      <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
+                    </td>
+                    <td className='py-2 px-3 text-center align-middle'>
+                      <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
-                    <td className='py-2 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
+                    <td className='py-2 px-3 flex items-center justify-center gap-3 align-middle'>
                         <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
@@ -270,14 +338,12 @@ const AdminDrivers = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>New Signups</div>
-                    <div className='text-2xl font-semibold mt-1'>{recentSignupsCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>last 24h</span></div>
-                    <div className='mt-3'>
-                      <span className='text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full'>Rolling 24 hours</span>
-                    </div>
+                    <div className='text-sm text-gray-600'>Drivers Availability</div>
+                    <div className='text-2xl font-semibold mt-1'>{availableDriversCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>available</span></div>
+                    <div className='mt-2 text-sm text-gray-700'>Unavailable: <span className='font-semibold'>{unavailableDriversCount.toLocaleString()}</span></div>
                   </div>
-                  <div className='w-24 h-24 bg-violet-100 rounded-lg grid place-items-center'>
-                    <TrendingUp className='w-12 h-12 text-violet-600' />
+                  <div className='w-24 h-24 bg-green-100 rounded-lg grid place-items-center'>
+                    <Truck className='w-12 h-12 text-green-600' />
                   </div>
                 </div>
               </Card>
@@ -309,52 +375,15 @@ const AdminDrivers = () => {
               </Card>
             </div>
 
-            {/* Middle cards: 1-1-2 */}
+            
+
+            {/* Drivers by Service Area */}
             <div className='grid grid-cols-4 gap-6'>
-               <Card className='col-span-2'><div className='p-4'><div className='text-sm text-gray-700 font-medium mb-2'>Driver Growth</div><div className='rounded-lg border border-dashed'><LineChart categories={userGrowth.categories} series={[{ name: 'Drivers', data: userGrowth.data }]} color={'#22c55e'} /></div></div></Card>
-              <Card className='col-span-2'>
+              <Card className='col-span-4'>
                 <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Role Distribution</div>
-                    <div className='grid grid-cols-[1fr,240px] gap-4'>
-                    <div className='grid place-items-center'>
-                      <div className='rounded-lg border border-dashed w-full max-w-[220px] relative'>
-                        <DonutChart labels={['Admin','Farmer','Buyer','Driver']} series={[roleCounts.ADMIN, roleCounts.FARMER, roleCounts.BUYER, roleCounts.DRIVER]} />
-                        <div className='absolute inset-0 grid place-items-center pointer-events-none'>
-                          <div className='text-center'>
-                            <div className='text-xs text-gray-500'>Total drivers</div>
-                            <div className='text-lg font-semibold'>{filteredItems.length.toLocaleString()}</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className='text-sm'>
-                      <div className='flex items-center gap-3 mb-3'>
-                        <span className='w-9 h-9 rounded-lg bg-violet-100 grid place-items-center text-violet-600'>🚚</span>
-                        <div>
-                          <div className='text-xs text-gray-500'>Total Drivers</div>
-                          <div className='font-semibold text-base'>{filteredItems.length}</div>
-                        </div>
-                      </div>
-                      <div className='border-t border-gray-200 my-3'></div>
-                      <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#8b5cf6'}}></span>Admin</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.ADMIN.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#22c55e'}}></span>Farmer</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.FARMER.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#3b82f6'}}></span>Buyer</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.BUYER.toLocaleString()}</div>
-                        </div>
-                        <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#f59e0b'}}></span>Driver</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.DRIVER.toLocaleString()}</div>
-                        </div>
-                      </div>
-                    </div>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Drivers by Service Area</div>
+                  <div className='rounded-lg border border-dashed'>
+                    <BarChart categories={serviceAreaData.categories} series={serviceAreaData.series} />
                   </div>
                 </div>
               </Card>
@@ -384,7 +413,38 @@ const AdminDrivers = () => {
               </div>
               <div>
                 <label className='text-xs text-gray-500'>Password</label>
-                <input className='input-field mt-1 w-full' type='password' value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder='Minimum 8 characters' />
+                <div className='relative'>
+                  <input
+                    className='input-field mt-1 w-full pr-10'
+                    type={showPassword ? 'text' : 'password'}
+                    value={createForm.password}
+                    onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder='Minimum 8 characters'
+                  />
+                  <button
+                    type='button'
+                    className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'
+                    onClick={() => setShowPassword(s => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className='text-xs text-gray-500'>Service Area</label>
+                <select className='input-field mt-1 w-full' value={createForm.service_area} onChange={e => setCreateForm(f => ({ ...f, service_area: e.target.value }))}>
+                  <option value=''>Select a province</option>
+                  <option value='Northern'>Northern</option>
+                  <option value='North Central'>North Central</option>
+                  <option value='North Western'>North Western</option>
+                  <option value='Western'>Western</option>
+                  <option value='Central'>Central</option>
+                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                  <option value='Eastern'>Eastern</option>
+                  <option value='Uva'>Uva</option>
+                  <option value='Southern'>Southern</option>
+                </select>
               </div>
               <div className='flex items-center justify-end gap-2 pt-2'>
                 <button className='border px-3 py-2 rounded-md' onClick={() => setCreating(false)}>Cancel</button>
@@ -392,10 +452,10 @@ const AdminDrivers = () => {
                   className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center'
                   onClick={async () => {
                     try {
-                      const payload = { ...createForm, role: 'DRIVER' };
+                      const payload = { ...createForm, role: 'DRIVER', availability: 'UNAVAILABLE' };
                       await axiosInstance.post('auth/admin/users', payload);
                       setCreating(false);
-                      setCreateForm({ fullName: '', email: '', password: '' });
+                      setCreateForm({ fullName: '', email: '', password: '', service_area: '' });
                       fetchDrivers();
                     } catch (_) { /* silent */ }
                   }}
@@ -438,9 +498,29 @@ const AdminDrivers = () => {
               {/* Right: actions */}
               <div className='space-y-3'>
                 <div>
-                  <label className='text-xs text-gray-500'>Change Role</label>
-                  <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchDrivers(); setSelected(s => ({ ...s, role })); }}>
-                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                  <label className='text-xs text-gray-500'>Service Area</label>
+                  <select
+                    className='input-field mt-1'
+                    value={selected.service_area || ''}
+                    onChange={async (e) => {
+                      const service_area = e.target.value
+                      try {
+                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { service_area })
+                        fetchDrivers()
+                        setSelected(s => ({ ...s, service_area }))
+                      } catch (_) { /* silent */ }
+                    }}
+                  >
+                    <option value=''>Select a province</option>
+                    <option value='Northern'>Northern</option>
+                    <option value='North Central'>North Central</option>
+                    <option value='North Western'>North Western</option>
+                    <option value='Western'>Western</option>
+                    <option value='Central'>Central</option>
+                    <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                    <option value='Eastern'>Eastern</option>
+                    <option value='Uva'>Uva</option>
+                    <option value='Southern'>Southern</option>
                   </select>
                 </div>
                 <div className='grid grid-cols-2 gap-2'>
