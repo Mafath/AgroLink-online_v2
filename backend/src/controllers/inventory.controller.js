@@ -66,12 +66,34 @@ export const createInventory = async (req, res) => {
     } else if (stockQuantity < 15) {
       autoStatus = 'Low stock';
     }
+
+    // Handle image uploads to Cloudinary
+    let imageUrls = [];
+    if (Array.isArray(images) && images.length) {
+      const limited = images.slice(0, 4); // Limit to 4 images as per schema
+      try {
+        const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+        if (haveCloudinary) {
+          const { v2: cloudinary } = await import('cloudinary');
+          const uploads = await Promise.all(
+            limited.map((img) => cloudinary.uploader.upload(img))
+          );
+          imageUrls = uploads.map(u => u.secure_url);
+        } else {
+          imageUrls = limited; // Fallback to original URLs if Cloudinary not configured
+        }
+      } catch (e) {
+        console.log('Image upload error:', e.message);
+        // Continue without images instead of failing
+        imageUrls = [];
+      }
+    }
     
     const item = await InventoryProduct.create({ 
       name, 
       category, 
       description, 
-      images, 
+      images: imageUrls, 
       stockQuantity, 
       price, 
       status: autoStatus 
@@ -98,12 +120,34 @@ export const updateInventory = async (req, res) => {
         autoStatus = 'Available';
       }
     }
+
+    // Handle image uploads to Cloudinary if images are being updated
+    let imageUrls = undefined;
+    if (Array.isArray(images)) {
+      const limited = images.slice(0, 4); // Limit to 4 images as per schema
+      try {
+        const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+        if (haveCloudinary) {
+          const { v2: cloudinary } = await import('cloudinary');
+          const uploads = await Promise.all(
+            limited.map((img) => cloudinary.uploader.upload(img))
+          );
+          imageUrls = uploads.map(u => u.secure_url);
+        } else {
+          imageUrls = limited; // Fallback to original URLs if Cloudinary not configured
+        }
+      } catch (e) {
+        console.log('Image upload error:', e.message);
+        // Keep existing images if upload fails
+        imageUrls = undefined;
+      }
+    }
     
     const update = {
       ...(name !== undefined && { name }),
       ...(category !== undefined && { category }),
       ...(description !== undefined && { description }),
-      ...(images !== undefined && { images }),
+      ...(imageUrls !== undefined && { images: imageUrls }),
       ...(stockQuantity !== undefined && { stockQuantity }),
       ...(price !== undefined && { price }),
       ...(autoStatus !== undefined && { status: autoStatus }),

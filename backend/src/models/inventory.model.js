@@ -65,7 +65,7 @@ inventoryProductSchema.index({ name: 'text', description: 'text' }); // Text sea
 inventoryProductSchema.index({ category: 1, status: 1 }); // Compound index for common filters
 inventoryProductSchema.index({ stockQuantity: 1 }); // For stock-based queries
 
-const InventoryProduct = mongoose.model("Inventoryproduct", inventoryProductSchema);
+const InventoryProduct = mongoose.model("Inventoryitem", inventoryProductSchema);
 
 export default InventoryProduct;
 
