@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Plus, X, Edit, Trash2 } from 'lucide-react'
+import { Plus, X, Edit, Trash2, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const MyListings = () => {
@@ -12,6 +12,7 @@ const MyListings = () => {
   const [preview, setPreview] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editForm, setEditForm] = useState(null)
+  const [infoItem, setInfoItem] = useState(null)
 
   const toInputDate = (value) => {
     try {
@@ -96,11 +97,11 @@ const MyListings = () => {
   }
 
   return (
-    <div className='p-4 mt-20 max-w-5xl mx-auto'>
-      <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-3xl md:text-4xl font-bold text-accent-600 text-center w-full'>My Listings</h2>
-        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 ml-4 whitespace-nowrap'>
-          <Plus className='w-4 h-4' /> Add new post
+    <div className='p-4 max-w-7xl mx-auto'>
+      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>My Listings</h2>
+      <div className='mb-4 flex justify-end'>
+        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 whitespace-nowrap'>
+          <Plus className='w-4 h-4' /> <span className='hidden sm:inline'>Add new post</span>
         </button>
       </div>
 
@@ -109,30 +110,32 @@ const MyListings = () => {
           <div>Loading...</div>
         ) : items.length === 0 ? (
           <div className='text-gray-500 text-sm'>No listings yet.</div>
-        ) : (
-          <div className='overflow-x-auto'>
+          ) : (
+            <>
+              <div className='text-md font-semibold text-green-700 mb-2 ml-2'>New Listings</div>
+              <div className='overflow-x-auto border rounded-xl p-4'>
             <table className='w-full text-sm'>
               <thead>
-                <tr className='text-left border-b'>
-                  <th className='py-2 pr-4'>Crop</th>
-                  <th className='py-2 pr-4'>Price/kg</th>
-                  <th className='py-2 pr-4'>Capacity (kg)</th>
-                  <th className='py-2 pr-4'>Harvested</th>
-                  <th className='py-2 pr-4'>Images</th>
-                  <th className='py-2'>Status</th>
-                  <th className='py-2 pl-4'>Actions</th>
+                <tr className='border-b'>
+                  <th className='py-2 text-center'>Crop</th>
+                  <th className='py-2 text-center'>Price/kg</th>
+                  <th className='py-2 text-center'>Capacity (kg)</th>
+                  <th className='py-2 text-center'>Harvested</th>
+                  <th className='py-2 text-center'>Images</th>
+                  <th className='py-2 text-center'>Status</th>
+                  <th className='py-2 text-center'>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map(it => (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
-                    <td className='py-2 pr-4'>{it.cropName}</td>
-                    <td className='py-2 pr-4'>{Number(it.pricePerKg).toFixed(2)}</td>
-                    <td className='py-2 pr-4'>{it.capacityKg}</td>
-                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
-                    <td className='py-2 pr-4'>
+                    <td className='py-2 text-center'>{it.cropName}</td>
+                    <td className='py-2 text-center'>LKR. {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 text-center'>{it.capacityKg} kg</td>
+                    <td className='py-2 text-center'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 text-center'>
                       {Array.isArray(it.images) && it.images.length > 0 ? (
-                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px] mx-auto justify-items-center'>
                           {it.images.slice(0,4).map((src, idx) => (
                             <img key={idx} src={src} alt={'img'+idx} className='w-10 h-10 object-cover rounded' />
                           ))}
@@ -141,9 +144,24 @@ const MyListings = () => {
                         <span className='text-gray-400'>No images</span>
                       )}
                     </td>
-                    <td className='py-2'>{mapStatus(it.status)}</td>
-                    <td className='py-2 pl-4'>
-                      <div className='flex gap-2'>
+                    <td className='py-2 text-center'>
+                      {mapStatus(it.status) === 'AVAILABLE' ? (
+                        <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-green-900 bg-green-100'>
+                          <span className='w-1.5 h-1.5 rounded-full bg-green-500'></span>
+                          AVAILABLE
+                        </span>
+                      ) : (
+                        <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-red-900 bg-red-100'>
+                          <span className='w-1.5 h-1.5 rounded-full bg-red-500'></span>
+                          {mapStatus(it.status)}
+                        </span>
+                      )}
+                    </td>
+                    <td className='py-2 text-center'>
+                      <div className='inline-flex gap-2'>
+                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' title='Info' aria-label='Info' onClick={() => setInfoItem(it)}>
+                          <Info className='w-3 h-3' /> Info
+                        </button>
                         <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => handleOpenEdit(it)}><Edit className='w-3 h-3' /> Edit</button>
                         <button className='border px-2 py-1 rounded-md text-xs text-red-600 flex items-center gap-1' onClick={() => setConfirmDelete(it)}><Trash2 className='w-3 h-3' /> Delete</button>
                       </div>
@@ -153,6 +171,7 @@ const MyListings = () => {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </div>
 
@@ -348,6 +367,67 @@ const MyListings = () => {
                   toast.error('Failed to delete')
                 }
               }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {infoItem && (
+        <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+          <div className='card w-full max-w-lg relative mx-4'>
+            <button onClick={() => setInfoItem(null)} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100' aria-label='Close info'>
+              <X className='w-4 h-4' />
+            </button>
+            <h3 className='text-lg font-semibold mb-4'>Listing info</h3>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm'>
+              <div>
+                <div className='text-gray-500'>Crop</div>
+                <div className='font-medium'>{infoItem.cropName}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Price/kg</div>
+                <div className='font-medium'>${Number(infoItem.pricePerKg).toFixed(2)}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Capacity (kg)</div>
+                <div className='font-medium'>{infoItem.capacityKg}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Harvested</div>
+                <div className='font-medium'>{new Date(infoItem.harvestedAt).toLocaleDateString()}</div>
+              </div>
+              <div className='sm:col-span-2'>
+                <div className='text-gray-500'>Status</div>
+                <div className='mt-1'>
+                  {mapStatus(infoItem.status) === 'AVAILABLE' ? (
+                    <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-green-900 bg-green-100'>
+                      <span className='w-1.5 h-1.5 rounded-full bg-green-500'></span>
+                      AVAILABLE
+                    </span>
+                  ) : (
+                    <span className='inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs text-red-900 bg-red-100'>
+                      <span className='w-1.5 h-1.5 rounded-full bg-red-500'></span>
+                      {mapStatus(infoItem.status)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className='sm:col-span-2'>
+                <div className='text-gray-500 mb-1'>Details</div>
+                <div className='text-gray-700'>{infoItem.details || '—'}</div>
+              </div>
+              <div className='sm:col-span-2'>
+                <div className='text-gray-500 mb-2'>Images</div>
+                {Array.isArray(infoItem.images) && infoItem.images.length > 0 ? (
+                  <div className='flex -space-x-2'>
+                    {infoItem.images.slice(0,6).map((src, idx)=> (
+                      <img key={idx} src={src} alt={'img'+idx} className='w-12 h-12 object-cover rounded-md border border-white shadow-sm' />
+                    ))}
+                  </div>
+                ) : (
+                  <div className='text-gray-400'>No images</div>
+                )}
+              </div>
             </div>
           </div>
         </div>
