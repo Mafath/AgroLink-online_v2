@@ -29,10 +29,15 @@ const inventoryProductSchema = new mongoose.Schema(
       trim: true,
       maxlength: 2000,
     },
-    image: {
-      type: String,
-      default: "",
-      trim: true,
+    images: {
+      type: [String],
+      default: [],
+      validate: {
+        validator: function(v) {
+          return v.length <= 4;
+        },
+        message: 'Cannot have more than 4 images'
+      }
     },
     stockQuantity: {
       type: Number,
