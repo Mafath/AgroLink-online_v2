@@ -81,6 +81,12 @@ const Navbar = () => {
                 >
                   My Listings
                 </Link>
+                <Link
+                  to="/delivery-tracking"
+                  className={`${isActive('/delivery-tracking') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                >
+                  Delivery Tracking
+                </Link>
               </>
             )}
           </div>
@@ -92,11 +98,14 @@ const Navbar = () => {
                 {!isAdmin && !isDriver && (
                   <button
                     onClick={() => handleNavigation('/cart')}
-                    className="p-2 rounded-md hover:bg-gray-100"
+                    className="p-2 rounded-md hover:bg-gray-100 relative"
                     aria-label="Cart"
                     title="Cart"
                   >
                     <ShoppingCart className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {JSON.parse(localStorage.getItem('cart') || '[]').length}
+                    </span>
                   </button>
                 )}
                 <button
@@ -173,6 +182,7 @@ const Navbar = () => {
                           <button onClick={() => handleNavigation('/')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Home</button>
                           <button onClick={() => handleNavigation('/marketplace')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Marketplace</button>
                           <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          <button onClick={() => handleNavigation('/delivery-tracking')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Delivery Tracking</button>
                         </>
                       )}
                 <button onClick={() => handleNavigation('/profile')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Profile</button>

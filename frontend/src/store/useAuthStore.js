@@ -21,18 +21,16 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
     try {
       const token = sessionStorage.getItem('accessToken');
       if (!token) {
-        set({ authUser: null });
+        set({ authUser: null, isCheckingAuth: false });
         return;
       }
       setAccessToken(token);
       const res = await axiosInstance.get('/auth/me');
-      set({ authUser: res.data });
+      set({ authUser: res.data, isCheckingAuth: false });
     } catch (error) {
       clearAccessToken();
       sessionStorage.removeItem('accessToken');
-      set({ authUser: null });
-    } finally {
-      set({ isCheckingAuth: false });
+      set({ authUser: null, isCheckingAuth: false });
     }
   },
 

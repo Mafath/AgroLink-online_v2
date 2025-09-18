@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import toast from 'react-hot-toast'
-import { ChevronDown, X } from 'lucide-react'
+import { ChevronDown, X, ShoppingCart, Plus } from 'lucide-react'
 
 const Marketplace = () => {
   const [items, setItems] = useState([])
@@ -10,6 +10,7 @@ const Marketplace = () => {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [q, setQ] = useState('')
   const [sortBy, setSortBy] = useState('latest')
+  const [quantities, setQuantities] = useState({})
 
   useEffect(() => {
     const load = async () => {
@@ -48,6 +49,43 @@ const Marketplace = () => {
     // default latest
     return new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
   })
+
+  const addToCart = (item) => {
+    const quantity = quantities[item._id] || 1;
+    if (quantity < 1) {
+      toast.error('Please enter a valid quantity');
+      return;
+    }
+    if (quantity > item.capacityKg) {
+      toast.error('Quantity exceeds available capacity');
+      return;
+    }
+
+    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+    const existingItemIndex = cart.findIndex(cartItem => cartItem.id === item._id);
+    
+    if (existingItemIndex > -1) {
+      cart[existingItemIndex].quantity += quantity;
+    } else {
+      cart.push({
+        id: item._id,
+        listingId: item._id,
+        title: item.cropName,
+        price: item.pricePerKg,
+        image: item.images?.[0] || '',
+        quantity: quantity,
+        capacity: item.capacityKg
+      });
+    }
+    
+    localStorage.setItem('cart', JSON.stringify(cart));
+    toast.success('Added to cart');
+    setQuantities({ ...quantities, [item._id]: 1 });
+  };
+
+  const updateQuantity = (itemId, quantity) => {
+    setQuantities({ ...quantities, [itemId]: Math.max(1, quantity) });
+  };
 
   return (
     <div className='p-4 mb-20 max-w-6xl mx-auto'>
@@ -101,9 +139,26 @@ const Marketplace = () => {
               <div className='text-sm mt-2 text-gray-700'>
                 Posted by: {it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Farmer')}
               </div>
-              <div className='mt-3 flex gap-2'>
-                <button className='border px-3 py-2 rounded-md text-xs' onClick={() => { setSelected(it); setSelectedImageIndex(0) }}>View info</button>
-                <button className='btn-primary flex-1 px-3 py-2 text-xs' onClick={() => toast.success('Added to cart')}>Add to cart</button>
+              <div className='mt-3 space-y-2'>
+                <div className='flex items-center gap-2'>
+                  <label className='text-xs text-gray-600'>Qty:</label>
+                  <input
+                    type='number'
+                    min='1'
+                    max={it.capacityKg}
+                    value={quantities[it._id] || 1}
+                    onChange={(e) => updateQuantity(it._id, parseInt(e.target.value) || 1)}
+                    className='w-16 px-2 py-1 text-xs border border-gray-300 rounded'
+                  />
+                  <span className='text-xs text-gray-500'>kg</span>
+                </div>
+                <div className='flex gap-2'>
+                  <button className='border px-3 py-2 rounded-md text-xs' onClick={() => { setSelected(it); setSelectedImageIndex(0) }}>View info</button>
+                  <button className='btn-primary flex-1 px-3 py-2 text-xs flex items-center justify-center gap-1' onClick={() => addToCart(it)}>
+                    <ShoppingCart className='w-3 h-3' />
+                    Add to cart
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -167,9 +222,25 @@ const Marketplace = () => {
                 <div>{selected.details}</div>
               </div>
             )}
-            <div className='mt-3 flex justify-end gap-2'>
-              <button className='border px-2 py-1 rounded-md text-xs' onClick={() => setSelected(null)}>Close</button>
-              <button className='btn-primary px-3 py-2 text-xs' onClick={() => { toast.success('Added to cart'); }}>Add to cart</button>
+            <div className='mt-3 space-y-2'>
+              <div className='flex items-center gap-2'>
+                <label className='text-sm text-gray-600'>Quantity (kg):</label>
+                <input
+                  type='number'
+                  min='1'
+                  max={selected.capacityKg}
+                  value={quantities[selected._id] || 1}
+                  onChange={(e) => updateQuantity(selected._id, parseInt(e.target.value) || 1)}
+                  className='w-20 px-2 py-1 text-sm border border-gray-300 rounded'
+                />
+              </div>
+              <div className='flex justify-end gap-2'>
+                <button className='border px-2 py-1 rounded-md text-xs' onClick={() => setSelected(null)}>Close</button>
+                <button className='btn-primary px-3 py-2 text-xs flex items-center gap-1' onClick={() => addToCart(selected)}>
+                  <ShoppingCart className='w-3 h-3' />
+                  Add to cart
+                </button>
+              </div>
             </div>
           </div>
         </div>

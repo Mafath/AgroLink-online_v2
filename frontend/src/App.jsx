@@ -17,6 +17,15 @@ import SettingsPage from './pages/SettingsPage';
 import MyListings from './pages/MyListings';
 import Marketplace from './pages/Marketplace';
 import ProfilePage from './pages/ProfilePage';
+import CartPage from './pages/CartPage';
+import PaymentPage from './pages/PaymentPage';
+import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
+import DebugPage from './pages/DebugPage';
+
+{/* Delete after testing */}
+import DeliveryPage from './pages/DeliveryPage';
+
+
 import { useAuthStore } from './store/useAuthStore';
 import { Loader } from "lucide-react";
 import { Toaster } from 'react-hot-toast';
@@ -56,7 +65,12 @@ const App = () => {
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
+              <Route path="/cart" element={authUser ? <CartPage /> : <Navigate to="/login" />} />
+              <Route path="/payment" element={authUser ? <PaymentPage /> : <Navigate to="/login" />} />
+              <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
+              <Route path="/debug" element={<DebugPage />} />
         </Routes>
       </main>
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
+import { useAuthStore } from '../store/useAuthStore'
 import { Info, Pencil, Trash2, Package, AlertTriangle, DollarSign, BarChart3, TrendingUp, TrendingDown } from 'lucide-react'
 
 const Card = ({ children, className = '' }) => (
@@ -110,6 +111,7 @@ const StockLevelChart = ({ data = [] }) => (
 )
 
 const AdminInventory = () => {
+  const { authUser } = useAuthStore()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isAddInventory, setIsAddInventory] = useState(false)
   const [viewItem, setViewItem] = useState(null)
@@ -149,9 +151,14 @@ const AdminInventory = () => {
   const loadInventory = async () => {
     try {
       setIsLoadingInventory(true)
+      console.log('Loading inventory...')
       const { data } = await axiosInstance.get('inventory')
+      console.log('Inventory API response:', data)
       setInventoryItems(Array.isArray(data?.data) ? data.data : [])
     } catch (e) {
+      console.error('Failed to load inventory:', e)
+      console.error('Error details:', e.response?.data)
+      console.error('Status:', e.response?.status)
       setInventoryItems([])
     } finally {
       setIsLoadingInventory(false)
@@ -327,6 +334,18 @@ const AdminInventory = () => {
     } catch (err) {
       // optional: surface error
     }
+  }
+
+  // Check if user is admin
+  if (authUser && authUser.role !== 'ADMIN') {
+    return (
+      <div className='min-h-screen bg-gray-50 flex items-center justify-center'>
+        <div className='text-center'>
+          <h1 className='text-2xl font-bold text-gray-900 mb-4'>Access Denied</h1>
+          <p className='text-gray-600'>You need admin privileges to access the inventory.</p>
+        </div>
+      </div>
+    )
   }
 
   return (
