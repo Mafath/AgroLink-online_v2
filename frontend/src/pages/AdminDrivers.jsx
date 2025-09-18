@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
@@ -64,7 +64,8 @@ const AdminDrivers = () => {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '' })
+  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', service_area: '' })
+  const [showPassword, setShowPassword] = useState(false)
 
   const fetchDrivers = async () => {
     setLoading(true)
@@ -218,6 +219,7 @@ const AdminDrivers = () => {
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
+                    <th className='py-3 px-3 text-center align-middle'>Service Area</th>
                     <th className='py-3 px-3 text-center align-middle'>Availability</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
@@ -226,10 +228,10 @@ const AdminDrivers = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className='py-6 text-center text-gray-500' colSpan={5}>Loading…</td>
+                      <td className='py-6 text-center text-gray-500' colSpan={6}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={5}>No drivers</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No drivers</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -247,6 +249,9 @@ const AdminDrivers = () => {
                         <div>{u.email}</div>
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
+                    <td className='py-2 px-3 text-center align-middle'>
+                      {u.service_area || '—'}
+                    </td>
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`px-2 py-0.5 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
                     </td>
@@ -392,7 +397,38 @@ const AdminDrivers = () => {
               </div>
               <div>
                 <label className='text-xs text-gray-500'>Password</label>
-                <input className='input-field mt-1 w-full' type='password' value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder='Minimum 8 characters' />
+                <div className='relative'>
+                  <input
+                    className='input-field mt-1 w-full pr-10'
+                    type={showPassword ? 'text' : 'password'}
+                    value={createForm.password}
+                    onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                    placeholder='Minimum 8 characters'
+                  />
+                  <button
+                    type='button'
+                    className='absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600'
+                    onClick={() => setShowPassword(s => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className='text-xs text-gray-500'>Service Area</label>
+                <select className='input-field mt-1 w-full' value={createForm.service_area} onChange={e => setCreateForm(f => ({ ...f, service_area: e.target.value }))}>
+                  <option value=''>Select a province</option>
+                  <option value='Northern'>Northern</option>
+                  <option value='North Central'>North Central</option>
+                  <option value='North Western'>North Western</option>
+                  <option value='Western'>Western</option>
+                  <option value='Central'>Central</option>
+                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
+                  <option value='Eastern'>Eastern</option>
+                  <option value='Uva'>Uva</option>
+                  <option value='Southern'>Southern</option>
+                </select>
               </div>
               <div className='flex items-center justify-end gap-2 pt-2'>
                 <button className='border px-3 py-2 rounded-md' onClick={() => setCreating(false)}>Cancel</button>
@@ -403,7 +439,7 @@ const AdminDrivers = () => {
                       const payload = { ...createForm, role: 'DRIVER', availability: 'UNAVAILABLE' };
                       await axiosInstance.post('auth/admin/users', payload);
                       setCreating(false);
-                      setCreateForm({ fullName: '', email: '', password: '' });
+                      setCreateForm({ fullName: '', email: '', password: '', service_area: '' });
                       fetchDrivers();
                     } catch (_) { /* silent */ }
                   }}
