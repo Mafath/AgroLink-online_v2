@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
@@ -63,6 +63,8 @@ const AdminDrivers = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [creating, setCreating] = useState(false)
+  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '' })
 
   const fetchDrivers = async () => {
     setLoading(true)
@@ -190,14 +192,17 @@ const AdminDrivers = () => {
                 </div>
               </div>
               <div className='flex items-center justify-end gap-3'>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-36' value={query.role} onChange={e => setQuery(q => ({ ...q, role: e.target.value }))}>
-                  <option value=''>All Roles</option>
-                  {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
                 <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
                   <option value=''>Any Status</option>
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                <button
+                  className='btn-primary h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 hover:opacity-95 active:opacity-90 focus:ring-2 focus:ring-green-300 whitespace-nowrap'
+                  onClick={() => setCreating(true)}
+                >
+                  <Plus className='w-3.5 h-3.5' />
+                  Add Driver
+                </button>
               </div>
             </div>
 
@@ -382,6 +387,49 @@ const AdminDrivers = () => {
         </div>
 
       </div>
+
+      {/* Create Driver modal */}
+      {creating && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-lg w-full max-w-md p-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <h2 className='text-lg font-semibold'>Add Driver</h2>
+              <button onClick={() => setCreating(false)} className='text-gray-500'>Close</button>
+            </div>
+            <div className='space-y-3'>
+              <div>
+                <label className='text-xs text-gray-500'>Full Name</label>
+                <input className='input-field mt-1 w-full' value={createForm.fullName} onChange={e => setCreateForm(f => ({ ...f, fullName: e.target.value }))} placeholder='John Doe' />
+              </div>
+              <div>
+                <label className='text-xs text-gray-500'>Email</label>
+                <input className='input-field mt-1 w-full' type='email' value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder='driver@example.com' />
+              </div>
+              <div>
+                <label className='text-xs text-gray-500'>Password</label>
+                <input className='input-field mt-1 w-full' type='password' value={createForm.password} onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} placeholder='Minimum 8 characters' />
+              </div>
+              <div className='flex items-center justify-end gap-2 pt-2'>
+                <button className='border px-3 py-2 rounded-md' onClick={() => setCreating(false)}>Cancel</button>
+                <button
+                  className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center'
+                  onClick={async () => {
+                    try {
+                      const payload = { ...createForm, role: 'DRIVER' };
+                      await axiosInstance.post('auth/admin/users', payload);
+                      setCreating(false);
+                      setCreateForm({ fullName: '', email: '', password: '' });
+                      fetchDrivers();
+                    } catch (_) { /* silent */ }
+                  }}
+                >
+                  Create
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Details modal */}
       {selected && (

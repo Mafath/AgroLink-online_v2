@@ -256,3 +256,57 @@ export const adminDeleteUser = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
+
+// Admin: create user (ADMIN/DRIVER/others) with password
+export const adminCreateUser = async (req, res) => {
+  try {
+    const { email, password, role = 'DRIVER', fullName } = req.body || {};
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Email and password are required' } });
+    }
+
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } });
+    }
+
+    const normalizedRole = String(role || 'DRIVER').toUpperCase();
+    const allowedRoles = ['ADMIN', 'DRIVER', 'FARMER', 'BUYER'];
+    if (!allowedRoles.includes(normalizedRole)) {
+      return res.status(400).json({ error: { code: 'ROLE_INVALID', message: 'Invalid role' } });
+    }
+
+    const existing = await User.findOne({ email: email.toLowerCase().trim() });
+    if (existing) {
+      return res
+        .status(409)
+        .json({ error: { code: 'EMAIL_IN_USE', message: 'Email already registered' } });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const displayName = (typeof fullName === 'string' && fullName.trim()) ? fullName.trim() : email.split('@')[0];
+    const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff&rounded=true&size=128`;
+
+    const newUser = new User({
+      email: email.toLowerCase().trim(),
+      passwordHash,
+      role: normalizedRole,
+      fullName: typeof fullName === 'string' ? fullName.trim() : '',
+      profilePic: defaultAvatar,
+    });
+
+    await newUser.save();
+
+    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role, fullName: newUser.fullName });
+  } catch (error) {
+    console.log('Error in adminCreateUser: ', error.message);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};
