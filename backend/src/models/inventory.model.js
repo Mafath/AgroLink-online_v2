@@ -7,7 +7,6 @@ const inventoryProductSchema = new mongoose.Schema(
       required: true,
       trim: true,
       maxlength: 200,
-      index: true,
     },
     category: {
       type: String,
@@ -21,7 +20,6 @@ const inventoryProductSchema = new mongoose.Schema(
         'irrigation',
       ],
       lowercase: true,
-      index: true,
     },
     description: {
       type: String,
@@ -44,7 +42,6 @@ const inventoryProductSchema = new mongoose.Schema(
       required: true,
       min: 0,
       default: 0,
-      index: true,
     },
     price: {
       type: Number,
@@ -55,7 +52,6 @@ const inventoryProductSchema = new mongoose.Schema(
       type: String,
       enum: ['Available', 'Low stock', 'Out of stock'],
       default: 'Available',
-      index: true,
     },
   },
   { timestamps: true },
@@ -69,7 +65,7 @@ inventoryProductSchema.index({ name: 'text', description: 'text' }); // Text sea
 inventoryProductSchema.index({ category: 1, status: 1 }); // Compound index for common filters
 inventoryProductSchema.index({ stockQuantity: 1 }); // For stock-based queries
 
-const InventoryProduct = mongoose.model("Inventoryitem", inventoryProductSchema);
+const InventoryProduct = mongoose.model("Inventoryproduct", inventoryProductSchema);
 
 export default InventoryProduct;
 
