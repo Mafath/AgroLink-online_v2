@@ -128,7 +128,7 @@ const AdminInventory = () => {
   const [inventoryItems, setInventoryItems] = useState([])
   const [isLoadingInventory, setIsLoadingInventory] = useState(false)
   const [inventorySortMode, setInventorySortMode] = useState('newest')
-  const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', image: '', stockQuantity: '', price: '', description: '' })
+  const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', images: [], stockQuantity: '', price: '', description: '' })
 
   const loadRentals = async () => {
     try {
@@ -183,18 +183,22 @@ const AdminInventory = () => {
   // Inventory metrics
   const inventoryMetrics = useMemo(() => {
     const totalItems = inventoryItems.length
-    const lowStockItems = inventoryItems.filter(item => Number(item.stockQuantity || 0) < 10).length
+    const lowStockItems = inventoryItems.filter(item => Number(item.stockQuantity || 0) < 15).length
     const totalValue = inventoryItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.stockQuantity || 0)), 0)
     const categories = inventoryItems.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + 1
       return acc
     }, {})
 
+    // All possible categories from the model enum
+    const allCategories = ['seeds', 'fertilizers', 'pesticides', 'chemicals', 'equipment', 'irrigation']
+
     return {
       totalItems,
       lowStockItems,
       totalValue,
-      categories
+      categories,
+      allCategoriesCount: allCategories.length
     }
   }, [inventoryItems])
 
@@ -253,15 +257,14 @@ const AdminInventory = () => {
         name: inventoryForm.name,
         category: inventoryForm.category,
         description: inventoryForm.description,
-        image: inventoryForm.image,
+        images: inventoryForm.images,
         stockQuantity: Number(inventoryForm.stockQuantity || 0),
         price: Number(inventoryForm.price || 0),
-        status: 'Available',
       }
       await axiosInstance.post('inventory', payload)
       setIsAddOpen(false)
       setIsAddInventory(false)
-      setInventoryForm({ name: '', category: 'seeds', image: '', stockQuantity: '', price: '', description: '' })
+      setInventoryForm({ name: '', category: 'seeds', images: [], stockQuantity: '', price: '', description: '' })
       loadInventory()
     } catch (err) {
       // optional: surface error
@@ -291,7 +294,59 @@ const AdminInventory = () => {
 
           {/* Main content */}
           <div className='space-y-6'>
-            
+            {/* Top cards row: Inventory Metrics */}
+            <div className='grid grid-cols-4 gap-6'>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Total Items</div>
+                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.totalItems}</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full'>All Categories</span>
+                    </div>
+                  </div>
+                  <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
+                    <Package className='w-6 h-6 text-blue-600' />
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Low Stock Items</div>
+                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.lowStockItems}</div>
+                    <div className='mt-3 text-xs text-gray-600'>Need Restocking</div>
+                  </div>
+                  <div className='w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center'>
+                    <AlertTriangle className='w-6 h-6 text-red-600' />
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Total Value</div>
+                    <div className='text-2xl font-semibold mt-1'>LKR {inventoryMetrics.totalValue.toLocaleString()}</div>
+                    <div className='mt-3 text-xs text-gray-600'>Inventory Worth</div>
+                  </div>
+                  <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
+                    <DollarSign className='w-6 h-6 text-green-600' />
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Categories</div>
+                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.allCategoriesCount}</div>
+                    <div className='mt-3 text-xs text-gray-600'>Total Categories</div>
+                  </div>
+                  <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center'>
+                    <BarChart3 className='w-6 h-6 text-purple-600' />
+                  </div>
+                </div>
+              </Card>
+            </div>
 
             {/* Inventory table */}
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
@@ -314,17 +369,17 @@ const AdminInventory = () => {
                   <button className='btn-primary whitespace-nowrap' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
                 </div>
               </div>
-              <div className='max-h-[256px] overflow-y-auto'>
+              <div className='max-h-[240px] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
                   <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-1 px-3 text-center'>Name</th>
-                      <th className='py-1 px-3 text-center'>Category</th>
-                      <th className='py-1 px-3 text-center'>Image</th>
-                      <th className='py-1 px-3 text-center'>Stock Qty</th>
-                      <th className='py-1 px-3 text-center'>Price</th>
-                      <th className='py-1 px-3 text-center'>Status</th>
-                      <th className='py-1 px-3 text-center'>Actions</th>
+                      <th className='py-3 px-3 text-left'>Name</th>
+                      <th className='py-3 px-3 text-center'>Category</th>
+                      <th className='py-3 px-3 text-center'>Image</th>
+                      <th className='py-3 px-3 text-center'>Stock Qty</th>
+                      <th className='py-3 px-3 text-center'>Price</th>
+                      <th className='py-3 px-3 text-center'>Status</th>
+                      <th className='py-3 px-3 text-center'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -335,13 +390,36 @@ const AdminInventory = () => {
                     ) : (
                       inventorySorted.map((it) => (
                         <tr key={it._id} className='border-t'>
-                          <td className='py-2 px-3 text-center'>{it.name}</td>
-                          <td className='py-2 px-3 text-center capitalize'>{it.category}</td>
-                          <td className='py-2 px-3 text-center'>{it.image ? <img src={it.image} alt={it.name} className='w-10 h-10 rounded object-cover inline-block'/> : <span className='text-gray-400'>—</span>}</td>
-                          <td className='py-2 px-3 text-center'>{it.stockQuantity}</td>
-                          <td className='py-2 px-3 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
-                          <td className='py-2 px-3 text-center'>{it.status}</td>
-                          <td className='py-2 px-3 text-center'>
+                          <td className='py-1 px-3 ml-3 text-left'>{it.name}</td>
+                          <td className='py-1 px-3 text-left capitalize'>{it.category}</td>
+                          <td className='py-1 px-3 text-left'>
+                            {it.images && it.images.length > 0 ? (
+                              <div className='flex gap-1'>
+                                {it.images.slice(0, 2).map((img, idx) => (
+                                  <img key={idx} src={img} alt={`${it.name} ${idx + 1}`} className='w-8 h-8 rounded object-cover'/>
+                                ))}
+                                {it.images.length > 2 && (
+                                  <div className='w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
+                                    +{it.images.length - 2}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <span className='text-gray-400'>—</span>
+                            )}
+                          </td>
+                          <td className='py-1 px-3 text-center'>{it.stockQuantity}</td>
+                          <td className='py-1 px-3 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
+                          <td className='py-1 px-3 text-center'>
+                            <span className={`px-2 py-1 text-xs rounded-full ${
+                              it.status === 'Available' ? 'bg-purple-100 text-purple-700' :
+                              it.status === 'Low stock' ? 'bg-yellow-100 text-yellow-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {it.status}
+                            </span>
+                          </td>
+                          <td className='py-1 px-3 text-center'>
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isInventory:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info
@@ -370,7 +448,7 @@ const AdminInventory = () => {
             <button onClick={()=>{ setViewItem(null); setIsEditing(false); }} className='text-gray-500'>Close</button>
           </div>
           {isEditing ? (
-            <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, image:viewItem.image, stockQuantity:Number(viewItem.stockQuantity), price:Number(viewItem.price), status:viewItem.status }; await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(_){}}} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, images:viewItem.images, stockQuantity:Number(viewItem.stockQuantity), price:Number(viewItem.price) }; await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(_){}}} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               <div>
                 <label className='form-label'>{viewItem.isInventory ? 'Name' : 'Product name'}</label>
                 <input className='input-field' value={(viewItem.isInventory ? viewItem.name : viewItem.productName) || ''} onChange={(e)=>setViewItem(v=> v.isInventory ? ({...v, name:e.target.value}) : ({...v, productName:e.target.value}))} required />
@@ -485,59 +563,6 @@ const AdminInventory = () => {
         </div>
       </div>
     )}
-            {/* Top cards row: Inventory Metrics */}
-            <div className='grid grid-cols-4 gap-6'>
-              <Card className='col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Total Items</div>
-                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.totalItems}</div>
-                    <div className='mt-3'>
-                      <span className='text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full'>All Categories</span>
-                    </div>
-                  </div>
-                  <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
-                    <Package className='w-6 h-6 text-blue-600' />
-                  </div>
-                </div>
-              </Card>
-              <Card className='col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Low Stock Items</div>
-                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.lowStockItems}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Need Restocking</div>
-                  </div>
-                  <div className='w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center'>
-                    <AlertTriangle className='w-6 h-6 text-red-600' />
-                  </div>
-                </div>
-              </Card>
-              <Card className='col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Total Value</div>
-                    <div className='text-2xl font-semibold mt-1'>LKR {inventoryMetrics.totalValue.toLocaleString()}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Inventory Worth</div>
-                  </div>
-                  <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
-                    <DollarSign className='w-6 h-6 text-green-600' />
-                  </div>
-                </div>
-              </Card>
-              <Card className='col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Categories</div>
-                    <div className='text-2xl font-semibold mt-1'>{Object.keys(inventoryMetrics.categories).length}</div>
-                    <div className='mt-3 text-xs text-gray-600'>Active Categories</div>
-                  </div>
-                  <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center'>
-                    <BarChart3 className='w-6 h-6 text-purple-600' />
-                  </div>
-                </div>
-              </Card>
-            </div>
 
             {/* Middle cards: Inventory Charts */}
             <div className='grid grid-cols-4 gap-6'>
@@ -714,9 +739,19 @@ const AdminInventory = () => {
                 <input type='number' min='0' step='0.01' className='input-field' value={inventoryForm.price} onChange={(e)=>setInventoryForm(f=>({...f, price:e.target.value}))} required />
               </div>
               <div className='md:col-span-2'>
-                <label className='form-label'>Image</label>
-                <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setInventoryForm(v=>({...v, image:r.result})); r.readAsDataURL(f); }} />
-                {inventoryForm.image && <img src={inventoryForm.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
+                <label className='form-label'>Images (up to 4)</label>
+                <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
+                  const files = Array.from(e.target.files||[]).slice(0,4)
+                  const readers = files.map(file=> new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(file) }))
+                  Promise.all(readers).then(results=> setInventoryForm(f=>({...f, images: results})))
+                }} />
+                {Array.isArray(inventoryForm.images) && inventoryForm.images.length>0 && (
+                  <div className='mt-2 grid grid-cols-4 gap-2'>
+                    {inventoryForm.images.map((src, idx)=> (
+                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                    ))}
+                  </div>
+                )}
               </div>
               <div className='md:col-span-2'>
                 <label className='form-label'>Description</label>
