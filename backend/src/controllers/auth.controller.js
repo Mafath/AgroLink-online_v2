@@ -263,7 +263,16 @@ export const adminUpdateUser = async (req, res) => {
     const allowed = ['role', 'status', 'availability', 'service_area'];
     for (const key of allowed) {
       if (req.body[key] != null) {
-        updates[key] = typeof req.body[key] === 'string' ? req.body[key].toUpperCase?.() || req.body[key] : req.body[key];
+        const val = req.body[key];
+        if (typeof val === 'string') {
+          if (key === 'role' || key === 'status' || key === 'availability') {
+            updates[key] = val.toUpperCase();
+          } else if (key === 'service_area') {
+            updates[key] = val.trim();
+          }
+        } else {
+          updates[key] = val;
+        }
       }
     }
     // Only drivers can have availability; if role switched to DRIVER and availability omitted, default to UNAVAILABLE
