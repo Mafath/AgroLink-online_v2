@@ -211,10 +211,7 @@ const AdminDrivers = () => {
                 <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
-                    <th className='py-3 pr-8 pl-6 text-center align-middle'>Role</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
-                    <th className='py-3 px-3 text-center align-middle'>Joined</th>
-                    <th className='py-3 px-3 text-center align-middle'>Last login</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
                   </tr>
@@ -222,10 +219,10 @@ const AdminDrivers = () => {
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td className='py-6 text-center text-gray-500' colSpan={7}>Loading…</td>
+                      <td className='py-6 text-center text-gray-500' colSpan={4}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={7}>No drivers</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={4}>No drivers</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -239,30 +236,10 @@ const AdminDrivers = () => {
                           <span className='text-sm font-medium'>{u.fullName || '—'}</span>
                         </div>
                       </td>
-                     <td className='py-2 pr-8 pl-6 text-center align-middle'>
-                       <span className='inline-flex items-center justify-center gap-1'>
-                         {u.role === 'ADMIN' ? (
-                           <Shield className='w-3.5 h-3.5 text-violet-600' />
-                         ) : u.role === 'FARMER' ? (
-                           <Sprout className='w-3.5 h-3.5 text-green-600' />
-                         ) : u.role === 'BUYER' ? (
-                           <ShoppingCart className='w-3.5 h-3.5 text-blue-600' />
-                         ) : (
-                           <Truck className='w-3.5 h-3.5 text-amber-600' />
-                         )}
-                         {u.role && u.role.charAt(0) + u.role.slice(1).toLowerCase()}
-                       </span>
-                     </td>
                      <td className='py-2 pl-8 pr-3 text-left align-middle'>
                         <div>{u.email}</div>
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
-                    <td className='py-2 px-3 text-center align-middle'>
-                      {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
-                    </td>
-                    <td className='py-2 px-3 text-center align-middle'>
-                      {formatRelativeTime(u.lastLogin || u.createdAt)}
-                    </td>
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
