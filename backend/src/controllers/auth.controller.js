@@ -120,12 +120,21 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic, fullName, phone, address, bio } = req.body;
+    const { profilePic, fullName, phone, address, bio, availability } = req.body;
     const userId = req.user._id;
 
     const updateFields = {};
     if (typeof fullName === 'string') {
       updateFields.fullName = fullName.trim();
+    }
+    if (typeof availability === 'string') {
+      const me = await User.findById(userId).select('role');
+      if (String(me.role).toUpperCase() === 'DRIVER') {
+        const normalized = availability.toUpperCase();
+        if (['AVAILABLE','UNAVAILABLE'].includes(normalized)) {
+          updateFields.availability = normalized;
+        }
+      }
     }
     if (typeof phone === 'string') {
       updateFields.phone = phone.trim();
@@ -213,6 +222,10 @@ export const adminListUsers = async (req, res) => {
     const filter = {};
     if (req.query.role) filter.role = String(req.query.role).toUpperCase();
     if (req.query.status) filter.status = String(req.query.status).toUpperCase();
+    if (req.query.availability) {
+      filter.role = 'DRIVER';
+      filter.availability = String(req.query.availability).toUpperCase();
+    }
     const users = await User.find(filter)
       .sort({ createdAt: -1 })
       .select('-passwordHash');
@@ -229,11 +242,20 @@ export const adminUpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = {};
-    const allowed = ['role', 'status'];
+    const allowed = ['role', 'status', 'availability'];
     for (const key of allowed) {
       if (req.body[key] != null) {
         updates[key] = typeof req.body[key] === 'string' ? req.body[key].toUpperCase?.() || req.body[key] : req.body[key];
       }
+    }
+    // Only drivers can have availability; if role switched to DRIVER and availability omitted, default to UNAVAILABLE
+    if (updates.availability) {
+      const target = await User.findById(id).select('role');
+      if (!target) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
+      if (String(target.role).toUpperCase() !== 'DRIVER') delete updates.availability;
+    }
+    if (updates.role && updates.role.toUpperCase && updates.role.toUpperCase() === 'DRIVER' && updates.availability == null) {
+      updates.availability = 'UNAVAILABLE';
     }
     const updated = await User.findByIdAndUpdate(id, updates, { new: true }).select('-passwordHash');
     if (!updated) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
@@ -260,7 +282,7 @@ export const adminDeleteUser = async (req, res) => {
 // Admin: create user (ADMIN/DRIVER/others) with password
 export const adminCreateUser = async (req, res) => {
   try {
-    const { email, password, role = 'DRIVER', fullName } = req.body || {};
+    const { email, password, role = 'DRIVER', fullName, availability } = req.body || {};
 
     if (!email || !password) {
       return res
@@ -300,6 +322,7 @@ export const adminCreateUser = async (req, res) => {
       role: normalizedRole,
       fullName: typeof fullName === 'string' ? fullName.trim() : '',
       profilePic: defaultAvatar,
+      availability: normalizedRole === 'DRIVER' ? (String(availability || 'UNAVAILABLE').toUpperCase()) : undefined,
     });
 
     await newUser.save();

@@ -52,6 +52,11 @@ const userSchema = new mongoose.Schema(
       default: "ACTIVE",
       index: true,
     },
+    availability: {
+      type: String,
+      enum: ["AVAILABLE", "UNAVAILABLE"],
+      index: true,
+    },
     lastLogin: {
       type: Date,
       default: null,
