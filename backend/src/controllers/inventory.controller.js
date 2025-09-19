@@ -1,4 +1,5 @@
 import InventoryProduct from "../models/inventory.model.js";
+import cloudinary from "../lib/cloudinary.js";
 
 export const listInventory = async (_req, res) => {
   try {
@@ -20,12 +21,32 @@ export const createInventory = async (req, res) => {
     } else if (stockQuantity < 15) {
       autoStatus = 'Low stock';
     }
+
+    let imageUrls = [];
+    if (Array.isArray(images) && images.length) {
+      const limited = images.slice(0, 4);
+      try {
+        const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+        if (haveCloudinary) {
+          const uploads = await Promise.all(
+            limited.map((img) => cloudinary.uploader.upload(img))
+          );
+          imageUrls = uploads.map(u => u.secure_url);
+        } else {
+          imageUrls = limited;
+        }
+      } catch (e) {
+        console.log('Image upload error:', e.message);
+        // continue without images instead of failing
+        imageUrls = [];
+      }
+    }
     
     const item = await InventoryProduct.create({ 
       name, 
       category, 
       description, 
-      images, 
+      images: imageUrls, 
       stockQuantity, 
       price, 
       status: autoStatus 
@@ -52,12 +73,31 @@ export const updateInventory = async (req, res) => {
         autoStatus = 'Available';
       }
     }
+
+    let imageUrls = undefined;
+    if (Array.isArray(images)) {
+      const limited = images.slice(0, 4);
+      try {
+        const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
+        if (haveCloudinary) {
+          const uploads = await Promise.all(
+            limited.map((img) => cloudinary.uploader.upload(img))
+          );
+          imageUrls = uploads.map(u => u.secure_url);
+        } else {
+          imageUrls = limited;
+        }
+      } catch (e) {
+        console.log('Image upload error:', e.message);
+        // continue without updating images
+      }
+    }
     
     const update = {
       ...(name !== undefined && { name }),
       ...(category !== undefined && { category }),
       ...(description !== undefined && { description }),
-      ...(images !== undefined && { images }),
+      ...(imageUrls !== undefined && { images: imageUrls }),
       ...(stockQuantity !== undefined && { stockQuantity }),
       ...(price !== undefined && { price }),
       ...(autoStatus !== undefined && { status: autoStatus }),
