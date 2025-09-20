@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import logoImg from '../assets/AgroLink logo3.png'
+import { getUserCartCount } from '../lib/cartUtils'
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -17,6 +18,32 @@ const Navbar = () => {
   const triggerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+
+  // Update cart count when user changes
+  useEffect(() => {
+    if (authUser) {
+      const userId = authUser._id || authUser.id;
+      const count = getUserCartCount(userId);
+      setCartCount(count);
+    } else {
+      setCartCount(0);
+    }
+  }, [authUser]);
+
+  // Listen for storage changes to update cart count
+  useEffect(() => {
+    const handleStorageChange = () => {
+      if (authUser) {
+        const userId = authUser._id || authUser.id;
+        const count = getUserCartCount(userId);
+        setCartCount(count);
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [authUser]);
 
   const handleLogout = async () => {
     await logout();
@@ -107,7 +134,7 @@ const Navbar = () => {
                   >
                     <ShoppingCart className="w-5 h-5" />
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {JSON.parse(localStorage.getItem('cart') || '[]').length}
+                      {cartCount}
                     </span>
                   </button>
                 )}

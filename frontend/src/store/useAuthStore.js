@@ -1,6 +1,7 @@
 // here we can have bunch of different states and functions that we can use in our components
 import { create } from "zustand";
 import { axiosInstance, setAccessToken, clearAccessToken } from "../lib/axios.js";
+import { clearUserCart } from "../lib/cartUtils.js";
 import toast from "react-hot-toast";
 
 
@@ -53,7 +54,15 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
 
   logout: async () => {
     try {
+      const currentUser = useAuthStore.getState().authUser;
       await axiosInstance.post("/auth/logout");
+      
+      // Clear user-specific cart data
+      if (currentUser) {
+        const userId = currentUser._id || currentUser.id;
+        clearUserCart(userId);
+      }
+      
       set({ authUser: null });
       clearAccessToken();
       sessionStorage.removeItem('accessToken');

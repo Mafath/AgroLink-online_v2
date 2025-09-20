@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema({
-  listing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing', required: true },
+  listing: { type: mongoose.Schema.Types.ObjectId, required: true }, // Can reference Listing or InventoryProduct
+  itemType: { type: String, enum: ['listing', 'inventory'], required: true },
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
   title: { type: String, required: true },
