@@ -4,7 +4,6 @@ import toast from 'react-hot-toast'
 import { ChevronDown, X, ShoppingCart, Plus } from 'lucide-react'
 import { useAuthStore } from '../store/useAuthStore'
 import { addToUserCart } from '../lib/cartUtils'
-import { testCartFunctionality, testLocalStorage } from '../lib/cartTest'
 
 const Marketplace = () => {
   const { authUser } = useAuthStore()
@@ -163,37 +162,6 @@ const Marketplace = () => {
   return (
     <div className='p-4 mb-20 max-w-6xl mx-auto'>
       <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>Marketplace</h2>
-      
-      {/* Debug buttons - remove in production */}
-      <div className='mb-4 flex gap-2 justify-center'>
-        <button 
-          onClick={() => {
-            console.log('Testing localStorage...');
-            testLocalStorage();
-          }}
-          className='px-3 py-1 bg-blue-500 text-white text-xs rounded'
-        >
-          Test localStorage
-        </button>
-        <button 
-          onClick={() => {
-            console.log('Testing cart functionality...');
-            testCartFunctionality();
-          }}
-          className='px-3 py-1 bg-green-500 text-white text-xs rounded'
-        >
-          Test Cart
-        </button>
-        <button 
-          onClick={() => {
-            console.log('Current authUser:', authUser);
-            console.log('Current items:', items);
-          }}
-          className='px-3 py-1 bg-purple-500 text-white text-xs rounded'
-        >
-          Debug Info
-        </button>
-      </div>
       <div className='relative mb-6 flex items-center'>
         <div className='mx-auto max-w-md w-full'>
           <input
