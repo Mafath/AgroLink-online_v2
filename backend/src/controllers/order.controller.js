@@ -7,6 +7,10 @@ export const createOrder = async (req, res) => {
   try {
     const { items, deliveryType, deliveryAddress, contactName, contactPhone, notes, paymentMethod } = req.body;
     
+    console.log('=== ORDER CREATION DEBUG ===');
+    console.log('Request body items:', JSON.stringify(items, null, 2));
+    console.log('User:', req.user);
+    
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Items are required' } });
     }
@@ -28,11 +32,14 @@ export const createOrder = async (req, res) => {
     const validatedItems = [];
 
     for (const item of items) {
+      console.log('Processing item:', item);
       // Check if this is an inventory item or listing item
       if (item.inventoryId) {
+        console.log('Processing as inventory item:', item.inventoryId);
         // Handle inventory items
         const inventoryItem = await InventoryProduct.findById(item.inventoryId);
         if (!inventoryItem) {
+          console.log('Inventory item not found:', item.inventoryId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Inventory item ${item.inventoryId} not found` } });
         }
 
@@ -56,9 +63,11 @@ export const createOrder = async (req, res) => {
           image: inventoryItem.images?.[0] || '',
         });
       } else if (item.listingId) {
+        console.log('Processing as listing item:', item.listingId);
         // Handle listing items
         const listing = await Listing.findById(item.listingId);
         if (!listing) {
+          console.log('Listing not found:', item.listingId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${item.listingId} not found` } });
         }
 

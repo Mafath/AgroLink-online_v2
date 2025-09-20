@@ -85,10 +85,26 @@ const StripeStyleCheckout = () => {
 
       // Prepare order data
       const orderData = {
-        items: checkoutData.cart.map(item => ({
-          listingId: item.listingId || item.inventoryId || item.id,
-          quantity: item.quantity
-        })),
+        items: checkoutData.cart.map(item => {
+          // Create the correct item structure based on what type it is
+          if (item.inventoryId) {
+            return {
+              inventoryId: item.inventoryId,
+              quantity: item.quantity
+            };
+          } else if (item.listingId) {
+            return {
+              listingId: item.listingId,
+              quantity: item.quantity
+            };
+          } else {
+            // Fallback for items that might only have 'id'
+            return {
+              inventoryId: item.id,
+              quantity: item.quantity
+            };
+          }
+        }),
         deliveryType: checkoutData.deliveryType,
         contactName: formData.cardholderName,
         contactPhone: authUser?.phone || formData.phone || '',
@@ -108,9 +124,10 @@ const StripeStyleCheckout = () => {
       }
 
       console.log('=== DEBUGGING ORDER CREATION ===');
+      console.log('Original cart items:', checkoutData.cart);
+      console.log('Mapped order items:', orderData.items);
       console.log('Sending order data:', JSON.stringify(orderData, null, 2));
       console.log('Checkout data:', JSON.stringify(checkoutData, null, 2));
-      console.log('Cart items:', checkoutData.cart);
       console.log('Form data:', formData);
       
       // Check if any cart items have invalid IDs
