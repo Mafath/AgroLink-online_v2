@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart, Truck, Package, Trash2, Plus, Minus } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
+import toast from 'react-hot-toast';
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -21,6 +22,16 @@ const CartPage = () => {
 
   const updateQuantity = (index, newQuantity) => {
     if (newQuantity < 1) return;
+    
+    const item = cart[index];
+    const maxQuantity = item.stockQuantity || item.capacity;
+    
+    // Check if new quantity exceeds available capacity/stock
+    if (maxQuantity && newQuantity > maxQuantity) {
+      toast.error(`Quantity cannot exceed available ${item.stockQuantity ? 'stock' : 'capacity'} (${maxQuantity} ${item.stockQuantity ? 'units' : 'kg'})`);
+      return;
+    }
+    
     const updatedCart = [...cart];
     updatedCart[index].quantity = newQuantity;
     setCart(updatedCart);
@@ -117,6 +128,11 @@ const CartPage = () => {
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900">{item.title}</h3>
                           <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} each</p>
+                          {(item.stockQuantity || item.capacity) && (
+                            <p className="text-xs text-gray-500">
+                              Available: {item.stockQuantity || item.capacity} {item.stockQuantity ? 'units' : 'kg'}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
