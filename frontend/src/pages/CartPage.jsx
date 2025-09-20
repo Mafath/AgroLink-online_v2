@@ -71,7 +71,7 @@ const CartPage = () => {
       total: calculateTotal()
     }));
 
-    navigate('/payment');
+    navigate('/stripe-checkout');
   };
 
   if (!authUser) {
