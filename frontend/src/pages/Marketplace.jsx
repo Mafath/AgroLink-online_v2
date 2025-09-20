@@ -3,6 +3,8 @@ import { axiosInstance } from '../lib/axios'
 import toast from 'react-hot-toast'
 import { ChevronDown, X, ShoppingCart, Plus } from 'lucide-react'
 import { useAuthStore } from '../store/useAuthStore'
+import { addToUserCart } from '../lib/cartUtils'
+import { testCartFunctionality, testLocalStorage } from '../lib/cartTest'
 
 const Marketplace = () => {
   const { authUser } = useAuthStore()
@@ -40,8 +42,8 @@ const Marketplace = () => {
   }, [isFarmer])
 
   const filteredItems = (Array.isArray(items) ? items : []).filter((it) => {
-    const query = q.trim().toLowerCase()
-    if (!query) return true
+    const query = q.trim().toLowerCase();
+    if (!query) return true;
     
     if (isFarmer) {
       // For inventory items
@@ -86,6 +88,26 @@ const Marketplace = () => {
   })
 
   const addToCart = (item) => {
+    console.log('addToCart called with:', { item, authUser, isFarmer });
+    
+    if (!authUser) {
+      toast.error('Please login to add items to cart');
+      return;
+    }
+
+    const userId = authUser._id || authUser.id;
+    if (!userId) {
+      console.error('User ID is missing:', authUser);
+      toast.error('User authentication error. Please login again.');
+      return;
+    }
+
+    if (!item || !item._id) {
+      console.error('Invalid item:', item);
+      toast.error('Invalid item. Please try again.');
+      return;
+    }
+
     const quantity = quantities[item._id] || 1;
     if (quantity < 1) {
       toast.error('Please enter a valid quantity');
@@ -106,41 +128,32 @@ const Marketplace = () => {
       }
     }
 
-    const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-    const existingItemIndex = cart.findIndex(cartItem => cartItem.id === item._id);
+    // Use the user-specific cart utility function
+    console.log('Adding to cart:', { 
+      userId: userId, 
+      item: {
+        _id: item._id,
+        name: item.name,
+        cropName: item.cropName,
+        price: item.price,
+        pricePerKg: item.pricePerKg,
+        stockQuantity: item.stockQuantity,
+        capacityKg: item.capacityKg,
+        images: item.images,
+        category: item.category
+      }, 
+      quantity 
+    });
     
-    if (existingItemIndex > -1) {
-      cart[existingItemIndex].quantity += quantity;
+    const success = addToUserCart(userId, item, quantity);
+    
+    if (success) {
+      toast.success('Added to cart');
+      setQuantities({ ...quantities, [item._id]: 1 });
     } else {
-      if (isFarmer) {
-        // For inventory items
-        cart.push({
-          id: item._id,
-          inventoryId: item._id,
-          title: item.name,
-          price: item.price,
-          image: item.images?.[0] || '',
-          quantity: quantity,
-          stockQuantity: item.stockQuantity,
-          category: item.category
-        });
-      } else {
-        // For listing items
-        cart.push({
-          id: item._id,
-          listingId: item._id,
-          title: item.cropName,
-          price: item.pricePerKg,
-          image: item.images?.[0] || '',
-          quantity: quantity,
-          capacity: item.capacityKg
-        });
-      }
+      console.error('Failed to add item to cart:', { item, quantity, userId: userId });
+      toast.error('Failed to add item to cart');
     }
-    
-    localStorage.setItem('cart', JSON.stringify(cart));
-    toast.success('Added to cart');
-    setQuantities({ ...quantities, [item._id]: 1 });
   };
 
   const updateQuantity = (itemId, quantity) => {
@@ -150,6 +163,37 @@ const Marketplace = () => {
   return (
     <div className='p-4 mb-20 max-w-6xl mx-auto'>
       <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>Marketplace</h2>
+      
+      {/* Debug buttons - remove in production */}
+      <div className='mb-4 flex gap-2 justify-center'>
+        <button 
+          onClick={() => {
+            console.log('Testing localStorage...');
+            testLocalStorage();
+          }}
+          className='px-3 py-1 bg-blue-500 text-white text-xs rounded'
+        >
+          Test localStorage
+        </button>
+        <button 
+          onClick={() => {
+            console.log('Testing cart functionality...');
+            testCartFunctionality();
+          }}
+          className='px-3 py-1 bg-green-500 text-white text-xs rounded'
+        >
+          Test Cart
+        </button>
+        <button 
+          onClick={() => {
+            console.log('Current authUser:', authUser);
+            console.log('Current items:', items);
+          }}
+          className='px-3 py-1 bg-purple-500 text-white text-xs rounded'
+        >
+          Debug Info
+        </button>
+      </div>
       <div className='relative mb-6 flex items-center'>
         <div className='mx-auto max-w-md w-full'>
           <input

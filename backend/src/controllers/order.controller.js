@@ -1,6 +1,7 @@
 import Order from '../models/order.model.js';
 import Delivery from '../models/delivery.model.js';
 import Listing from '../models/listing.model.js';
+import InventoryProduct from '../models/inventory.model.js';
 
 export const createOrder = async (req, res) => {
   try {
@@ -27,29 +28,62 @@ export const createOrder = async (req, res) => {
     const validatedItems = [];
 
     for (const item of items) {
-      const listing = await Listing.findById(item.listingId);
-      if (!listing) {
-        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${item.listingId} not found` } });
+      // Check if this is an inventory item or listing item
+      if (item.inventoryId) {
+        // Handle inventory items
+        const inventoryItem = await InventoryProduct.findById(item.inventoryId);
+        if (!inventoryItem) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Inventory item ${item.inventoryId} not found` } });
+        }
+
+        if (inventoryItem.status === 'Out of stock') {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `${inventoryItem.name} is out of stock` } });
+        }
+
+        if (inventoryItem.stockQuantity < item.quantity) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${inventoryItem.name}` } });
+        }
+
+        const itemTotal = inventoryItem.price * item.quantity;
+        subtotal += itemTotal;
+
+        validatedItems.push({
+          listing: inventoryItem._id,
+          itemType: 'inventory',
+          quantity: item.quantity,
+          price: inventoryItem.price,
+          title: inventoryItem.name,
+          image: inventoryItem.images?.[0] || '',
+        });
+      } else if (item.listingId) {
+        // Handle listing items
+        const listing = await Listing.findById(item.listingId);
+        if (!listing) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${item.listingId} not found` } });
+        }
+
+        if (listing.status !== 'AVAILABLE') {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${listing.cropName} is not available` } });
+        }
+
+        if (listing.capacityKg < item.quantity) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${listing.cropName}` } });
+        }
+
+        const itemTotal = listing.pricePerKg * item.quantity;
+        subtotal += itemTotal;
+
+        validatedItems.push({
+          listing: listing._id,
+          itemType: 'listing',
+          quantity: item.quantity,
+          price: listing.pricePerKg,
+          title: listing.cropName,
+          image: listing.images?.[0] || '',
+        });
+      } else {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Item must have either inventoryId or listingId' } });
       }
-
-      if (listing.status !== 'AVAILABLE') {
-        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${listing.cropName} is not available` } });
-      }
-
-      if (listing.capacityKg < item.quantity) {
-        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${listing.cropName}` } });
-      }
-
-      const itemTotal = listing.pricePerKg * item.quantity;
-      subtotal += itemTotal;
-
-      validatedItems.push({
-        listing: listing._id,
-        quantity: item.quantity,
-        price: listing.pricePerKg,
-        title: listing.cropName,
-        image: listing.images?.[0] || '',
-      });
     }
 
     const deliveryFee = deliveryType === 'DELIVERY' ? 500 : 0; // 500 LKR delivery fee

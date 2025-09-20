@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { ArrowLeft, CreditCard, Lock, Shield } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
+import { clearUserCart } from '../lib/cartUtils';
 import toast from 'react-hot-toast';
 
 const StripeStyleCheckout = () => {
@@ -122,8 +123,11 @@ const StripeStyleCheckout = () => {
       
       const response = await axiosInstance.post('/orders', orderData);
       
-      // Clear cart and checkout data
-      localStorage.removeItem('cart');
+      // Clear user-specific cart and checkout data
+      if (authUser) {
+        const userId = authUser._id || authUser.id;
+        clearUserCart(userId);
+      }
       localStorage.removeItem('checkoutData');
       
       // Show success modal

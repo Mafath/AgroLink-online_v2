@@ -4,6 +4,12 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart, Truck, Package, Trash2, Plus, Minus } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
+import { 
+  getUserCart, 
+  saveUserCart, 
+  updateUserCartItemQuantity, 
+  removeFromUserCart 
+} from '../lib/cartUtils';
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -13,16 +19,20 @@ const CartPage = () => {
   const [deliveryType, setDeliveryType] = useState('PICKUP');
 
   useEffect(() => {
-    // Load cart from localStorage or API
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
+    // Load user-specific cart from localStorage
+    if (authUser) {
+      const userId = authUser._id || authUser.id;
+      const userCart = getUserCart(userId);
+      setCart(userCart);
+    } else {
+      setCart([]);
     }
-  }, []);
+  }, [authUser]);
 
   const updateQuantity = (index, newQuantity) => {
-    if (newQuantity < 1) return;
+    if (newQuantity < 1 || !authUser) return;
     
+    const userId = authUser._id || authUser.id;
     const item = cart[index];
     const maxQuantity = item.stockQuantity || item.capacity;
     
@@ -35,13 +45,15 @@ const CartPage = () => {
     const updatedCart = [...cart];
     updatedCart[index].quantity = newQuantity;
     setCart(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    saveUserCart(userId, updatedCart);
   };
 
   const removeItem = (index) => {
+    if (!authUser) return;
+    const userId = authUser._id || authUser.id;
     const updatedCart = cart.filter((_, i) => i !== index);
     setCart(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    saveUserCart(userId, updatedCart);
   };
 
   const calculateSubtotal = () => {
