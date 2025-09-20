@@ -90,9 +90,9 @@ const MyListings = () => {
   }
 
   const mapStatus = (s) => {
-    if (s === 'ACTIVE') return 'AVAILABLE'
-    if (s === 'SOLD_OUT') return 'SOLD'
-    if (s === 'INACTIVE') return 'REMOVED'
+    if (s === 'AVAILABLE') return 'AVAILABLE'
+    if (s === 'SOLD') return 'SOLD'
+    if (s === 'REMOVED') return 'REMOVED'
     return s
   }
 
@@ -106,10 +106,11 @@ const MyListings = () => {
       </div>
 
       <div className='card'>
+        <h3 className='text-xl font-semibold text-green-800 mb-4'>New Listings</h3>
         {loading ? (
           <div>Loading...</div>
-        ) : items.length === 0 ? (
-          <div className='text-gray-500 text-sm'>No listings yet.</div>
+        ) : items.filter(item => item.status !== 'SOLD').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No active listings yet.</div>
         ) : (
           <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
             <table className='w-full text-sm'>
@@ -125,7 +126,7 @@ const MyListings = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.map(it => (
+                {items.filter(item => item.status !== 'SOLD').map(it => (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
                     <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
@@ -142,7 +143,77 @@ const MyListings = () => {
                         <span className='text-gray-400'>No images</span>
                       )}
                     </td>
-                    <td className='py-2'>{mapStatus(it.status)}</td>
+                    <td className='py-2'>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        it.status === 'AVAILABLE' ? 'bg-blue-100 text-blue-800' :
+                        it.status === 'SOLD' ? 'bg-green-100 text-green-800' :
+                        it.status === 'REMOVED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {mapStatus(it.status)}
+                      </span>
+                    </td>
+                    <td className='py-2 pl-4'>
+                      <div className='flex gap-2'>
+                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => setInfoModal(it)}><Info className='w-3 h-3' /> Info</button>
+                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => handleOpenEdit(it)}><Edit className='w-3 h-3' /> Edit</button>
+                        <button className='border px-2 py-1 rounded-md text-xs text-red-600 flex items-center gap-1' onClick={() => setConfirmDelete(it)}><Trash2 className='w-3 h-3' /> Delete</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Sold Items Table */}
+      <div className='card mt-6'>
+        <h3 className='text-xl font-semibold text-red-800 mb-4'>Sold Items</h3>
+        {loading ? (
+          <div>Loading...</div>
+        ) : items.filter(item => item.status === 'SOLD').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No sold items yet.</div>
+        ) : (
+          <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='text-left border-b'>
+                  <th className='py-2 pr-4'>Crop</th>
+                  <th className='py-2 pr-4'>Price/kg</th>
+                  <th className='py-2 pr-4 text-center'>Capacity (kg)</th>
+                  <th className='py-2 pr-4'>Harvested Date</th>
+                  <th className='py-2 pr-4'>Sold Date</th>
+                  <th className='py-2 pr-4'>Images</th>
+                  <th className='py-2'>Status</th>
+                  <th className='py-2 pl-4'>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter(item => item.status === 'SOLD').map(it => (
+                  <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
+                    <td className='py-2 pr-4'>{it.cropName}</td>
+                    <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4 text-center'>{it.capacityKg} kg</td>
+                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4'>{it.soldAt ? new Date(it.soldAt).toLocaleDateString() : 'N/A'}</td>
+                    <td className='py-2 pr-4'>
+                      {Array.isArray(it.images) && it.images.length > 0 ? (
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                          {it.images.slice(0,4).map((src, idx) => (
+                            <img key={idx} src={src} alt={`${it.cropName} ${idx+1}`} className='w-8 h-8 object-cover rounded border' />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400 text-xs'>No images</span>
+                      )}
+                    </td>
+                    <td className='py-2'>
+                      <span className='px-2 py-1 rounded-full text-xs bg-green-100 text-green-800'>
+                        SOLD
+                      </span>
+                    </td>
                     <td className='py-2 pl-4'>
                       <div className='flex gap-2'>
                         <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => setInfoModal(it)}><Info className='w-3 h-3' /> Info</button>
