@@ -10,13 +10,21 @@ const StripeStyleCheckout = () => {
   const { authUser } = useAuthStore();
   const [checkoutData, setCheckoutData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [orderId, setOrderId] = useState(null);
   const [formData, setFormData] = useState({
     email: authUser?.email || '',
     cardNumber: '',
     expiryDate: '',
     cvc: '',
     cardholderName: '',
-    country: 'Sri Lanka'
+    country: 'Sri Lanka',
+    phone: authUser?.phone || '',
+    addressLine1: '',
+    addressLine2: '',
+    city: '',
+    state: '',
+    postalCode: ''
   });
 
   useEffect(() => {
@@ -55,9 +63,17 @@ const StripeStyleCheckout = () => {
     if (!checkoutData) return;
 
     // Basic validation
-    if (!formData.email || !formData.cardNumber || !formData.expiryDate || !formData.cvc || !formData.cardholderName) {
+    if (!formData.email || !formData.cardNumber || !formData.expiryDate || !formData.cvc || !formData.cardholderName || !formData.phone) {
       toast.error('Please fill in all required fields');
       return;
+    }
+
+    // Additional validation for delivery
+    if (checkoutData.deliveryType === 'DELIVERY') {
+      if (!formData.addressLine1 || !formData.city || !formData.state || !formData.postalCode) {
+        toast.error('Please fill in all required delivery address fields');
+        return;
+      }
     }
 
     setLoading(true);
@@ -69,34 +85,63 @@ const StripeStyleCheckout = () => {
       // Prepare order data
       const orderData = {
         items: checkoutData.cart.map(item => ({
-          listingId: item.listingId || item.id,
+          listingId: item.listingId || item.inventoryId || item.id,
           quantity: item.quantity
         })),
         deliveryType: checkoutData.deliveryType,
         contactName: formData.cardholderName,
-        contactPhone: authUser?.phone || '',
+        contactPhone: authUser?.phone || formData.phone || '',
         notes: '',
-        paymentMethod: 'CARD',
-        email: formData.email
+        paymentMethod: 'CARD'
       };
 
+      // Add delivery address if delivery type is selected
+      if (checkoutData.deliveryType === 'DELIVERY') {
+        orderData.deliveryAddress = {
+          line1: formData.addressLine1 || '',
+          line2: formData.addressLine2 || '',
+          city: formData.city || '',
+          state: formData.state || '',
+          postalCode: formData.postalCode || ''
+        };
+      }
+
+      console.log('=== DEBUGGING ORDER CREATION ===');
+      console.log('Sending order data:', JSON.stringify(orderData, null, 2));
+      console.log('Checkout data:', JSON.stringify(checkoutData, null, 2));
+      console.log('Cart items:', checkoutData.cart);
+      console.log('Form data:', formData);
+      
+      // Check if any cart items have invalid IDs
+      const invalidItems = checkoutData.cart.filter(item => !item.listingId && !item.inventoryId && !item.id);
+      if (invalidItems.length > 0) {
+        console.error('Invalid cart items found:', invalidItems);
+        toast.error('Some items in your cart are invalid. Please refresh and try again.');
+        return;
+      }
+      
       const response = await axiosInstance.post('/orders', orderData);
       
       // Clear cart and checkout data
       localStorage.removeItem('cart');
       localStorage.removeItem('checkoutData');
       
-      toast.success('Payment successful! Your order has been placed.');
-      
-      // Navigate to order confirmation
-      if (checkoutData.deliveryType === 'DELIVERY') {
-        navigate('/delivery-address', { state: { orderId: response.data._id } });
-      } else {
-        navigate('/my-orders');
-      }
+      // Show success modal
+      setOrderId(response.data._id);
+      setShowSuccessModal(true);
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error('Payment failed. Please try again.');
+      console.error('Error response:', error.response?.data);
+      console.error('Error status:', error.response?.status);
+      console.error('=== ERROR DETAILS ===');
+      console.error('Full error object:', JSON.stringify(error.response?.data, null, 2));
+      console.error('Error code:', error.response?.data?.error?.code);
+      console.error('Error message:', error.response?.data?.error?.message);
+      
+      // Show more specific error message
+      const errorMessage = error.response?.data?.error?.message || 'Payment failed. Please try again.';
+      console.error('Final error message:', errorMessage);
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -286,6 +331,87 @@ const StripeStyleCheckout = () => {
                   </select>
                 </div>
 
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="07X XXX XXXX"
+                    required
+                  />
+                </div>
+
+                {/* Delivery Address - Only show if delivery is selected */}
+                {checkoutData?.deliveryType === 'DELIVERY' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
+                      <input
+                        type="text"
+                        name="addressLine1"
+                        value={formData.addressLine1}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="House No, Street"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 2</label>
+                      <input
+                        type="text"
+                        name="addressLine2"
+                        value={formData.addressLine2}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Apartment, Landmark"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                        <input
+                          type="text"
+                          name="city"
+                          value={formData.city}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="City"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                        <input
+                          type="text"
+                          name="state"
+                          value={formData.state}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="Province"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code *</label>
+                        <input
+                          type="text"
+                          name="postalCode"
+                          value={formData.postalCode}
+                          onChange={handleInputChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="XXXXX"
+                          required
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 {/* Security Notice */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-center mb-2">
@@ -334,6 +460,62 @@ const StripeStyleCheckout = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+            <div className="text-center">
+              {/* Success Icon */}
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+              </div>
+              
+              {/* Success Message */}
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Payment Successful!</h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Your order has been placed successfully. Order ID: <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{orderId}</span>
+              </p>
+              
+              {/* Order Details */}
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <div className="text-sm text-gray-700">
+                  <div className="flex justify-between mb-1">
+                    <span>Total Paid:</span>
+                    <span className="font-semibold">LKR {checkoutData?.total.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between mb-1">
+                    <span>Payment Method:</span>
+                    <span>Card Payment</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Delivery:</span>
+                    <span>{checkoutData?.deliveryType === 'DELIVERY' ? 'Home Delivery' : 'Store Pickup'}</span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                <button
+                  onClick={() => navigate('/marketplace')}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                >
+                  Continue Shopping
+                </button>
+                <button
+                  onClick={() => navigate('/my-orders')}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-lg transition-colors duration-200"
+                >
+                  View My Orders
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

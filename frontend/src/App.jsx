@@ -18,8 +18,6 @@ import MyListings from './pages/MyListings';
 import Marketplace from './pages/Marketplace';
 import ProfilePage from './pages/ProfilePage';
 import CartPage from './pages/CartPage';
-import PaymentPage from './pages/PaymentPage';
-import StripePaymentPage from './pages/StripePaymentPage';
 import StripeStyleCheckout from './pages/StripeStyleCheckout';
 import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
 import DebugPage from './pages/DebugPage';
@@ -70,8 +68,6 @@ const App = () => {
           <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
               <Route path="/cart" element={authUser ? <CartPage /> : <Navigate to="/login" />} />
-              <Route path="/payment" element={authUser ? <PaymentPage /> : <Navigate to="/login" />} />
-              <Route path="/stripe-payment" element={authUser ? <StripePaymentPage /> : <Navigate to="/login" />} />
               <Route path="/stripe-checkout" element={authUser ? <StripeStyleCheckout /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
               <Route path="/debug" element={<DebugPage />} />
