@@ -12,6 +12,7 @@ const Navbar = () => {
   const userRole = String(authUser?.role || '').toUpperCase();
   const isAdmin = userRole === 'ADMIN';
   const isDriver = userRole === 'DRIVER';
+  const isFarmer = userRole === 'FARMER';
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -75,12 +76,14 @@ const Navbar = () => {
                 >
                   Marketplace
                 </Link>
-                <Link
-                  to="/my-listings"
-                  className={`${isActive('/my-listings') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
-                >
-                  My Listings
-                </Link>
+                {isFarmer && (
+                  <Link
+                    to="/my-listings"
+                    className={`${isActive('/my-listings') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                  >
+                    My Listings
+                  </Link>
+                )}
                 <Link
                   to="/delivery-tracking"
                   className={`${isActive('/delivery-tracking') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
@@ -181,7 +184,9 @@ const Navbar = () => {
                         <>
                           <button onClick={() => handleNavigation('/')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Home</button>
                           <button onClick={() => handleNavigation('/marketplace')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Marketplace</button>
-                          <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          {isFarmer && (
+                            <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          )}
                           <button onClick={() => handleNavigation('/delivery-tracking')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Delivery Tracking</button>
                         </>
                       )}
