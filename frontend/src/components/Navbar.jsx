@@ -22,27 +22,22 @@ const Navbar = () => {
 
   // Update cart count when user changes
   useEffect(() => {
-    if (authUser) {
-      const userId = authUser._id || authUser.id;
-      const count = getUserCartCount(userId);
-      setCartCount(count);
-    } else {
-      setCartCount(0);
-    }
-  }, [authUser]);
-
-  // Listen for storage changes to update cart count
-  useEffect(() => {
-    const handleStorageChange = () => {
+    const updateCartCount = async () => {
       if (authUser) {
-        const userId = authUser._id || authUser.id;
-        const count = getUserCartCount(userId);
-        setCartCount(count);
+        try {
+          const userId = authUser._id || authUser.id;
+          const count = await getUserCartCount(userId);
+          setCartCount(count);
+        } catch (error) {
+          console.error('Error fetching cart count:', error);
+          setCartCount(0);
+        }
+      } else {
+        setCartCount(0);
       }
     };
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
+    updateCartCount();
   }, [authUser]);
 
   const handleLogout = async () => {
@@ -97,12 +92,14 @@ const Navbar = () => {
                 >
                   Home
                 </Link>
+
                 <Link
                   to="/marketplace"
                   className={`${isActive('/marketplace') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
                 >
                   Marketplace
                 </Link>
+
                 {isFarmer && (
                   <Link
                     to="/my-listings"
@@ -111,6 +108,14 @@ const Navbar = () => {
                     My Listings
                   </Link>
                 )}
+
+                <Link
+                  to="/my-orders"
+                  className={`${isActive('/my-orders') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                >
+                  My Orders
+                </Link>
+
                 <Link
                   to="/delivery-tracking"
                   className={`${isActive('/delivery-tracking') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
@@ -214,6 +219,12 @@ const Navbar = () => {
                           {isFarmer && (
                             <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
                           )}
+                          <button
+                            onClick={() => handleNavigation('/my-orders')}
+                            className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors"
+                          >
+                            My Orders
+                          </button>
                           <button onClick={() => handleNavigation('/delivery-tracking')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Delivery Tracking</button>
                         </>
                       )}

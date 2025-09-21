@@ -3,6 +3,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import MyOrders from './pages/MyOrders';
+import AdminOrders from './pages/AdminOrders';
 import AdminDashboard from './pages/AdminDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminUsers from './pages/AdminUsers';
@@ -52,6 +54,9 @@ const App = () => {
       <Navbar />
       <main className='flex-1 pt-16 min-h-[90vh]'>
         <Routes>
+         {/* ...existing code... */}
+         <Route path="/my-orders" element={authUser ? <MyOrders /> : <Navigate to="/login" />} />
+         <Route path="/admin/orders" element={authUser && authUser.role === 'ADMIN' ? <AdminOrders /> : <Navigate to="/" />} />
           <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />

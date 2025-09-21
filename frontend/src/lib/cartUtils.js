@@ -1,145 +1,84 @@
-// Utility functions for user-specific cart management
+// Utility functions for user-specific cart management using backend API
+import { axiosInstance } from './axios.js';
 
 /**
- * Get the cart key for a specific user
- * @param {string} userId - The user's ID
- * @returns {string} - The cart key for localStorage
+ * Get cart items for a specific user from backend
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
+ * @returns {Promise<Array>} - Array of cart items
  */
-export const getCartKey = (userId) => {
-  return `cart_${userId}`;
-};
-
-/**
- * Get cart items for a specific user
- * @param {string} userId - The user's ID
- * @returns {Array} - Array of cart items
- */
-export const getUserCart = (userId) => {
-  if (!userId) {
-    console.log('getUserCart: No userId provided');
+export const getUserCart = async (userId) => {
+  try {
+    const response = await axiosInstance.get('/cart');
+    console.log('getUserCart: Retrieved cart from API:', response.data);
+    return response.data.items || [];
+  } catch (error) {
+    console.error('getUserCart: Error fetching cart:', error);
     return [];
   }
-  const cartKey = getCartKey(userId);
-  console.log('getUserCart: Getting cart with key:', cartKey);
-  const savedCart = localStorage.getItem(cartKey);
-  const cart = savedCart ? JSON.parse(savedCart) : [];
-  console.log('getUserCart: Retrieved cart:', cart);
-  return cart;
 };
 
 /**
- * Save cart items for a specific user
- * @param {string} userId - The user's ID
- * @param {Array} cartItems - Array of cart items to save
+ * Get cart count for a specific user from backend
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
+ * @returns {Promise<number>} - Total number of unique items in cart
  */
-export const saveUserCart = (userId, cartItems) => {
-  if (!userId) {
-    console.log('saveUserCart: No userId provided');
-    return;
-  }
-  const cartKey = getCartKey(userId);
-  console.log('saveUserCart: Saving cart with key:', cartKey, 'items:', cartItems);
+export const getUserCartCount = async (userId) => {
   try {
-    localStorage.setItem(cartKey, JSON.stringify(cartItems));
-    console.log('saveUserCart: Cart saved successfully');
+    const response = await axiosInstance.get('/cart/count');
+    return response.data.count || 0;
   } catch (error) {
-    console.error('saveUserCart: Error saving cart:', error);
+    console.error('getUserCartCount: Error fetching cart count:', error);
+    return 0;
   }
 };
 
 /**
  * Clear cart for a specific user
- * @param {string} userId - The user's ID
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
  */
-export const clearUserCart = (userId) => {
-  if (!userId) return;
-  const cartKey = getCartKey(userId);
-  localStorage.removeItem(cartKey);
+export const clearUserCart = async (userId) => {
+  try {
+    await axiosInstance.delete('/cart/clear');
+    console.log('clearUserCart: Cart cleared successfully');
+  } catch (error) {
+    console.error('clearUserCart: Error clearing cart:', error);
+  }
 };
 
 /**
- * Get cart count for a specific user
- * @param {string} userId - The user's ID
- * @returns {number} - Total number of items in cart
- */
-export const getUserCartCount = (userId) => {
-  const cart = getUserCart(userId);
-  return cart.reduce((total, item) => total + item.quantity, 0);
-};
-
-/**
- * Add item to user's cart
- * @param {string} userId - The user's ID
+ * Add item to user's cart via backend API
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
  * @param {Object} item - Item to add to cart
  * @param {number} quantity - Quantity to add
- * @returns {boolean} - Success status
+ * @returns {Promise<boolean>} - Success status
  */
-export const addToUserCart = (userId, item, quantity = 1) => {
+export const addToUserCart = async (userId, item, quantity = 1) => {
   console.log('addToUserCart called with:', { userId, item, quantity });
   
-  if (!userId || !item || !item._id) {
+  if (!item || !item._id) {
     console.error('Invalid parameters for addToUserCart:', { userId, item });
     return false;
   }
   
   try {
-    const cart = getUserCart(userId);
-    console.log('Current cart:', cart);
+    // Determine if this is an inventory item or listing item
+    const isInventoryItem = item.name && item.price && item.stockQuantity !== undefined;
+    const isListingItem = item.cropName && item.pricePerKg && item.capacityKg !== undefined;
     
-    const existingItemIndex = cart.findIndex(cartItem => cartItem.id === item._id);
-    console.log('Existing item index:', existingItemIndex);
-    
-    if (existingItemIndex > -1) {
-      cart[existingItemIndex].quantity += quantity;
-      console.log('Updated existing item quantity');
-    } else {
-      // Determine if this is an inventory item or listing item
-      const isInventoryItem = item.name && item.price && item.stockQuantity !== undefined;
-      const isListingItem = item.cropName && item.pricePerKg && item.capacityKg !== undefined;
-      
-      console.log('Item type detection:', { 
-        isInventoryItem, 
-        isListingItem, 
-        hasName: !!item.name,
-        hasPrice: !!item.price,
-        hasStockQuantity: item.stockQuantity !== undefined,
-        hasCropName: !!item.cropName,
-        hasPricePerKg: !!item.pricePerKg,
-        hasCapacityKg: item.capacityKg !== undefined
-      });
-      
-      if (!isInventoryItem && !isListingItem) {
-        console.error('Invalid item structure:', item);
-        return false;
-      }
-      
-      const cartItem = {
-        id: item._id,
-        title: isInventoryItem ? item.name : item.cropName,
-        price: isInventoryItem ? item.price : item.pricePerKg,
-        image: item.images?.[0] || '',
-        quantity: quantity,
-        category: item.category || ''
-      };
-      
-      // Add specific fields based on item type
-      if (isInventoryItem) {
-        cartItem.inventoryId = item._id;
-        cartItem.stockQuantity = item.stockQuantity;
-        console.log('Added inventory item to cart');
-      } else {
-        cartItem.listingId = item._id;
-        cartItem.capacity = item.capacityKg;
-        console.log('Added listing item to cart');
-      }
-      
-      console.log('Cart item to add:', cartItem);
-      cart.push(cartItem);
+    if (!isInventoryItem && !isListingItem) {
+      console.error('Invalid item structure:', item);
+      return false;
     }
     
-    console.log('Final cart before save:', cart);
-    saveUserCart(userId, cart);
-    console.log('Cart saved successfully');
+    const requestData = {
+      itemId: item._id,
+      itemType: isInventoryItem ? 'inventory' : 'listing',
+      quantity: quantity
+    };
+    
+    console.log('Adding item to cart via API:', requestData);
+    const response = await axiosInstance.post('/cart/add', requestData);
+    console.log('Item added to cart successfully:', response.data);
     return true;
   } catch (error) {
     console.error('Error adding item to cart:', error);
@@ -148,36 +87,53 @@ export const addToUserCart = (userId, item, quantity = 1) => {
 };
 
 /**
- * Update item quantity in user's cart
- * @param {string} userId - The user's ID
- * @param {number} itemIndex - Index of item in cart
+ * Update item quantity in user's cart via backend API
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
+ * @param {string} itemId - ID of the item to update
+ * @param {string} itemType - Type of item ('inventory' or 'listing')
  * @param {number} newQuantity - New quantity
- * @returns {boolean} - Success status
+ * @returns {Promise<boolean>} - Success status
  */
-export const updateUserCartItemQuantity = (userId, itemIndex, newQuantity) => {
-  if (!userId || newQuantity < 1) return false;
+export const updateUserCartItemQuantity = async (userId, itemId, itemType, newQuantity) => {
+  if (newQuantity < 1) return false;
   
-  const cart = getUserCart(userId);
-  if (itemIndex < 0 || itemIndex >= cart.length) return false;
-  
-  cart[itemIndex].quantity = newQuantity;
-  saveUserCart(userId, cart);
-  return true;
+  try {
+    const requestData = {
+      itemId: itemId,
+      itemType: itemType,
+      quantity: newQuantity
+    };
+    
+    console.log('Updating cart item via API:', requestData);
+    const response = await axiosInstance.put('/cart/update', requestData);
+    console.log('Cart item updated successfully:', response.data);
+    return true;
+  } catch (error) {
+    console.error('Error updating cart item:', error);
+    return false;
+  }
 };
 
 /**
- * Remove item from user's cart
- * @param {string} userId - The user's ID
- * @param {number} itemIndex - Index of item to remove
- * @returns {boolean} - Success status
+ * Remove item from user's cart via backend API
+ * @param {string} userId - The user's ID (not used in API call, handled by auth token)
+ * @param {string} itemId - ID of the item to remove
+ * @param {string} itemType - Type of item ('inventory' or 'listing')
+ * @returns {Promise<boolean>} - Success status
  */
-export const removeFromUserCart = (userId, itemIndex) => {
-  if (!userId) return false;
-  
-  const cart = getUserCart(userId);
-  if (itemIndex < 0 || itemIndex >= cart.length) return false;
-  
-  cart.splice(itemIndex, 1);
-  saveUserCart(userId, cart);
-  return true;
+export const removeFromUserCart = async (userId, itemId, itemType) => {
+  try {
+    const requestData = {
+      itemId: itemId,
+      itemType: itemType
+    };
+    
+    console.log('Removing cart item via API:', requestData);
+    const response = await axiosInstance.delete('/cart/remove', { data: requestData });
+    console.log('Cart item removed successfully:', response.data);
+    return true;
+  } catch (error) {
+    console.error('Error removing cart item:', error);
+    return false;
+  }
 };
