@@ -3,6 +3,51 @@ import Delivery from '../models/delivery.model.js';
 import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 
+// Helper function to update stock quantities (used for both orders and cancellations)
+const updateStockQuantities = async (items, isCancellation = false) => {
+  const multiplier = isCancellation ? 1 : -1; // Add back stock for cancellations, subtract for orders
+  
+  for (const item of items) {
+    if (item.inventoryId) {
+      // Update inventory item stock
+      const inventoryItem = await InventoryProduct.findById(item.inventoryId);
+      if (inventoryItem) {
+        const newStockQuantity = inventoryItem.stockQuantity + (item.quantity * multiplier);
+        inventoryItem.stockQuantity = Math.max(0, newStockQuantity); // Ensure it doesn't go below 0
+        
+        // Update status based on stock level
+        if (inventoryItem.stockQuantity === 0) {
+          inventoryItem.status = 'Out of stock';
+        } else if (inventoryItem.stockQuantity <= 10) {
+          inventoryItem.status = 'Low stock';
+        } else {
+          inventoryItem.status = 'Available';
+        }
+        
+        await inventoryItem.save();
+        console.log(`Updated inventory item ${inventoryItem.name}: stock ${inventoryItem.stockQuantity}, status ${inventoryItem.status}`);
+      }
+    } else if (item.listingId) {
+      // Update listing capacity
+      const listing = await Listing.findById(item.listingId);
+      if (listing) {
+        const newCapacity = listing.capacityKg + (item.quantity * multiplier);
+        listing.capacityKg = Math.max(0, newCapacity); // Ensure it doesn't go below 0
+        
+        // Update status based on capacity
+        if (listing.capacityKg === 0) {
+          listing.status = 'SOLD';
+        } else {
+          listing.status = 'AVAILABLE';
+        }
+        
+        await listing.save();
+        console.log(`Updated listing ${listing.cropName}: capacity ${listing.capacityKg}kg, status ${listing.status}`);
+      }
+    }
+  }
+};
+
 export const createOrder = async (req, res) => {
   try {
     const { items, deliveryType, deliveryAddress, contactName, contactPhone, notes, paymentMethod } = req.body;
@@ -115,6 +160,17 @@ export const createOrder = async (req, res) => {
 
     await order.save();
 
+    // Update stock quantities after successful order creation
+    console.log('=== UPDATING STOCK QUANTITIES ===');
+    try {
+      await updateStockQuantities(items, false); // false = not a cancellation
+      console.log('Stock quantities updated successfully');
+    } catch (stockUpdateError) {
+      console.error('Error updating stock quantities:', stockUpdateError);
+      // Note: We don't rollback the order here as the payment was successful
+      // The stock update error should be logged and investigated separately
+    }
+
     // If delivery type, create delivery record
     if (deliveryType === 'DELIVERY') {
       const delivery = new Delivery({
@@ -195,8 +251,28 @@ export const updateOrderStatus = async (req, res) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Order not found' } });
     }
 
+    const previousStatus = order.status;
     order.status = status;
     await order.save();
+
+    // If order is being cancelled, restore stock quantities
+    if (status === 'CANCELLED' && previousStatus !== 'CANCELLED') {
+      console.log('=== RESTORING STOCK QUANTITIES DUE TO CANCELLATION ===');
+      try {
+        // Convert order items back to the format expected by updateStockQuantities
+        const itemsToRestore = order.items.map(item => ({
+          inventoryId: item.itemType === 'inventory' ? item.listing : null,
+          listingId: item.itemType === 'listing' ? item.listing : null,
+          quantity: item.quantity
+        }));
+        
+        await updateStockQuantities(itemsToRestore, true); // true = cancellation
+        console.log('Stock quantities restored successfully');
+      } catch (stockRestoreError) {
+        console.error('Error restoring stock quantities:', stockRestoreError);
+        // Log the error but don't fail the status update
+      }
+    }
 
     return res.json(order);
   } catch (error) {
