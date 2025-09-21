@@ -2,6 +2,7 @@ import Order from '../models/order.model.js';
 import Delivery from '../models/delivery.model.js';
 import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
+import Cart from '../models/cart.model.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
 const updateStockQuantities = async (items, isCancellation = false) => {
@@ -50,7 +51,7 @@ const updateStockQuantities = async (items, isCancellation = false) => {
 
 export const createOrder = async (req, res) => {
   try {
-    const { items, deliveryType, deliveryAddress, contactName, contactPhone, notes, paymentMethod } = req.body;
+    const { items, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
     
     console.log('=== ORDER CREATION DEBUG ===');
     console.log('Request body items:', JSON.stringify(items, null, 2));
@@ -68,8 +69,8 @@ export const createOrder = async (req, res) => {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Delivery address required for delivery orders' } });
     }
 
-    if (!contactName || !contactPhone) {
-      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Contact name and phone required' } });
+    if (!contactName || !contactPhone || !contactEmail) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Contact name, phone, and email are required' } });
     }
 
     // Validate items and calculate totals
@@ -154,6 +155,7 @@ export const createOrder = async (req, res) => {
       deliveryAddress: deliveryType === 'DELIVERY' ? deliveryAddress : undefined,
       contactName,
       contactPhone,
+      contactEmail,
       notes: notes || '',
       paymentMethod: paymentMethod || 'CASH',
     });
@@ -278,6 +280,180 @@ export const updateOrderStatus = async (req, res) => {
   } catch (error) {
     console.error('updateOrderStatus error:', error);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to update order status' } });
+  }
+};
+
+export const createOrderFromCart = async (req, res) => {
+  try {
+    const { selectedItems, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
+    
+    console.log('=== CART ORDER CREATION DEBUG ===');
+    console.log('Selected items:', JSON.stringify(selectedItems, null, 2));
+    console.log('User:', req.user);
+    
+    if (!selectedItems || !Array.isArray(selectedItems) || selectedItems.length === 0) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Selected items are required' } });
+    }
+
+    if (!deliveryType || !['PICKUP', 'DELIVERY'].includes(deliveryType)) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Valid delivery type required' } });
+    }
+
+    if (deliveryType === 'DELIVERY' && !deliveryAddress) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Delivery address required for delivery orders' } });
+    }
+
+    if (!contactName || !contactPhone || !contactEmail) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Contact name, phone, and email are required' } });
+    }
+
+    // Get user's cart
+    const cart = await Cart.findOne({ user: req.user._id });
+    if (!cart) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Cart not found' } });
+    }
+
+    // Validate selected items and calculate totals
+    let subtotal = 0;
+    const validatedItems = [];
+    const itemsToRemove = [];
+
+    for (const selectedItem of selectedItems) {
+      // Find the item in cart
+      const cartItem = cart.items.find(
+        item => item.itemId.toString() === selectedItem.itemId && item.itemType === selectedItem.itemType
+      );
+
+      if (!cartItem) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Item ${selectedItem.itemId} not found in cart` } });
+      }
+
+      // Validate item availability
+      if (cartItem.itemType === 'inventory') {
+        const inventoryItem = await InventoryProduct.findById(cartItem.itemId);
+        if (!inventoryItem) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Inventory item ${cartItem.itemId} not found` } });
+        }
+
+        if (inventoryItem.status === 'Out of stock') {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `${inventoryItem.name} is out of stock` } });
+        }
+
+        if (inventoryItem.stockQuantity < cartItem.quantity) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${inventoryItem.name}` } });
+        }
+
+        const itemTotal = inventoryItem.price * cartItem.quantity;
+        subtotal += itemTotal;
+
+        validatedItems.push({
+          listing: inventoryItem._id,
+          itemType: 'inventory',
+          quantity: cartItem.quantity,
+          price: inventoryItem.price,
+          title: inventoryItem.name,
+          image: inventoryItem.images?.[0] || '',
+        });
+
+        itemsToRemove.push({
+          inventoryId: inventoryItem._id,
+          quantity: cartItem.quantity
+        });
+      } else if (cartItem.itemType === 'listing') {
+        const listing = await Listing.findById(cartItem.itemId);
+        if (!listing) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${cartItem.itemId} not found` } });
+        }
+
+        if (listing.status !== 'AVAILABLE') {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${listing.cropName} is not available` } });
+        }
+
+        if (listing.capacityKg < cartItem.quantity) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${listing.cropName}` } });
+        }
+
+        const itemTotal = listing.pricePerKg * cartItem.quantity;
+        subtotal += itemTotal;
+
+        validatedItems.push({
+          listing: listing._id,
+          itemType: 'listing',
+          quantity: cartItem.quantity,
+          price: listing.pricePerKg,
+          title: listing.cropName,
+          image: listing.images?.[0] || '',
+        });
+
+        itemsToRemove.push({
+          listingId: listing._id,
+          quantity: cartItem.quantity
+        });
+      }
+    }
+
+    const deliveryFee = deliveryType === 'DELIVERY' ? 500 : 0;
+    const total = subtotal + deliveryFee;
+
+    // Create the order
+    const order = new Order({
+      customer: req.user._id,
+      customerRole: req.user.role,
+      items: validatedItems,
+      subtotal,
+      deliveryFee,
+      total,
+      deliveryType,
+      deliveryAddress: deliveryType === 'DELIVERY' ? deliveryAddress : undefined,
+      contactName,
+      contactPhone,
+      contactEmail,
+      notes: notes || '',
+      paymentMethod: paymentMethod || 'CASH',
+    });
+
+    await order.save();
+
+    // Update stock quantities after successful order creation
+    console.log('=== UPDATING STOCK QUANTITIES ===');
+    try {
+      await updateStockQuantities(itemsToRemove, false);
+      console.log('Stock quantities updated successfully');
+    } catch (stockUpdateError) {
+      console.error('Error updating stock quantities:', stockUpdateError);
+    }
+
+    // Remove ordered items from cart
+    cart.items = cart.items.filter(
+      item => !selectedItems.some(selected => 
+        selected.itemId === item.itemId.toString() && selected.itemType === item.itemType
+      )
+    );
+    await cart.save();
+
+    // If delivery type, create delivery record
+    if (deliveryType === 'DELIVERY') {
+      const delivery = new Delivery({
+        order: order._id,
+        requester: req.user._id,
+        requesterRole: req.user.role,
+        contactName,
+        phone: contactPhone,
+        address: deliveryAddress,
+        notes: notes || '',
+      });
+      delivery.addStatus('PENDING', req.user._id);
+      await delivery.save();
+
+      // Link delivery to order
+      order.delivery = delivery._id;
+      await order.save();
+    }
+
+    return res.status(201).json(order);
+  } catch (error) {
+    console.error('createOrderFromCart error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to create order from cart' } });
   }
 };
 

@@ -39,6 +39,7 @@ const orderSchema = new mongoose.Schema({
   deliveryAddress: { type: addressSchema, required: function() { return this.deliveryType === 'DELIVERY'; } },
   contactName: { type: String, required: true, trim: true },
   contactPhone: { type: String, required: true, trim: true },
+  contactEmail: { type: String, required: true, trim: true },
   notes: { type: String, default: '', trim: true, maxlength: 1000 },
   delivery: { type: mongoose.Schema.Types.ObjectId, ref: 'Delivery', default: null },
   paymentMethod: { type: String, default: 'CASH', enum: ['CASH', 'CARD', 'BANK_TRANSFER'] },
