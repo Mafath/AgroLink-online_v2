@@ -477,3 +477,39 @@ export const adminListOrders = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch orders' } });
   }
 };
+
+export const cancelOrder = async (req, res) => {
+  try {
+    const orderId = req.params.id;
+
+    // Find the order
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Only allow cancelling if not already delivered or cancelled
+    if (order.status === 'DELIVERED' || order.status === 'CANCELLED') {
+      return res.status(400).json({ message: 'Cannot cancel this order' });
+    }
+
+    order.status = 'CANCELLED';
+    await order.save();
+
+    // Restore stock quantities for cancelled order
+    try {
+      const itemsToRestore = order.items.map(item => ({
+        inventoryId: item.itemType === 'inventory' ? item.listing : null,
+        listingId: item.itemType === 'listing' ? item.listing : null,
+        quantity: item.quantity
+      }));
+      await updateStockQuantities(itemsToRestore, true); // true = cancellation
+    } catch (stockRestoreError) {
+      console.error('Error restoring stock quantities:', stockRestoreError);
+      // Log the error but don't fail the cancellation
+    }
+
+    return res.status(200).json({ message: 'Order cancelled successfully', order });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+};

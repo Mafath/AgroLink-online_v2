@@ -29,7 +29,7 @@ router.put('/update', updateCartItem);
 // DELETE /api/cart/remove - Remove item from cart
 router.delete('/remove', removeFromCart);
 
-// DELETE /api/cart/clear - Clear entire cart
-router.delete('/clear', clearCart);
+// POST /api/cart/clear - Clear purchased items
+router.post('/clear', clearCart);
 
 export default router;

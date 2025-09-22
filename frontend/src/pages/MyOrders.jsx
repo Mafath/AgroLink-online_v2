@@ -110,6 +110,25 @@ const MyOrders = () => {
                       </div>
                     ))}
                   </div>
+                    {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
+                      <button
+                        onClick={async () => {
+                          if (!window.confirm('Are you sure you want to cancel this order?')) return;
+                          try {
+                            const res = await axiosInstance.patch(`/orders/${order._id}/cancel`);
+                            setOrders((prev) =>
+                              prev.map((o) => (o._id === order._id ? { ...o, status: 'CANCELLED' } : o))
+                            );
+                            toast.success('Order cancelled successfully');
+                          } catch (err) {
+                            toast.error('Failed to cancel order');
+                          }
+                        }}
+                        className="mt-2 px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold"
+                      >
+                        Cancel Order
+                      </button>
+                    )}
                 </div>
               </div>
             ))}
