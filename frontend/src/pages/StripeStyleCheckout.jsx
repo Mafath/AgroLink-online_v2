@@ -147,13 +147,16 @@ const StripeStyleCheckout = () => {
       
       // Clear user-specific cart and checkout data
       if (authUser) {
-        const userId = authUser._id || authUser.id;
-        await clearUserCart(userId);
+        // Get all purchased item IDs from checkoutData
+        const purchasedItemIds = checkoutData.cart.map(item => item.itemId);
+        
+        // Call the backend endpoint to clear only purchased items
+        await axiosInstance.post('/cart/clear', { purchasedItemIds });
       }
       localStorage.removeItem('checkoutData');
       
       // Show success modal
-      setOrderId(response.data._id);
+      setOrderId(response.data.orderNumber || response.data._id);
       setShowSuccessModal(true);
     } catch (error) {
       console.error('Payment error:', error);

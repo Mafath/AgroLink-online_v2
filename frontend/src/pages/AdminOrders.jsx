@@ -14,16 +14,18 @@ const AdminOrders = () => {
   }, []);
 
   const fetchOrders = async () => {
-    try {
-      const res = await axiosInstance.get("/orders");
-      setOrders(res.data);
-    } catch (error) {
-      console.error("Failed to fetch orders:", error);
-      toast.error("Failed to load orders");
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    const res = await axiosInstance.get("/orders");
+    const activeOrders = res.data.filter(order => order.status !== 'CANCELLED'); // <-- filter out cancelled
+    setOrders(activeOrders);
+  } catch (error) {
+    console.error("Failed to fetch orders:", error);
+    toast.error("Failed to load orders");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
 

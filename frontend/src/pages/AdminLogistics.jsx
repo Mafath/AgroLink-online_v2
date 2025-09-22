@@ -47,15 +47,31 @@ const AdminLogistics = () => {
   };
 
   const updateOrderStatus = async (orderId, status) => {
-    try {
-      await axiosInstance.patch(`/orders/${orderId}/status`, { status });
-      toast.success('Order status updated');
-      fetchData();
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-      toast.error('Failed to update order status');
-    }
-  };
+  try {
+    // Determine endpoint: use /cancel for cancellations, /status otherwise
+    const endpoint =
+      status === 'CANCELLED' ? `/orders/${orderId}/cancel` : `/orders/${orderId}/status`;
+
+    await axiosInstance.patch(endpoint, status === 'CANCELLED' ? {} : { status });
+
+    toast.success(
+      status === 'CANCELLED'
+        ? 'Order cancelled successfully'
+        : 'Order status updated'
+    );
+
+    // Refresh orders & deliveries
+    fetchData();
+  } catch (error) {
+    console.error('updateOrderStatus error:', error);
+    toast.error(
+      status === 'CANCELLED'
+        ? 'Failed to cancel order'
+        : 'Failed to update order status'
+    );
+  }
+};
+
 
   const getStatusIcon = (status) => {
     switch (status) {

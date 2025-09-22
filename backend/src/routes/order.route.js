@@ -7,6 +7,7 @@ import {
   getOrderById,
   updateOrderStatus,
   adminListOrders,
+  cancelOrder,
 } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -20,5 +21,7 @@ router.get('/:id', requireAuth, getOrderById);
 // Admin routes
 router.get('/', requireAuth, requireRole('ADMIN'), adminListOrders);
 router.patch('/:id/status', requireAuth, requireRole('ADMIN'), updateOrderStatus);
+// Cancel order
+router.patch('/:id/cancel', requireAuth, cancelOrder);
 
 export default router;

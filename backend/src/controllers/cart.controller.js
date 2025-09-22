@@ -282,31 +282,40 @@ export const removeFromCart = async (req, res) => {
   }
 };
 
-// Clear entire cart
+// backend/controllers/cart.controller.js
 export const clearCart = async (req, res) => {
   try {
+    const { purchasedItemIds } = req.body; // array of itemIds sent from frontend
+
+    if (!purchasedItemIds || !Array.isArray(purchasedItemIds)) {
+      return res.status(400).json({
+        error: { code: 'INVALID_INPUT', message: 'purchasedItemIds must be an array' }
+      });
+    }
+
     const cart = await Cart.findOne({ user: req.user._id });
     if (!cart) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Cart not found' } });
     }
 
-    cart.items = [];
+    // remove only purchased items
+    cart.items = cart.items.filter(
+      item => !purchasedItemIds.includes(item.itemId.toString())
+    );
     await cart.save();
 
     return res.json({
-      message: 'Cart cleared successfully',
-      cart: {
-        items: [],
-        itemCount: 0,
-        totalQuantity: 0,
-        totalPrice: 0
-      }
+      message: 'Purchased items removed successfully',
+      cart
     });
   } catch (error) {
     console.error('clearCart error:', error);
-    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to clear cart' } });
+    return res.status(500).json({
+      error: { code: 'SERVER_ERROR', message: 'Failed to clear purchased items from cart' }
+    });
   }
 };
+
 
 // Get cart count (for navbar)
 export const getCartCount = async (req, res) => {
@@ -320,4 +329,5 @@ export const getCartCount = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to get cart count' } });
   }
 };
+
 
