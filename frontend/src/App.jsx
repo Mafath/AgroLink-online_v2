@@ -21,6 +21,12 @@ import CartPage from './pages/CartPage';
 import PaymentPage from './pages/PaymentPage';
 import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
 import DebugPage from './pages/DebugPage';
+import HarvestDashboard from './pages/HarvestDashboard';
+import HarvestRequest from './pages/HarvestRequest';
+import HarvestSchedule from './pages/HarvestSchedule';
+import HarvestTrack from './pages/HarvestTrack';
+import HarvestReport from './pages/HarvestReport';
+
 
 {/* Delete after testing */}
 import DeliveryPage from './pages/DeliveryPage';
@@ -71,6 +77,12 @@ const App = () => {
               <Route path="/payment" element={authUser ? <PaymentPage /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
               <Route path="/debug" element={<DebugPage />} />
+         <Route path="/harvest-dashboard" element={<HarvestDashboard />} />
+          <Route path="/harvest-request" element={<HarvestRequest />} />
+          <Route path="/harvest-schedule" element={<HarvestSchedule />} />
+          <Route path="/harvest-track" element={<HarvestTrack />} />
+          <Route path="/harvest-report" element={<HarvestReport />} />
+
         </Routes>
       </main>
 
