@@ -129,13 +129,13 @@ const AdminListings = () => {
   const [isLoadingListings, setIsLoadingListings] = useState(false)
   const [listingsSortMode, setListingsSortMode] = useState('newest')
   const [query, setQuery] = useState('')
-  const [statusSortMode, setStatusSortMode] = useState('none') // none | availableFirst | soldFirst | removedFirst
+  const [statusSortMode, setStatusSortMode] = useState('none') // none | available | sold | removed
 
   const loadListings = async () => {
     try {
       setIsLoadingListings(true)
       console.log('Loading listings...')
-      const { data } = await axiosInstance.get('listings')
+      const { data } = await axiosInstance.get('listings/all')
       console.log('Listings API response:', data)
       setListings(Array.isArray(data) ? data : [])
     } catch (e) {
@@ -169,24 +169,20 @@ const AdminListings = () => {
           return timeB - timeA
       }
     })
-    if (statusSortMode !== 'none') {
-      const rank = (status) => {
-        const s = String(status||'')
-        if (statusSortMode === 'availableFirst') return s === 'AVAILABLE' ? 0 : (s === 'SOLD' ? 1 : 2)
-        if (statusSortMode === 'soldFirst') return s === 'SOLD' ? 0 : (s === 'AVAILABLE' ? 1 : 2)
-        if (statusSortMode === 'removedFirst') return s === 'REMOVED' ? 0 : (s === 'SOLD' ? 1 : 2)
-        return 0
-      }
-      arr.sort((a,b)=> rank(a.status) - rank(b.status))
-    }
     return arr
-  }, [listings, listingsSortMode, statusSortMode])
+  }, [listings, listingsSortMode])
 
   // Filter by search query
   const filteredListings = useMemo(() => {
     const q = (query || '').trim().toLowerCase()
-    if (!q) return listingsSorted
-    return listingsSorted.filter((it) => {
+    let base = listingsSorted
+    // Apply status filter
+    if (statusSortMode === 'available') base = base.filter(it => it.status === 'AVAILABLE')
+    else if (statusSortMode === 'sold') base = base.filter(it => it.status === 'SOLD')
+    else if (statusSortMode === 'removed') base = base.filter(it => it.status === 'REMOVED')
+
+    if (!q) return base
+    return base.filter((it) => {
       const cropName = String(it.cropName || '').toLowerCase()
       const price = String(it.pricePerKg || '')
       const capacity = String(it.capacityKg || '')
@@ -198,7 +194,7 @@ const AdminListings = () => {
         farmer.includes(q)
       )
     })
-  }, [listingsSorted, query])
+  }, [listingsSorted, query, statusSortMode])
 
   // Listings metrics
   const listingsMetrics = useMemo(() => {
@@ -412,21 +408,20 @@ const AdminListings = () => {
                   </select>
                   <select className='input-field h-9 py-1 text-sm hidden sm:block' value={statusSortMode} onChange={(e)=>setStatusSortMode(e.target.value)}>
                     <option value='none'>Status: Default</option>
-                    <option value='availableFirst'>Available first</option>
-                    <option value='soldFirst'>Sold first</option>
-                    <option value='removedFirst'>Removed first</option>
+                    <option value='available'>Available</option>
+                    <option value='sold'>Sold</option>
+                    <option value='removed'>Removed</option>
                   </select>
-                  <button className='btn-primary whitespace-nowrap px-3 py-2 text-sm' onClick={()=>{ setIsAddListing(true); setIsAddOpen(true) }}>Add Listing +</button>
                 </div>
               </div>
-              <div className='max-h-[240px] overflow-y-auto'>
+              <div className='max-h-[280px] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
                   <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
                       <th className='py-3 px-3 text-left'>Crop Name</th>
                       <th className='py-3 px-3 text-center'>Farmer</th>
                       <th className='py-3 px-3 text-center'>Image</th>
-                      <th className='py-3 px-3 text-center'>Capacity (Kg)</th>
+                      <th className='py-3 px-3 text-center'>Remaining <br />Capacity (Kg)</th>
                       <th className='py-3 px-3 text-center'>Price/Kg</th>
                       <th className='py-3 px-3 text-center'>Status</th>
                       <th className='py-3 px-3 text-center'>Actions</th>
@@ -473,9 +468,6 @@ const AdminListings = () => {
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isListing:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info
-                              </button>
-                              <button className='px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isListing:true }); setIsEditing(true); }}>
-                                <Pencil className='w-3.5 h-3.5' /> Edit
                               </button>
                               <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this listing?')){ try{ await axiosInstance.delete(`listings/${it._id}`); loadListings(); }catch(_){ } } }}>
                                 <Trash2 className='w-3.5 h-3.5' /> Delete

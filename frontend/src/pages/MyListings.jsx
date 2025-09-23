@@ -182,12 +182,10 @@ const MyListings = () => {
                 <tr className='text-left border-b'>
                   <th className='py-2 pr-4'>Crop</th>
                   <th className='py-2 pr-4'>Price/kg</th>
-                  <th className='py-2 pr-4 text-center'>Capacity (kg)</th>
                   <th className='py-2 pr-4'>Harvested Date</th>
                   <th className='py-2 pr-4'>Sold Date</th>
                   <th className='py-2 pr-4'>Images</th>
                   <th className='py-2'>Status</th>
-                  <th className='py-2 pl-4'>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -195,9 +193,8 @@ const MyListings = () => {
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
                     <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
-                    <td className='py-2 pr-4 text-center'>{it.capacityKg} kg</td>
                     <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
-                    <td className='py-2 pr-4'>{it.soldAt ? new Date(it.soldAt).toLocaleDateString() : 'N/A'}</td>
+                    <td className='py-2 pr-4'>{(it.soldAt ? new Date(it.soldAt) : (it.updatedAt ? new Date(it.updatedAt) : null))?.toLocaleDateString?.() || 'N/A'}</td>
                     <td className='py-2 pr-4'>
                       {Array.isArray(it.images) && it.images.length > 0 ? (
                         <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
@@ -213,13 +210,6 @@ const MyListings = () => {
                       <span className='px-2 py-1 rounded-full text-xs bg-green-100 text-green-800'>
                         SOLD
                       </span>
-                    </td>
-                    <td className='py-2 pl-4'>
-                      <div className='flex gap-2'>
-                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => setInfoModal(it)}><Info className='w-3 h-3' /> Info</button>
-                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => handleOpenEdit(it)}><Edit className='w-3 h-3' /> Edit</button>
-                        <button className='border px-2 py-1 rounded-md text-xs text-red-600 flex items-center gap-1' onClick={() => setConfirmDelete(it)}><Trash2 className='w-3 h-3' /> Delete</button>
-                      </div>
                     </td>
                   </tr>
                 ))}
