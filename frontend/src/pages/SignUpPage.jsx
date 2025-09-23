@@ -4,7 +4,8 @@ import { Eye, EyeOff, Loader2, Lock, Mail, User, CheckCircle2, Circle } from "lu
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { FiShield } from "react-icons/fi";
-import Logo from "../assets/AgroLink logo3.png";
+// import Logo from "../assets/AgroLink logo3.png";
+import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
 
 
 const SignUpPage = () => {
