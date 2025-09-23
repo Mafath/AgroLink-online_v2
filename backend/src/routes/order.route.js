@@ -8,6 +8,7 @@ import {
   updateOrderStatus,
   adminListOrders,
   cancelOrder,
+  getFarmerStats,
 } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -17,6 +18,9 @@ router.post('/', requireAuth, requireRole('FARMER', 'BUYER'), createOrder);
 router.post('/from-cart', requireAuth, requireRole('FARMER', 'BUYER'), createOrderFromCart);
 router.get('/me', requireAuth, requireRole('FARMER', 'BUYER'), getMyOrders);
 router.get('/:id', requireAuth, getOrderById);
+
+// Farmer stats
+router.get('/stats/farmer', requireAuth, requireRole('FARMER'), getFarmerStats);
 
 // Admin routes
 router.get('/', requireAuth, requireRole('ADMIN'), adminListOrders);
