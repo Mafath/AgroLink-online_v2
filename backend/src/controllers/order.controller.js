@@ -3,6 +3,7 @@ import Delivery from '../models/delivery.model.js';
 import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
+import mongoose from 'mongoose';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
 const updateStockQuantities = async (items, isCancellation = false) => {
@@ -511,5 +512,63 @@ export const cancelOrder = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+// Farmer sales stats: available listings, current month revenue, last month's delivered orders
+export const getFarmerStats = async (req, res) => {
+  try {
+    if (req.user.role !== 'FARMER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only FARMER can access this endpoint' } });
+    }
+
+    const farmerId = req.user._id;
+
+    // Available listings count
+    const availableListingsCountPromise = Listing.countDocuments({ farmer: farmerId, status: 'AVAILABLE' });
+
+    // Date ranges
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // This month's revenue: sum(price * quantity) for items belonging to farmer's listings, within current month, delivered or paid/processing? We'll include PAID, SHIPPED, DELIVERED
+    const allowedStatuses = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+
+    const monthRevenueAggPromise = Order.aggregate([
+      { $match: { createdAt: { $gte: monthStart, $lt: nextMonthStart }, status: { $in: allowedStatuses } } },
+      { $unwind: '$items' },
+      { $match: { 'items.itemType': 'listing' } },
+      { $lookup: { from: 'listings', localField: 'items.listing', foreignField: '_id', as: 'listingDoc' } },
+      { $unwind: '$listingDoc' },
+      { $match: { 'listingDoc.farmer': new mongoose.Types.ObjectId(farmerId) } },
+      { $group: { _id: null, revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } } },
+    ]).then(rows => (rows[0]?.revenue || 0));
+
+    // Last month delivered orders count for this farmer (distinct orders containing at least one of farmer's listings)
+    const lastMonthDeliveredOrdersPromise = Order.aggregate([
+      { $match: { createdAt: { $gte: lastMonthStart, $lt: lastMonthEnd }, status: 'DELIVERED' } },
+      { $unwind: '$items' },
+      { $match: { 'items.itemType': 'listing' } },
+      { $lookup: { from: 'listings', localField: 'items.listing', foreignField: '_id', as: 'listingDoc' } },
+      { $unwind: '$listingDoc' },
+      { $match: { 'listingDoc.farmer': new mongoose.Types.ObjectId(farmerId) } },
+      { $group: { _id: '$_id' } },
+      { $count: 'count' },
+    ]).then(rows => (rows[0]?.count || 0));
+
+    const [availableListings, monthRevenue, lastMonthDeliveredOrders] = await Promise.all([
+      availableListingsCountPromise,
+      monthRevenueAggPromise,
+      lastMonthDeliveredOrdersPromise,
+    ]);
+
+    return res.json({ availableListings, monthRevenue, lastMonthDeliveredOrders });
+  } catch (error) {
+    console.error('getFarmerStats error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch farmer stats' } });
   }
 };

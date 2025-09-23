@@ -175,8 +175,8 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio } = req.user;
-    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt, phone, address, bio });
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin } = req.user;
+    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin });
   } catch (error) {
     console.log("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });

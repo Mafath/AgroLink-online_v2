@@ -140,93 +140,81 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Profile Info Card */}
-      <div className='card max-w-4xl mx-auto mt-6'>
-        <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-          <div>
-            <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
-            <input className='input-field' value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={!isEditing} />
+      {/* Top Tabs Navigation */}
+      <div className='mt-6 flex items-center gap-2 justify-center'>
+        <button onClick={() => setActiveTab('overview')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'overview' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Overview</button>
+        <button onClick={() => setActiveTab('activity')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'activity' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Activity</button>
+        <button onClick={() => setActiveTab('settings')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'settings' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Settings</button>
+      </div>
+
+      {/* Profile Info Card (Overview/Settings) */}
+      {(activeTab === 'overview' || activeTab === 'settings') && (
+        <div className='card max-w-4xl mx-auto mt-6'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+            <div>
+              <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
+              <input className='input-field' value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={activeTab !== 'settings'} />
+            </div>
+            <div>
+              <label className='form-label'><Phone className='inline mr-2 w-4 h-4 text-gray-400' />Phone Number</label>
+              <input className='input-field' value={phone} onChange={(e) => setPhone(e.target.value)} placeholder='+1 555 123 4567' disabled={activeTab !== 'settings'} />
+            </div>
           </div>
-          <div>
-            <label className='form-label'><Phone className='inline mr-2 w-4 h-4 text-gray-400' />Phone Number</label>
-            <input className='input-field' value={phone} onChange={(e) => setPhone(e.target.value)} placeholder='+1 555 123 4567' disabled={!isEditing} />
-          </div>
-        </div>
-        <div className='mt-4'>
-          <label className='form-label'><Mail className='inline mr-2 w-4 h-4 text-gray-400' />Email</label>
-          <input className='input-field' value={me.email} disabled />
-        </div>
-        <div className='mt-4'>
-          <label className='form-label'><MapPin className='inline mr-2 w-4 h-4 text-gray-400' />Address</label>
-          <textarea className='input-field' rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder='Street, City, State, ZIP' disabled={!isEditing} />
-        </div>
-        <div className='mt-4'>
-          <label className='form-label'>Bio / About</label>
-          <textarea className='input-field' rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Tell others about you' disabled={!isEditing} />
-        </div>
-        {me.verified && (
           <div className='mt-4'>
-            <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-200'>
-              <ShieldCheck className='w-3 h-3' /> Verified
-            </span>
+            <label className='form-label'><Mail className='inline mr-2 w-4 h-4 text-gray-400' />Email</label>
+            <input className='input-field' value={me.email} disabled />
           </div>
-        )}
-        {isEditing && (
-          <div className='mt-6 flex gap-3 justify-end'>
-            <button
-              type='button'
-              className='border px-4 py-2 rounded-lg'
-              onClick={() => { setIsEditing(false); setFullName(me.fullName || ''); setPhone(me.phone || ''); setAddress(me.address || ''); setProfilePic('') }}
-            >
-              Cancel
-            </button>
-            <button disabled={saving || !isChanged} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
-              {saving ? 'Saving...' : 'Save changes'}
-            </button>
+          <div className='mt-4'>
+            <label className='form-label'><MapPin className='inline mr-2 w-4 h-4 text-gray-400' />Address</label>
+            <textarea className='input-field' rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder='Street, City, State, ZIP' disabled={activeTab !== 'settings'} />
           </div>
-        )}
-      </div>
+          <div className='mt-4'>
+            <label className='form-label'>Bio / About</label>
+            <textarea className='input-field' rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Tell others about you' disabled={activeTab !== 'settings'} />
+          </div>
+          {me.verified && (
+            <div className='mt-4'>
+              <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-200'>
+                <ShieldCheck className='w-3 h-3' /> Verified
+              </span>
+            </div>
+          )}
+          {activeTab === 'settings' && (
+            <div className='mt-6 flex gap-3 justify-end'>
+              <button
+                type='button'
+                className='border px-4 py-2 rounded-lg'
+                onClick={() => { setFullName(me.fullName || ''); setPhone(me.phone || ''); setAddress(me.address || ''); setProfilePic('') }}
+              >
+                Cancel
+              </button>
+              <button disabled={saving || !isChanged} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
-      {/* Stats Section */}
-      <div className='mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4'>
-        <div className='card'>
-          <div className='text-xs text-gray-500'>Orders Count</div>
-          <div className='text-2xl font-semibold'>-</div>
-        </div>
-        <div className='card'>
-          <div className='text-xs text-gray-500'>Products Listed</div>
-          <div className='text-2xl font-semibold'>-</div>
-        </div>
-        <div className='card'>
-          <div className='text-xs text-gray-500'>Deliveries Completed</div>
-          <div className='text-2xl font-semibold'>-</div>
-        </div>
-        <div className='card'>
-          <div className='text-xs text-gray-500'>Last Login</div>
-          <div className='text-2xl font-semibold'>-</div>
-        </div>
-      </div>
+      {activeTab === 'overview' && (
+        <StatsSection me={me} />
+      )}
 
-      {/* Tabs / Navigation */}
-      <div className='mt-8 border-b'></div>
-      <div className='mt-4 flex items-center gap-2'>
-        <button onClick={() => setActiveTab('overview')} className={`px-3 py-1.5 rounded-md text-sm ${activeTab === 'overview' ? 'bg-primary-500 text-white' : 'border hover:bg-gray-50'}`}>Overview</button>
-        <button onClick={() => setActiveTab('activity')} className={`px-3 py-1.5 rounded-md text-sm ${activeTab === 'activity' ? 'bg-primary-500 text-white' : 'border hover:bg-gray-50'}`}>Activity / History</button>
-        <button onClick={() => setActiveTab('settings')} className={`px-3 py-1.5 rounded-md text-sm ${activeTab === 'settings' ? 'bg-primary-500 text-white' : 'border hover:bg-gray-50'}`}>Settings</button>
-      </div>
-
-      {/* Content Area */}
-      <div className='mt-4 text-sm text-gray-700'>
-        {activeTab === 'overview' && (
-          <div>Welcome to your profile overview.</div>
-        )}
-        {activeTab === 'activity' && (
-          <div>Activity and history will appear here.</div>
-        )}
-        {activeTab === 'settings' && (
-          <div>Manage account preferences in <Link to='/settings' className='text-primary-600 underline'>Settings</Link>.</div>
-        )}
-      </div>
+      {/* Activity Content */}
+      {activeTab === 'activity' && (
+        <div className='mt-6 card'>
+          <div className='font-medium mb-3'>Recent Activity</div>
+          <ul className='space-y-3 text-sm'>
+            <li className='flex items-start gap-3'>
+              <span className='mt-1 w-2 h-2 rounded-full bg-primary-500'></span>
+              <div>
+                <div className='text-gray-800'>No recent activity to show</div>
+                <div className='text-xs text-gray-500'>Your latest actions will appear here.</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      )}
 
       {/* Footer Section */}
       <div className='mt-10 flex items-center justify-between text-sm'>
@@ -242,3 +230,79 @@ const ProfilePage = () => {
 }
 
 export default ProfilePage
+
+// Inline Stats component to show real counts
+const StatsSection = ({ me }) => {
+  const [ordersCount, setOrdersCount] = React.useState(null)
+  const [listingsCount, setListingsCount] = React.useState(null)
+  const [farmerMonthRevenue, setFarmerMonthRevenue] = React.useState(null)
+  const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
+  React.useEffect(() => {
+    let cancelled = false
+    const load = async () => {
+      try {
+        // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
+        const ordersRes = await axiosInstance.get('/orders/me')
+        if (!cancelled) setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
+      } catch {
+        if (!cancelled) setOrdersCount(0)
+      }
+
+      try {
+        if (me.role === 'FARMER') {
+          const [listingsRes, farmerStats] = await Promise.all([
+            axiosInstance.get('/listings/mine'),
+            axiosInstance.get('/orders/stats/farmer')
+          ])
+          if (!cancelled) {
+            setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
+            setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
+            setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
+          }
+        } else {
+          if (!cancelled) setListingsCount(0)
+        }
+      } catch {
+        if (!cancelled) setListingsCount(0)
+      }
+    }
+    load()
+    return () => { cancelled = true }
+  }, [me?.role])
+
+  if (me.role === 'FARMER') {
+    return (
+      <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4'>
+        <div className='card text-center'>
+          <div className='text-xs text-gray-500'>Available Listings</div>
+          <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+        </div>
+        <div className='card text-center'>
+          <div className='text-xs text-gray-500'>Revenue (This Month)</div>
+          <div className='text-2xl font-semibold'>{farmerMonthRevenue == null ? '—' : `LKR ${Number(farmerMonthRevenue).toLocaleString()}`}</div>
+        </div>
+        <div className='card text-center'>
+          <div className='text-xs text-gray-500'>Delivered Orders (Last Month)</div>
+          <div className='text-2xl font-semibold'>{farmerLastMonthDelivered == null ? '—' : farmerLastMonthDelivered}</div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4'>
+      <div className='card text-center'>
+        <div className='text-xs text-gray-500'>Orders Count</div>
+        <div className='text-2xl font-semibold'>{ordersCount == null ? '—' : ordersCount}</div>
+      </div>
+      <div className='card text-center'>
+        <div className='text-xs text-gray-500'>Last Login</div>
+        <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
+      </div>
+      <div className='card text-center'>
+        <div className='text-xs text-gray-500'>Products Listed</div>
+        <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+      </div>
+    </div>
+  )
+}
