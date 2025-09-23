@@ -134,6 +134,14 @@ const AdminInventory = () => {
   const [statusSortMode, setStatusSortMode] = useState('none') // none | availableFirst | lowFirst | outFirst
   const [inventoryForm, setInventoryForm] = useState({ name: '', category: 'seeds', images: [], stockQuantity: '', price: '', description: '' })
 
+  // Function to calculate status based on stock quantity
+  const getStockStatus = (stockQuantity) => {
+    const qty = Number(stockQuantity || 0)
+    if (qty === 0) return 'Out of stock'
+    if (qty < 20) return 'Low stock'
+    return 'Available'
+  }
+
   const loadRentals = async () => {
     try {
       setIsLoadingRentals(true)
@@ -186,24 +194,28 @@ const AdminInventory = () => {
           return timeB - timeA
       }
     })
-    if (statusSortMode !== 'none') {
-      const rank = (status) => {
-        const s = String(status||'')
-        if (statusSortMode === 'availableFirst') return s === 'Available' ? 0 : (s === 'Low stock' ? 1 : 2)
-        if (statusSortMode === 'lowFirst') return s === 'Low stock' ? 0 : (s === 'Available' ? 1 : 2)
-        if (statusSortMode === 'outFirst') return s === 'Out of stock' ? 0 : (s === 'Low stock' ? 1 : 2)
-        return 0
-      }
-      arr.sort((a,b)=> rank(a.status) - rank(b.status))
-    }
     return arr
-  }, [inventoryItems, inventorySortMode, statusSortMode])
+  }, [inventoryItems, inventorySortMode])
 
-  // Filter by search query
+  // Filter by search query and status
   const filteredInventory = useMemo(() => {
+    let filtered = inventorySorted
+    
+    // Filter by status if a specific status is selected
+    if (statusSortMode !== 'none') {
+      filtered = filtered.filter((item) => {
+        const status = getStockStatus(item.stockQuantity)
+        if (statusSortMode === 'availableFirst') return status === 'Available'
+        if (statusSortMode === 'lowFirst') return status === 'Low stock'
+        if (statusSortMode === 'outFirst') return status === 'Out of stock'
+        return true
+      })
+    }
+    
+    // Filter by search query
     const q = (query || '').trim().toLowerCase()
-    if (!q) return inventorySorted
-    return inventorySorted.filter((it) => {
+    if (!q) return filtered
+    return filtered.filter((it) => {
       const name = String(it.name || '').toLowerCase()
       const category = String(it.category || '').toLowerCase()
       const price = String(it.price || '')
@@ -215,27 +227,25 @@ const AdminInventory = () => {
         stock.includes(q)
       )
     })
-  }, [inventorySorted, query])
+  }, [inventorySorted, query, statusSortMode])
 
   // Inventory metrics
   const inventoryMetrics = useMemo(() => {
     const totalItems = inventoryItems.length
-    const lowStockItems = inventoryItems.filter(item => Number(item.stockQuantity || 0) < 15).length
+    const lowStockItems = inventoryItems.filter(item => Number(item.stockQuantity || 0) < 20).length
+    const outOfStockItems = inventoryItems.filter(item => Number(item.stockQuantity || 0) === 0).length
     const totalValue = inventoryItems.reduce((sum, item) => sum + (Number(item.price || 0) * Number(item.stockQuantity || 0)), 0)
     const categories = inventoryItems.reduce((acc, item) => {
       acc[item.category] = (acc[item.category] || 0) + 1
       return acc
     }, {})
 
-    // All possible categories from the model enum
-    const allCategories = ['seeds', 'fertilizers', 'pesticides', 'chemicals', 'equipment', 'irrigation']
-
     return {
       totalItems,
       lowStockItems,
+      outOfStockItems,
       totalValue,
-      categories,
-      allCategoriesCount: allCategories.length
+      categories
     }
   }, [inventoryItems])
 
@@ -395,6 +405,20 @@ const AdminInventory = () => {
                     <div className='text-sm text-gray-600'>Low Stock Items</div>
                     <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.lowStockItems}</div>
                     <div className='mt-3'>
+                      <span className='text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full'>Needs Restocking</span>
+                    </div>
+                  </div>
+                  <div className='w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center'>
+                    <AlertTriangle className='w-6 h-6 text-yellow-600' />
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Out of Stock Items</div>
+                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.outOfStockItems}</div>
+                    <div className='mt-3'>
                       <span className='text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full'>Needs Restocking</span>
                     </div>
                   </div>
@@ -414,20 +438,6 @@ const AdminInventory = () => {
                   </div>
                   <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
                     <DollarSign className='w-6 h-6 text-green-600' />
-                  </div>
-                </div>
-              </Card>
-              <Card className='col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Categories</div>
-                    <div className='text-2xl font-semibold mt-1'>{inventoryMetrics.allCategoriesCount}</div>
-                    <div className='mt-3'>
-                      <span className='text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full'>Total Categories</span>
-                    </div>
-                  </div>
-                  <div className='w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center'>
-                    <BarChart3 className='w-6 h-6 text-purple-600' />
                   </div>
                 </div>
               </Card>
@@ -453,9 +463,9 @@ const AdminInventory = () => {
                   </select>
                   <select className='input-field h-9 py-1 text-sm hidden sm:block' value={statusSortMode} onChange={(e)=>setStatusSortMode(e.target.value)}>
                     <option value='none'>Status: Default</option>
-                    <option value='availableFirst'>Available first</option>
-                    <option value='lowFirst'>Low stock first</option>
-                    <option value='outFirst'>Out of stock first</option>
+                    <option value='availableFirst'>Available</option>
+                    <option value='lowFirst'>Low stock</option>
+                    <option value='outFirst'>Out of stock</option>
                   </select>
                   <button className='btn-primary whitespace-nowrap px-3 py-2 text-sm' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
                 </div>
@@ -464,13 +474,13 @@ const AdminInventory = () => {
                 <table className='min-w-full text-sm'>
                   <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-3 text-left'>Name</th>
-                      <th className='py-3 px-3 text-center'>Category</th>
-                      <th className='py-3 px-3 text-center'>Image</th>
-                      <th className='py-3 px-3 text-center'>Stock Qty</th>
-                      <th className='py-3 px-3 text-center'>Price/qty</th>
-                      <th className='py-3 px-3 text-center'>Status</th>
-                      <th className='py-3 px-3 text-center'>Actions</th>
+                      <th className='py-3 px-4 text-left'>Name</th>
+                      <th className='py-3 px-4 text-left'>Category</th>
+                      <th className='py-3 px-4 text-left'>Image</th>
+                      <th className='py-3 px-4 text-center'>Stock Qty</th>
+                      <th className='py-3 px-4 text-center'>Price/qty</th>
+                      <th className='py-3 px-4 text-center'>Status</th>
+                      <th className='py-3 px-4 text-center'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -481,17 +491,17 @@ const AdminInventory = () => {
                     ) : (
                       filteredInventory.map((it) => (
                         <tr key={it._id} className='border-t'>
-                          <td className='py-1 px-3 ml-3 text-left'>{it.name}</td>
-                          <td className='py-1 px-3 text-left capitalize'>{it.category}</td>
-                          <td className='py-1 px-3 text-left'>
+                          <td className='py-1 px-4 text-left'>{it.name}</td>
+                          <td className='py-1 px-4 text-left capitalize'>{it.category}</td>
+                          <td className='py-1 px-4 text-left'>
                             {it.images && it.images.length > 0 ? (
                               <div className='flex gap-1'>
-                                {it.images.slice(0, 2).map((img, idx) => (
+                                {it.images.slice(0, 4).map((img, idx) => (
                                   <img key={idx} src={img} alt={`${it.name} ${idx + 1}`} className='w-8 h-8 rounded object-cover'/>
                                 ))}
-                                {it.images.length > 2 && (
+                                {it.images.length > 4 && (
                                   <div className='w-8 h-8 rounded bg-gray-100 flex items-center justify-center text-xs text-gray-500'>
-                                    +{it.images.length - 2}
+                                    +{it.images.length - 4}
                                   </div>
                                 )}
                               </div>
@@ -499,18 +509,18 @@ const AdminInventory = () => {
                               <span className='text-gray-400'>—</span>
                             )}
                           </td>
-                          <td className='py-1 px-3 text-center'>{it.stockQuantity}</td>
-                          <td className='py-1 px-3 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
-                          <td className='py-1 px-3 text-center'>
+                          <td className='py-1 px-4 text-center'>{it.stockQuantity}</td>
+                          <td className='py-1 px-4 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
+                          <td className='py-1 px-4 text-center'>
                             <span className={`px-2 py-1 text-xs rounded-full ${
-                              it.status === 'Available' ? 'bg-purple-100 text-purple-700' :
-                              it.status === 'Low stock' ? 'bg-yellow-100 text-yellow-700' :
+                              getStockStatus(it.stockQuantity) === 'Available' ? 'bg-purple-100 text-purple-700' :
+                              getStockStatus(it.stockQuantity) === 'Low stock' ? 'bg-yellow-100 text-yellow-700' :
                               'bg-red-100 text-red-700'
                             }`}>
-                              {it.status}
+                              {getStockStatus(it.stockQuantity)}
                             </span>
                           </td>
-                          <td className='py-1 px-3 text-center'>
+                          <td className='py-1 px-4 text-center'>
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isInventory:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info
@@ -533,13 +543,18 @@ const AdminInventory = () => {
     {/* View/Edit Modal */}
     {viewItem && (
       <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
-        <div className='bg-white rounded-lg w-full max-w-2xl p-4'>
+        <div className='bg-white rounded-lg w-full max-w-lg p-4'>
           <div className='flex items-center justify-between mb-3'>
-            <h2 className='text-lg font-semibold'>{isEditing ? 'Edit Rental Item' : 'Rental Item Info'}</h2>
+            <h2 className='text-lg font-semibold'>{isEditing ? (viewItem.isInventory ? 'Edit Inventory Item' : 'Edit Rental Item') : (viewItem.isInventory ? 'Inventory Item Info' : 'Rental Item Info')}</h2>
             <button onClick={()=>{ setViewItem(null); setIsEditing(false); }} className='text-gray-500'>Close</button>
           </div>
           {isEditing ? (
-            <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, images:viewItem.images, stockQuantity:Number(viewItem.stockQuantity), price:Number(viewItem.price) }; await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(_){}}} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+            <div className='bg-gray-50 p-3 rounded-lg'>
+              <div className='mb-3'>
+                <h3 className='text-md font-semibold text-gray-800 mb-1'>Edit Item Details</h3>
+                <p className='text-xs text-gray-600'>Update the information below and click Save to apply changes.</p>
+              </div>
+              <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, images:viewItem.images, stockQuantity:Number(viewItem.stockQuantity || 0), price:Number(viewItem.price || 0) }; console.log('Submitting inventory update:', payload); await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(err){ console.error('Update failed:', err); }}} className='grid grid-cols-1 md:grid-cols-2 gap-3'>
               <div>
                 <label className='form-label'>{viewItem.isInventory ? 'Name' : 'Product name'}</label>
                 <input className='input-field' value={(viewItem.isInventory ? viewItem.name : viewItem.productName) || ''} onChange={(e)=>setViewItem(v=> v.isInventory ? ({...v, name:e.target.value}) : ({...v, productName:e.target.value}))} required />
@@ -554,18 +569,44 @@ const AdminInventory = () => {
                   </div>
                   <div>
                     <label className='form-label'>Stock Qty</label>
-                    <input type='number' min='0' className='input-field' value={viewItem.stockQuantity||0} onChange={(e)=>setViewItem(v=>({...v, stockQuantity:e.target.value}))} />
+                    <input 
+                      type='text'
+                      className='input-field' 
+                      value={viewItem.stockQuantity !== undefined ? String(viewItem.stockQuantity) : ''} 
+                      onChange={(e) => {
+                        const v = e.target.value
+                        console.log('Stock quantity changed to:', v)
+                        setViewItem(prev => ({ ...prev, stockQuantity: v }))
+                      }}
+                    />
                   </div>
                   <div>
                     <label className='form-label'>Price</label>
-                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.price||0} onChange={(e)=>setViewItem(v=>({...v, price:e.target.value}))} />
+                    <input 
+                      type='text'
+                      className='input-field' 
+                      value={viewItem.price !== undefined ? String(viewItem.price) : ''} 
+                      onChange={(e) => {
+                        const v = e.target.value
+                        console.log('Price changed to:', v)
+                        setViewItem(prev => ({ ...prev, price: v }))
+                      }}
+                    />
                   </div>
-                  <div>
-                    <label className='form-label'>Image</label>
-                    <input type='file' accept='image/*' className='block w-full text-sm' onChange={(e)=>{
-                      const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=> setViewItem(v=>({...v, image:r.result})); r.readAsDataURL(f);
+                  <div className='md:col-span-2'>
+                    <label className='form-label'>Images (up to 4)</label>
+                    <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
+                      const files = Array.from(e.target.files||[]).slice(0,4)
+                      const readers = files.map(file=> new Promise((resolve)=>{ const r=new FileReader(); r.onload=()=>resolve(r.result); r.readAsDataURL(file) }))
+                      Promise.all(readers).then(results=> setViewItem(v=>({...v, images: results})))
                     }} />
-                    {viewItem.image && <img src={viewItem.image} alt='preview' className='mt-2 w-20 h-20 object-cover rounded border' />}
+                    {Array.isArray(viewItem.images) && viewItem.images.length>0 && (
+                      <div className='mt-2 grid grid-cols-4 gap-2'>
+                        {viewItem.images.map((src, idx)=> (
+                          <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className='md:col-span-2'>
                     <label className='form-label'>Description</label>
@@ -607,45 +648,111 @@ const AdminInventory = () => {
                   </div>
                 </>
               )}
-              <div className='md:col-span-2 flex justify-end gap-2 pt-2'>
-                <button type='button' className='border px-3 py-2 rounded-md' onClick={()=>{ setViewItem(null); setIsEditing(false); }}>Cancel</button>
-                <button type='submit' className='btn-primary'>Save</button>
+              <div className='md:col-span-2 flex justify-end gap-2 pt-3 border-t border-gray-200'>
+                <button type='button' className='px-3 py-1.5 text-sm border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 transition-colors' onClick={()=>{ setViewItem(null); setIsEditing(false); }}>Cancel</button>
+                <button type='submit' className='px-3 py-1.5 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'>Save</button>
               </div>
             </form>
+            </div>
           ) : (
             <div className='space-y-3 text-sm'>
-              <div><span className='text-gray-500'>{viewItem.isInventory ? 'Name' : 'Product name'}:</span> <span className='font-medium'>{viewItem.isInventory ? viewItem.name : viewItem.productName}</span></div>
-              <div><span className='text-gray-500'>Description:</span> <span className='font-medium'>{viewItem.description||'—'}</span></div>
-              <div className='grid grid-cols-2 gap-4'>
+              {/* Basic Information */}
+              <div className='bg-gray-50 p-3 rounded-lg'>
+                <h3 className='font-semibold text-gray-800 mb-2 text-sm'>Basic Information</h3>
+                <div className='space-y-1'>
+                  <div><span className='text-gray-500 text-xs'>{viewItem.isInventory ? 'Product Name' : 'Product name'}:</span> <span className='font-medium ml-2 text-sm'>{viewItem.isInventory ? viewItem.name : viewItem.productName}</span></div>
+                  <div><span className='text-gray-500 text-xs'>Description:</span> <span className='font-medium ml-2 text-sm'>{viewItem.description||'—'}</span></div>
+                </div>
+              </div>
+
+              {/* Details Grid */}
+              <div className='grid grid-cols-2 gap-2'>
                 {viewItem.isInventory ? (
                   <>
-                    <div><span className='text-gray-500'>Category:</span> <span className='font-medium capitalize'>{viewItem.category}</span></div>
-                    <div><span className='text-gray-500'>Stock Qty:</span> <span className='font-medium'>{viewItem.stockQuantity}</span></div>
-                    <div><span className='text-gray-500'>Price:</span> <span className='font-medium'>LKR {Number(viewItem.price||0).toLocaleString()}</span></div>
-                    <div><span className='text-gray-500'>Status:</span> <span className='font-medium'>{viewItem.status}</span></div>
+                    <div className='bg-blue-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Category</div>
+                      <div className='font-semibold text-blue-800 capitalize text-sm'>{viewItem.category}</div>
+                    </div>
+                    <div className='bg-green-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Stock Quantity</div>
+                      <div className='font-semibold text-green-800 text-sm'>{viewItem.stockQuantity} units</div>
+                    </div>
+                    <div className='bg-purple-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Price per Unit</div>
+                      <div className='font-semibold text-purple-800 text-sm'>LKR {Number(viewItem.price||0).toLocaleString()}</div>
+                    </div>
+                    <div className='bg-orange-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Status</div>
+                      <div className={`font-semibold text-sm ${
+                        getStockStatus(viewItem.stockQuantity) === 'Available' ? 'text-green-800' :
+                        getStockStatus(viewItem.stockQuantity) === 'Low stock' ? 'text-yellow-800' :
+                        'text-red-800'
+                      }`}>
+                        {getStockStatus(viewItem.stockQuantity)}
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
-                    <div><span className='text-gray-500'>Rental / Day:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</span></div>
-                    <div><span className='text-gray-500'>Rental / Week:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</span></div>
-                    <div><span className='text-gray-500'>Total Qty:</span> <span className='font-medium'>{viewItem.totalQty}</span></div>
-                    <div><span className='text-gray-500'>Available Qty:</span> <span className='font-medium'>{viewItem.availableQty}</span></div>
+                    <div className='bg-blue-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Rental / Day</div>
+                      <div className='font-semibold text-blue-800 text-sm'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</div>
+                    </div>
+                    <div className='bg-green-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Rental / Week</div>
+                      <div className='font-semibold text-green-800 text-sm'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</div>
+                    </div>
+                    <div className='bg-purple-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Total Qty</div>
+                      <div className='font-semibold text-purple-800 text-sm'>{viewItem.totalQty}</div>
+                    </div>
+                    <div className='bg-orange-50 p-2 rounded-lg'>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Available Qty</div>
+                      <div className='font-semibold text-orange-800 text-sm'>{viewItem.availableQty}</div>
+                    </div>
                   </>
                 )}
               </div>
-              <div>
-                <div className='text-gray-500 mb-1'>Images</div>
+
+              {/* Additional Information for Inventory Items */}
+              {viewItem.isInventory && (
+                <div className='bg-gray-50 p-2 rounded-lg'>
+                  <h3 className='font-semibold text-gray-800 mb-2 text-sm'>Additional Information</h3>
+                  <div className='grid grid-cols-2 gap-2'>
+                    <div>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Total Value</div>
+                      <div className='font-semibold text-gray-800 text-sm'>LKR {(Number(viewItem.price||0) * Number(viewItem.stockQuantity||0)).toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Item ID</div>
+                      <div className='font-mono text-xs text-gray-600'>{viewItem._id}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Images Section */}
+              <div className='bg-gray-50 p-2 rounded-lg'>
+                <h3 className='font-semibold text-gray-800 mb-2 text-sm'>Images</h3>
                 {viewItem.isInventory ? (
-                  viewItem.image ? <img src={viewItem.image} alt='img' className='w-24 h-24 object-cover rounded-md border'/> : <div className='text-gray-400'>No image</div>
-                ) : (
-                  Array.isArray(viewItem.images)&&viewItem.images.length>0 ? (
-                    <div className='grid grid-cols-6 gap-2'>
-                      {viewItem.images.map((src, idx)=> (
-                        <img key={idx} src={src} alt={'img'+idx} className='w-full h-16 object-cover rounded-md border' />
+                  viewItem.images && viewItem.images.length > 0 ? (
+                    <div className='grid grid-cols-4 gap-2'>
+                      {viewItem.images.map((src, idx) => (
+                        <img key={idx} src={src} alt={`${viewItem.name} ${idx + 1}`} className='w-full h-16 object-cover rounded-md border'/>
                       ))}
                     </div>
                   ) : (
-                    <div className='text-gray-400'>No images</div>
+                    <div className='text-gray-400 text-center py-2 text-xs'>No images available</div>
+                  )
+                ) : (
+                  Array.isArray(viewItem.images) && viewItem.images.length > 0 ? (
+                    <div className='grid grid-cols-4 gap-2'>
+                      {viewItem.images.map((src, idx) => (
+                        <img key={idx} src={src} alt={`${viewItem.productName} ${idx + 1}`} className='w-full h-16 object-cover rounded-md border' />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className='text-gray-400 text-center py-2 text-xs'>No images available</div>
                   )
                 )}
               </div>
@@ -772,11 +879,33 @@ const AdminInventory = () => {
               </div>
               <div>
                 <label className='form-label'>Stock quantity</label>
-                <input type='number' min='0' className='input-field' value={inventoryForm.stockQuantity} onChange={(e)=>setInventoryForm(f=>({...f, stockQuantity:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  step='1'
+                  className='input-field' 
+                  value={inventoryForm.stockQuantity} 
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setInventoryForm(f => ({ ...f, stockQuantity: v }))
+                  }}
+                  required 
+                />
               </div>
               <div>
                 <label className='form-label'>Price</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={inventoryForm.price} onChange={(e)=>setInventoryForm(f=>({...f, price:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  step='0.01' 
+                  className='input-field' 
+                  value={inventoryForm.price} 
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setInventoryForm(f => ({ ...f, price: v }))
+                  }}
+                  required 
+                />
               </div>
               <div className='md:col-span-2'>
                 <label className='form-label'>Images (up to 4)</label>

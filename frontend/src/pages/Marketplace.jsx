@@ -42,10 +42,13 @@ const Marketplace = () => {
 
   const filteredItems = (Array.isArray(items) ? items : []).filter((it) => {
     const query = q.trim().toLowerCase();
-    if (!query) return true;
     
     if (isFarmer) {
-      // For inventory items
+      // For inventory items - exclude items with 0 stock quantity
+      if (Number(it.stockQuantity || 0) === 0) return false;
+      
+      if (!query) return true;
+      
       return (
         String(it.name || '').toLowerCase().includes(query) ||
         String(it.description || '').toLowerCase().includes(query) ||
@@ -53,6 +56,8 @@ const Marketplace = () => {
       )
     } else {
       // For listing items
+      if (!query) return true;
+      
       const farmerName = it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : '')
       return (
         String(it.cropName || '').toLowerCase().includes(query) ||
