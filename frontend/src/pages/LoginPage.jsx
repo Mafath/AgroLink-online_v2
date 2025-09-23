@@ -68,12 +68,12 @@ const LoginPage = () => {
   );
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center py-7 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-bg flex items-center justify-center pt-0 pb-7 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 -mt-5">
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={Logo} alt="AgroLink logo" className="w-16 h-16 rounded-2xl object-cover" />
+            <img src={Logo} alt="AgroLink logo" className="w-16 h-19 rounded-2xl object-cover" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
           <p className="mt-2 text-sm text-gray-600">Sign in to your AgroLink account</p>
