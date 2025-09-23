@@ -76,10 +76,18 @@ const ProfilePage = () => {
   )
 
   return (
-    <div className='p-4 mt-5 max-w-5xl mx-auto'>
+    <div className='p-4 mt-5 max-w-6xl mx-auto'>
       {/* Header Section */}
       <div className='relative'>
-        <div className='bg-gradient-primary rounded-2xl h-24 shadow-medium'></div>
+        <div
+          className='rounded-2xl h-24 shadow-medium bg-cover bg-center relative'
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1920&q=80')",
+          }}
+        >
+          <div className='absolute inset-0 rounded-2xl bg-gradient-to-r from-primary-500/60 to-accent-500/40'></div>
+        </div>
         <div className='absolute right-3 top-3 z-20 flex items-center gap-2'>
           <button
             type='button'
@@ -133,7 +141,7 @@ const ProfilePage = () => {
       </div>
 
       {/* Profile Info Card */}
-      <div className='card max-w-3xl mx-auto mt-6'>
+      <div className='card max-w-4xl mx-auto mt-6'>
         <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
           <div>
             <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
