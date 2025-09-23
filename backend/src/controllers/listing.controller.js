@@ -12,6 +12,18 @@ export const getAllListings = async (req, res) => {
   }
 };
 
+export const getAllListingsAll = async (req, res) => {
+  try {
+    const listings = await Listing.find({})
+      .sort({ createdAt: -1 })
+      .populate({ path: 'farmer', select: 'fullName email role' });
+    return res.status(200).json(listings);
+  } catch (error) {
+    console.log("Error in getAllListingsAll: ", error.message);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
+  }
+};
+
 export const getMyListings = async (req, res) => {
   try {
     const userId = req.user._id;

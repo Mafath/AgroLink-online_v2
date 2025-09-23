@@ -42,10 +42,13 @@ const Marketplace = () => {
 
   const filteredItems = (Array.isArray(items) ? items : []).filter((it) => {
     const query = q.trim().toLowerCase();
-    if (!query) return true;
     
     if (isFarmer) {
-      // For inventory items
+      // For inventory items - exclude items with 0 stock quantity
+      if (Number(it.stockQuantity || 0) === 0) return false;
+      
+      if (!query) return true;
+      
       return (
         String(it.name || '').toLowerCase().includes(query) ||
         String(it.description || '').toLowerCase().includes(query) ||
@@ -53,6 +56,8 @@ const Marketplace = () => {
       )
     } else {
       // For listing items
+      if (!query) return true;
+      
       const farmerName = it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : '')
       return (
         String(it.cropName || '').toLowerCase().includes(query) ||
@@ -240,7 +245,12 @@ const Marketplace = () => {
                     min='1'
                     max={isFarmer ? it.stockQuantity : it.capacityKg}
                     value={quantities[it._id] || 1}
-                    onChange={(e) => updateQuantity(it._id, parseInt(e.target.value) || 1)}
+                    onChange={(e) => {
+                      const raw = parseInt(e.target.value) || 1
+                      const max = isFarmer ? Number(it.stockQuantity) : Number(it.capacityKg)
+                      const clamped = Math.max(1, Math.min(max, raw))
+                      updateQuantity(it._id, clamped)
+                    }}
                     className='w-16 px-2 py-1 text-xs border border-gray-300 rounded'
                   />
                   <span className='text-xs text-gray-500'>{isFarmer ? 'units' : 'kg'}</span>
@@ -348,7 +358,12 @@ const Marketplace = () => {
                   min='1'
                   max={isFarmer ? selected.stockQuantity : selected.capacityKg}
                   value={quantities[selected._id] || 1}
-                  onChange={(e) => updateQuantity(selected._id, parseInt(e.target.value) || 1)}
+                  onChange={(e) => {
+                    const raw = parseInt(e.target.value) || 1
+                    const max = isFarmer ? Number(selected.stockQuantity) : Number(selected.capacityKg)
+                    const clamped = Math.max(1, Math.min(max, raw))
+                    updateQuantity(selected._id, clamped)
+                  }}
                   className='w-20 px-2 py-1 text-sm border border-gray-300 rounded'
                 />
               </div>
