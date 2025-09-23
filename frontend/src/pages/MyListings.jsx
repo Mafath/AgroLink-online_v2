@@ -237,21 +237,71 @@ const MyListings = () => {
             <form onSubmit={handleCreate} className='space-y-4'>
               <div>
                 <label className='form-label'>Crop Name</label>
-                <input className='input-field' value={form.cropName} onChange={e => setForm({ ...form, cropName: e.target.value })} />
+                <input
+                  className='input-field'
+                  value={form.cropName}
+                  onChange={e => {
+                    const onlyAlphaNum = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '')
+                    setForm({ ...form, cropName: onlyAlphaNum })
+                  }}
+                  inputMode='text'
+                  pattern='[A-Za-z0-9 ]*'
+                />
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div>
                   <label className='form-label'>Price per kg</label>
-                  <input type='number' step='0.01' className='input-field' value={form.pricePerKg} onChange={e => setForm({ ...form, pricePerKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='0.01'
+                    className='input-field'
+                    value={form.pricePerKg}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '') return setForm({ ...form, pricePerKg: '' })
+                      const n = Number(v)
+                      setForm({ ...form, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0.00'
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Capacity (kg)</label>
-                  <input type='number' className='input-field' value={form.capacityKg} onChange={e => setForm({ ...form, capacityKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='1'
+                    className='input-field'
+                    value={form.capacityKg}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '') return setForm({ ...form, capacityKg: '' })
+                      const n = Number(v)
+                      setForm({ ...form, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0'
+                  />
                 </div>
               </div>
               <div>
                 <label className='form-label'>Harvested date</label>
-                <input type='date' className='input-field' value={form.harvestedAt} onChange={e => setForm({ ...form, harvestedAt: e.target.value })} />
+                <input
+                  type='date'
+                  className='input-field'
+                  value={form.harvestedAt}
+                  max={toInputDate(new Date())}
+                  onChange={e => {
+                    const v = e.target.value
+                    const today = new Date()
+                    const picked = v ? new Date(v) : null
+                    if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                      // clamp to today
+                      return setForm({ ...form, harvestedAt: toInputDate(new Date()) })
+                    }
+                    setForm({ ...form, harvestedAt: v })
+                  }}
+                />
               </div>
               <div>
                 <label className='form-label'>Images (up to 4)</label>
@@ -301,22 +351,71 @@ const MyListings = () => {
             <div className='space-y-3'>
               <div>
                 <label className='form-label'>Crop Name</label>
-                <input className='input-field py-2 px-3 text-sm' value={editForm.cropName} onChange={(e) => setEditForm({ ...editForm, cropName: e.target.value })} />
+                <input
+                  className='input-field py-2 px-3 text-sm'
+                  value={editForm.cropName}
+                  onChange={(e) => {
+                    const onlyAlphaNum = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '')
+                    setEditForm({ ...editForm, cropName: onlyAlphaNum })
+                  }}
+                  inputMode='text'
+                  pattern='[A-Za-z0-9 ]*'
+                />
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <div>
                   <label className='form-label'>Price per kg</label>
-                  <input type='number' step='0.01' className='input-field py-2 px-3 text-sm' value={editForm.pricePerKg} onChange={(e) => setEditForm({ ...editForm, pricePerKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='0.01'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.pricePerKg}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '') return setEditForm({ ...editForm, pricePerKg: '' })
+                      const n = Number(v)
+                      setEditForm({ ...editForm, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0.00'
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Capacity (kg)</label>
-                  <input type='number' className='input-field py-2 px-3 text-sm' value={editForm.capacityKg} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='1'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.capacityKg}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '') return setEditForm({ ...editForm, capacityKg: '' })
+                      const n = Number(v)
+                      setEditForm({ ...editForm, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0'
+                  />
                 </div>
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <div>
                   <label className='form-label'>Harvested date</label>
-                  <input type='date' className='input-field py-2 px-3 text-sm' value={editForm.harvestedAt} onChange={(e) => setEditForm({ ...editForm, harvestedAt: e.target.value })} />
+                  <input
+                    type='date'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.harvestedAt}
+                    max={toInputDate(new Date())}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      const today = new Date()
+                      const picked = v ? new Date(v) : null
+                      if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                        return setEditForm({ ...editForm, harvestedAt: toInputDate(new Date()) })
+                      }
+                      setEditForm({ ...editForm, harvestedAt: v })
+                    }}
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Status</label>
