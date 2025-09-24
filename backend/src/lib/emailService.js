@@ -557,3 +557,134 @@ export default {
   sendPasswordResetEmail,
   generateVerificationToken,
 };
+
+// Send order confirmation email covering pickup/delivery and cash/card flows
+export const sendOrderPlacedEmail = async (order, recipient) => {
+  try {
+    const transporter = createTransporter();
+
+    const customerName = recipient?.fullName || order.contactName || 'Customer';
+    const customerEmail = recipient?.email || order.contactEmail;
+    const siteUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    const isDelivery = order.deliveryType === 'DELIVERY';
+    const isCard = order.paymentMethod === 'CARD';
+
+    const statusLine = isCard ? 'Payment received' : 'Cash payment on ' + (isDelivery ? 'delivery' : 'pickup');
+    const methodLine = `${order.deliveryType} • ${order.paymentMethod}`;
+
+    const subject = `Your order ${order.orderNumber || order._id} is confirmed (${order.deliveryType.toLowerCase()})`;
+
+    const itemsRows = (order.items || [])
+      .map(
+        (it) => `
+          <tr>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${it.title}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;">${it.quantity}</td>
+            <td style="padding:8px 12px;border-bottom:1px solid #e5e7eb;text-align:right;">LKR ${(it.price * it.quantity).toFixed(2)}</td>
+          </tr>`
+      )
+      .join('');
+
+    const deliveryBlock = isDelivery
+      ? `
+        <div style="margin-top:16px;color:#374151;font-size:14px;">
+          <div style="font-weight:600;margin-bottom:6px;">Delivery Address</div>
+          <div>${order.deliveryAddress?.line1 || ''}</div>
+          ${order.deliveryAddress?.line2 ? `<div>${order.deliveryAddress.line2}</div>` : ''}
+          <div>${order.deliveryAddress?.city || ''}, ${order.deliveryAddress?.state || ''} ${order.deliveryAddress?.postalCode || ''}</div>
+          <div style="margin-top:8px;">We will notify you as your delivery progresses.</div>
+        </div>`
+      : `
+        <div style="margin-top:16px;color:#374151;font-size:14px;">
+          <div>We will notify you when your order is ready for pickup.</div>
+        </div>`;
+
+    const payHelp = isCard
+      ? ''
+      : '<div style="margin-top:8px;color:#6b7280;">Please prepare exact cash to speed up the handover.</div>';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Order Confirmation - AgroLink</title>
+        </head>
+        <body style="font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f9fafb;padding:24px;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <div style="background:#111827;color:#ffffff;padding:20px 24px;">
+              <div style="font-size:20px;font-weight:700;">AgroLink</div>
+              <div style="margin-top:6px;font-size:14px;opacity:.9;">${statusLine}</div>
+            </div>
+
+            <div style="padding:24px;">
+              <div style="font-size:18px;font-weight:600;color:#111827;">Hi ${customerName},</div>
+              <div style="margin-top:8px;color:#374151;">Thanks for your order! Here are the details:</div>
+
+              <div style="margin-top:16px;color:#374151;font-size:14px;">
+                <div><strong>Order #</strong> ${order.orderNumber || order._id}</div>
+                <div><strong>Method</strong> ${methodLine}</div>
+                <div><strong>Date</strong> ${new Date(order.createdAt || Date.now()).toLocaleString()}</div>
+              </div>
+
+              ${deliveryBlock}
+              ${payHelp}
+
+              <div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;">
+                <table style="width:100%;border-collapse:collapse;font-size:14px;color:#111827;">
+                  <thead>
+                    <tr>
+                      <th style="text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb;">Item</th>
+                      <th style="text-align:left;padding:8px 12px;border-bottom:1px solid #e5e7eb;">Qty</th>
+                      <th style="text-align:right;padding:8px 12px;border-bottom:1px solid #e5e7eb;">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${itemsRows}
+                    <tr>
+                      <td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">Subtotal</td>
+                      <td style="padding:8px 12px;text-align:right;">LKR ${Number(order.subtotal || 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td colspan="2" style="padding:8px 12px;text-align:right;color:#6b7280;">${isDelivery ? 'Shipping' : 'Pickup fee'}</td>
+                      <td style="padding:8px 12px;text-align:right;">LKR ${Number(order.deliveryFee || 0).toFixed(2)}</td>
+                    </tr>
+                    <tr>
+                      <td colspan="2" style="padding:12px 12px;text-align:right;font-weight:700;">Order Total</td>
+                      <td style="padding:12px 12px;text-align:right;font-weight:700;">LKR ${Number(order.total || 0).toFixed(2)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div style="margin-top:20px;">
+                <a href="${siteUrl}/my-orders" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:600;">View my order</a>
+              </div>
+            </div>
+
+            <div style="background:#f9fafb;padding:16px 24px;color:#6b7280;font-size:12px;text-align:center;">
+              © ${new Date().getFullYear()} AgroLink. This is an automated message; please do not reply.
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const result = await transporter.sendMail({
+      from: `"AgroLink" <${process.env.EMAIL_USER}>`,
+      to: customerEmail,
+      subject,
+      html,
+    });
+
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending order email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Named export added to default for convenience in some import styles
+export const orderEmails = { sendOrderPlacedEmail };

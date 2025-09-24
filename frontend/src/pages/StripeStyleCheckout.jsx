@@ -533,6 +533,9 @@ const StripeStyleCheckout = () => {
               <p className="text-sm text-gray-600 mb-4">
                 Your order has been placed successfully. Order ID: <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{orderId}</span>
               </p>
+              <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 text-blue-800 text-sm p-3">
+                Please check your email for the order confirmation and next steps.
+              </div>
               
               {/* Order Details */}
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
