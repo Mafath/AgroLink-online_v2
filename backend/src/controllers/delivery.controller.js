@@ -145,4 +145,29 @@ export const getDriverDeliveries = async (req, res) => {
   }
 };
 
+// Admin can cancel a delivery at any time
+export const adminCancelDelivery = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const delivery = await Delivery.findById(id).populate('order');
+    if (!delivery) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found' } });
+
+    if (delivery.status === 'COMPLETED') {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Cannot cancel a completed delivery' } });
+    }
+    if (delivery.status === 'CANCELLED') {
+      return res.status(200).json(delivery);
+    }
+
+    delivery.addStatus('CANCELLED', req.user._id);
+    await delivery.save();
+
+    return res.json(delivery);
+  } catch (error) {
+    console.error('adminCancelDelivery error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to cancel delivery' } });
+  }
+};
+
 
