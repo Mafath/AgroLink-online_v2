@@ -24,6 +24,8 @@ import CartPage from './pages/CartPage';
 import StripeStyleCheckout from './pages/StripeStyleCheckout';
 import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
 import DebugPage from './pages/DebugPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
+import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
 
 {/* Delete after testing */}
 import DeliveryPage from './pages/DeliveryPage';
@@ -60,6 +62,8 @@ const App = () => {
           <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
+          <Route path="/email-verification-status" element={<EmailVerificationStatusPage />} />
           <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
@@ -82,7 +86,17 @@ const App = () => {
       </main>
 
       <Footer />
-      <Toaster />
+      <Toaster 
+        toastOptions={{
+          duration: 5000, // 5 seconds instead of default 4 seconds
+          success: {
+            duration: 5000, // 6 seconds for success messages
+          },
+          error: {
+            duration: 7000, // 7 seconds for error messages (more important)
+          },
+        }}
+      />
     </div>
   )
 }

@@ -94,7 +94,17 @@ const SignUpPage = () => {
       email: formData.email.trim().toLowerCase(),
       fullName: formData.fullName.trim(),
     });
-    if (result?.success) navigate('/login');
+    
+    if (result?.success) {
+      // Show success message and redirect to email verification status page
+      toast.success('Account created successfully! Please check your email to verify your account.');
+      navigate('/email-verification-status', { 
+        state: { 
+          email: formData.email.trim().toLowerCase(),
+          message: 'Account created successfully! Please check your email to verify your account.'
+        } 
+      });
+    }
   };
 
   const handleBlur = (field) => (e) => {
