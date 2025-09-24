@@ -111,7 +111,7 @@ const MyListings = () => {
         <h3 className='text-xl font-semibold text-green-800 mb-4'>New Listings</h3>
         {loading ? (
           <div>Loading...</div>
-        ) : items.filter(item => item.status !== 'SOLD').length === 0 ? (
+        ) : items.filter(item => item.status === 'AVAILABLE').length === 0 ? (
           <div className='text-gray-500 text-sm'>No active listings yet.</div>
         ) : (
           <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
@@ -128,7 +128,7 @@ const MyListings = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.filter(item => item.status !== 'SOLD').map(it => (
+                {items.filter(item => item.status === 'AVAILABLE').map(it => (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
                     <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
@@ -215,6 +215,63 @@ const MyListings = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Removed Items Table */}
+      <div className='card mt-6'>
+        <h3 className='text-xl font-semibold text-gray-800 mb-4'>Removed Items</h3>
+        {loading ? (
+          <div>Loading...</div>
+        ) : items.filter(item => item.status === 'REMOVED').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No removed items.</div>
+        ) : (
+          <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='text-left border-b'>
+                  <th className='py-2 pr-4'>Crop</th>
+                  <th className='py-2 pr-4'>Price/kg</th>
+                  <th className='py-2 pr-4'>Harvested</th>
+                  <th className='py-2 pr-4'>Best before</th>
+                  <th className='py-2 pr-4'>Images</th>
+                  <th className='py-2'>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter(item => item.status === 'REMOVED').map(it => {
+                  const bestBefore = (() => {
+                    const days = Number(it.expireAfterDays)
+                    if (!Number.isFinite(days) || days <= 0) return null
+                    const d = new Date(it.harvestedAt)
+                    d.setDate(d.getDate() + days)
+                    return d
+                  })()
+                  return (
+                  <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
+                    <td className='py-2 pr-4'>{it.cropName}</td>
+                    <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4'>{bestBefore ? bestBefore.toLocaleDateString() : '—'}</td>
+                    <td className='py-2 pr-4'>
+                      {Array.isArray(it.images) && it.images.length > 0 ? (
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                          {it.images.slice(0,4).map((src, idx) => (
+                            <img key={idx} src={src} alt={'img'+idx} className='w-10 h-10 object-cover rounded' />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400'>No images</span>
+                      )}
+                    </td>
+                    <td className='py-2'>
+                      <span className='px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800'>REMOVED</span>
+                    </td>
+                  </tr>
+                )})}
               </tbody>
             </table>
           </div>
