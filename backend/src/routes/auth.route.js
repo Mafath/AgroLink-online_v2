@@ -8,7 +8,7 @@ const router = express.Router();
 router.post("/signup", signup);
 router.post("/signin", signin);
 router.post("/login", login);
-router.post("/logout", logout);
+router.post("/logout", requireAuth, logout);
 
 router.put("/update-profile", requireAuth, updateProfile);
 // If user wants to update the profile, first we have to check if they are logged in?

@@ -230,7 +230,7 @@ const AdminLogistics = () => {
                             return (
                               <select
                                 onChange={(e) => assignDriver(delivery._id, e.target.value)}
-                                className="border border-gray-300 rounded px-2 py-1 text-xs"
+                                className="border border-gray-300 rounded px-2 py-1 text-xs w-40"
                                 defaultValue=""
                               >
                                 <option value="">Assign Driver</option>
