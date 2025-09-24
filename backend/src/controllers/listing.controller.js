@@ -82,8 +82,8 @@ export const createListing = async (req, res) => {
     const harvestedDate = new Date(harvestedAt);
     const expireDaysNum = expireAfterDays != null ? Number(expireAfterDays) : null;
     const today = new Date();
-    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const isFuture = harvestedDate > todayMidnight;
+    const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+    const isFuture = harvestedDate > endOfToday;
 
     if (!validName) {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Crop name must contain letters and numbers only' } });
@@ -185,8 +185,8 @@ export const updateListing = async (req, res) => {
         return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid harvested date' } });
       }
       const today = new Date();
-      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-      if (harvestedDate > todayMidnight) {
+      const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+      if (harvestedDate > endOfToday) {
         return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Harvested date cannot be in the future' } });
       }
       listing.harvestedAt = harvestedDate;
