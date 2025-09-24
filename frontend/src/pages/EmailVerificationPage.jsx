@@ -41,10 +41,7 @@ const EmailVerificationPage = () => {
             setMessage('Email verified successfully! You can now use all features of AgroLink.')
           }
           
-          // Redirect to login after 3 seconds
-          setTimeout(() => {
-            navigate('/login')
-          }, 3000)
+          // Don't auto-redirect, let user click "Go to Login" button manually
         } else {
           setStatus('error')
           setMessage(response.data.message || 'Verification failed')
@@ -96,7 +93,7 @@ const EmailVerificationPage = () => {
             <p className="text-gray-600 mb-6">{message}</p>
             <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
               <p className="text-green-800 text-sm">
-                You will be redirected to the login page in a few seconds...
+                Your email has been verified successfully! You can now log in to your account.
               </p>
             </div>
             <button
