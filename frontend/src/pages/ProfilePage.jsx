@@ -15,7 +15,9 @@ const ProfilePage = () => {
   const [phone, setPhone] = useState('')
   const [address, setAddress] = useState('')
   const [bio, setBio] = useState('')
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity' | 'settings'
+  const [touched, setTouched] = useState({ fullName: false, phone: false, address: false, bio: false })
+  const [errors, setErrors] = useState({ fullName: '', phone: '', address: '', bio: '' })
+  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity'
   const [isEditing, setIsEditing] = useState(false)
   const navigate = useNavigate()
   const { logout, checkAuth } = useAuthStore()
@@ -47,6 +49,16 @@ const ProfilePage = () => {
   }
 
   const handleSave = async () => {
+    // Validate before saving
+    const validation = validateAll({ fullName, phone, address, bio })
+    setErrors(validation)
+    setTouched({ fullName: true, phone: true, address: true, bio: true })
+    const hasErrors = Object.values(validation).some(Boolean)
+    if (hasErrors) {
+      toast.error('Please fix the highlighted fields')
+      return
+    }
+
     try {
       setSaving(true)
       const payload = { fullName, phone, address, bio }
@@ -74,6 +86,47 @@ const ProfilePage = () => {
     bio.trim() !== (me.bio || '') ||
     Boolean(profilePic)
   )
+
+  // Validation helpers
+  const validateFullName = (value) => {
+    const v = value.trim()
+    if (!v) return 'Full name is required'
+    if (v.length < 2) return 'Full name must be at least 2 characters'
+    if (!/^[A-Za-z ]+$/.test(v)) return 'Use letters and spaces only'
+    return ''
+  }
+
+  const validatePhone = (value) => {
+    const v = value.trim()
+    if (!v) return '' // optional
+    const phoneRegex = /^0\d{9}$/ // Exactly 10 digits, starting with 0
+    if (!phoneRegex.test(v)) return 'Phone must start with 0 and be exactly 10 digits'
+    return ''
+  }
+
+  const validateAddress = (value) => {
+    const v = value.trim()
+    if (!v) return '' // optional
+    if (v.length > 200) return 'Address must be at most 200 characters'
+    return ''
+  }
+
+  const validateBio = (value) => {
+    const v = value.trim()
+    if (!v) return '' // optional
+    if (v.length > 300) return 'Bio must be at most 300 characters'
+    return ''
+  }
+
+  const validateAll = ({ fullName, phone, address, bio }) => ({
+    fullName: validateFullName(fullName),
+    phone: validatePhone(phone),
+    address: validateAddress(address),
+    bio: validateBio(bio),
+  })
+
+  const formValidation = validateAll({ fullName, phone, address, bio })
+  const isFormValid = !formValidation.fullName && !formValidation.phone && !formValidation.address && !formValidation.bio
 
   return (
     <div className='p-4 mt-5 max-w-6xl mx-auto'>
@@ -144,20 +197,50 @@ const ProfilePage = () => {
       <div className='mt-6 flex items-center gap-2 justify-center'>
         <button onClick={() => setActiveTab('overview')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'overview' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Overview</button>
         <button onClick={() => setActiveTab('activity')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'activity' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Activity</button>
-        <button onClick={() => setActiveTab('settings')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'settings' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Settings</button>
       </div>
 
-      {/* Profile Info Card (Overview/Settings) */}
-      {(activeTab === 'overview' || activeTab === 'settings') && (
+      {/* Profile Info Card (Overview) */}
+      {(activeTab === 'overview') && (
         <div className='card max-w-4xl mx-auto mt-6'>
           <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
             <div>
               <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
-              <input className='input-field' value={fullName} onChange={(e) => setFullName(e.target.value)} disabled={activeTab !== 'settings'} />
+              <input
+                className='input-field'
+                value={fullName}
+                onChange={(e) => {
+                  const val = e.target.value
+                  setFullName(val)
+                  if (touched.fullName) setErrors((er) => ({ ...er, fullName: validateFullName(val) }))
+                }}
+                onBlur={() => { setTouched((t) => ({ ...t, fullName: true })); setErrors((er) => ({ ...er, fullName: validateFullName(fullName) })) }}
+                disabled={!isEditing}
+              />
+              {touched.fullName && errors.fullName && (
+                <p className='mt-1 text-xs text-red-600'>{errors.fullName}</p>
+              )}
             </div>
             <div>
               <label className='form-label'><Phone className='inline mr-2 w-4 h-4 text-gray-400' />Phone Number</label>
-              <input className='input-field' value={phone} onChange={(e) => setPhone(e.target.value)} placeholder='+1 555 123 4567' disabled={activeTab !== 'settings'} />
+              <input
+                className='input-field'
+                value={phone}
+                onChange={(e) => {
+                  // allow only digits, limit to 10
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  setPhone(val)
+                  if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
+                }}
+                onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
+                placeholder='0712345678'
+                inputMode='numeric'
+                pattern='^0\d{9}$'
+                maxLength={10}
+                disabled={!isEditing}
+              />
+              {touched.phone && errors.phone && (
+                <p className='mt-1 text-xs text-red-600'>{errors.phone}</p>
+              )}
             </div>
           </div>
           <div className='mt-4'>
@@ -166,11 +249,41 @@ const ProfilePage = () => {
           </div>
           <div className='mt-4'>
             <label className='form-label'><MapPin className='inline mr-2 w-4 h-4 text-gray-400' />Address</label>
-            <textarea className='input-field' rows={3} value={address} onChange={(e) => setAddress(e.target.value)} placeholder='Street, City, State, ZIP' disabled={activeTab !== 'settings'} />
+            <textarea
+              className='input-field'
+              rows={3}
+              value={address}
+              onChange={(e) => {
+                const val = e.target.value
+                setAddress(val)
+                if (touched.address) setErrors((er) => ({ ...er, address: validateAddress(val) }))
+              }}
+              onBlur={() => { setTouched((t) => ({ ...t, address: true })); setErrors((er) => ({ ...er, address: validateAddress(address) })) }}
+              placeholder='Street, City, State, ZIP'
+              disabled={!isEditing}
+            />
+            {touched.address && errors.address && (
+              <p className='mt-1 text-xs text-red-600'>{errors.address}</p>
+            )}
           </div>
           <div className='mt-4'>
             <label className='form-label'>Bio / About</label>
-            <textarea className='input-field' rows={3} value={bio} onChange={(e) => setBio(e.target.value)} placeholder='Tell others about you' disabled={activeTab !== 'settings'} />
+            <textarea
+              className='input-field'
+              rows={3}
+              value={bio}
+              onChange={(e) => {
+                const val = e.target.value
+                setBio(val)
+                if (touched.bio) setErrors((er) => ({ ...er, bio: validateBio(val) }))
+              }}
+              onBlur={() => { setTouched((t) => ({ ...t, bio: true })); setErrors((er) => ({ ...er, bio: validateBio(bio) })) }}
+              placeholder='Tell others about you'
+              disabled={!isEditing}
+            />
+            {touched.bio && errors.bio && (
+              <p className='mt-1 text-xs text-red-600'>{errors.bio}</p>
+            )}
           </div>
           {me.verified && (
             <div className='mt-4'>
@@ -179,7 +292,7 @@ const ProfilePage = () => {
               </span>
             </div>
           )}
-          {activeTab === 'settings' && (
+          {isEditing && (
             <div className='mt-6 flex gap-3 justify-end'>
               <button
                 type='button'
@@ -188,7 +301,7 @@ const ProfilePage = () => {
               >
                 Cancel
               </button>
-              <button disabled={saving || !isChanged} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
+              <button disabled={saving || !isChanged || !isFormValid} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
                 {saving ? 'Saving...' : 'Save changes'}
               </button>
             </div>

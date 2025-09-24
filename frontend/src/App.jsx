@@ -74,7 +74,7 @@ const App = () => {
           <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
           <Route path="/email-verification-status" element={<EmailVerificationStatusPage />} />
           <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={authUser ? <SettingsPage /> : <Navigate to="/login" />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
           <Route path="/admin/users" element={authUser && authUser.role === 'ADMIN' ? <AdminUsers /> : <Navigate to="/" />} />
           <Route path="/admin/roles" element={authUser && authUser.role === 'ADMIN' ? <AdminRoles /> : <Navigate to="/" />} />
@@ -84,18 +84,18 @@ const App = () => {
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
-          <Route path="/marketplace" element={<Marketplace />} />
+          <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />
           <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
               <Route path="/cart" element={authUser ? <CartPage /> : <Navigate to="/login" />} />
               <Route path="/stripe-checkout" element={authUser ? <StripeStyleCheckout /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
-              <Route path="/debug" element={<DebugPage />} />
-         <Route path="/harvest-dashboard" element={<HarvestDashboard />} />
-          <Route path="/harvest-request" element={<HarvestRequest />} />
-          <Route path="/harvest-schedule" element={<HarvestSchedule />} />
-          <Route path="/harvest-track" element={<HarvestTrack />} />
-          <Route path="/harvest-report" element={<HarvestReport />} />
+              <Route path="/debug" element={authUser ? <DebugPage /> : <Navigate to="/login" />} />
+         <Route path="/harvest-dashboard" element={authUser ? <HarvestDashboard /> : <Navigate to="/login" />} />
+          <Route path="/harvest-request" element={authUser ? <HarvestRequest /> : <Navigate to="/login" />} />
+          <Route path="/harvest-schedule" element={authUser ? <HarvestSchedule /> : <Navigate to="/login" />} />
+          <Route path="/harvest-track" element={authUser ? <HarvestTrack /> : <Navigate to="/login" />} />
+          <Route path="/harvest-report" element={authUser ? <HarvestReport /> : <Navigate to="/login" />} />
 
         </Routes>
       </main>

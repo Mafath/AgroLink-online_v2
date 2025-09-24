@@ -116,12 +116,7 @@ const Navbar = () => {
                   My Orders
                 </Link>
 
-                <Link
-                  to="/delivery-tracking"
-                  className={`${isActive('/delivery-tracking') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
-                >
-                  Delivery Tracking
-                </Link>
+                {/* Delivery Tracking link moved to My Orders page header */}
               </>
             )}
           </div>
@@ -225,7 +220,7 @@ const Navbar = () => {
                           >
                             My Orders
                           </button>
-                          <button onClick={() => handleNavigation('/delivery-tracking')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Delivery Tracking</button>
+                          {/* Delivery Tracking link moved to My Orders page header */}
                         </>
                       )}
                 <button onClick={() => handleNavigation('/profile')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Profile</button>
