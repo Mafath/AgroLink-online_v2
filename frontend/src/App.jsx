@@ -24,8 +24,17 @@ import CartPage from './pages/CartPage';
 import StripeStyleCheckout from './pages/StripeStyleCheckout';
 import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
 import DebugPage from './pages/DebugPage';
+
+import HarvestDashboard from './pages/HarvestDashboard';
+import HarvestRequest from './pages/HarvestRequest';
+import HarvestSchedule from './pages/HarvestSchedule';
+import HarvestTrack from './pages/HarvestTrack';
+import HarvestReport from './pages/HarvestReport';
+
+
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
+
 
 {/* Delete after testing */}
 import DeliveryPage from './pages/DeliveryPage';
@@ -82,6 +91,12 @@ const App = () => {
               <Route path="/stripe-checkout" element={authUser ? <StripeStyleCheckout /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
               <Route path="/debug" element={<DebugPage />} />
+         <Route path="/harvest-dashboard" element={<HarvestDashboard />} />
+          <Route path="/harvest-request" element={<HarvestRequest />} />
+          <Route path="/harvest-schedule" element={<HarvestSchedule />} />
+          <Route path="/harvest-track" element={<HarvestTrack />} />
+          <Route path="/harvest-report" element={<HarvestReport />} />
+
         </Routes>
       </main>
 
