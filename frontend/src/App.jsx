@@ -86,7 +86,17 @@ const App = () => {
       </main>
 
       <Footer />
-      <Toaster />
+      <Toaster 
+        toastOptions={{
+          duration: 5000, // 5 seconds instead of default 4 seconds
+          success: {
+            duration: 5000, // 6 seconds for success messages
+          },
+          error: {
+            duration: 7000, // 7 seconds for error messages (more important)
+          },
+        }}
+      />
     </div>
   )
 }

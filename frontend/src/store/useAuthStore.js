@@ -40,7 +40,6 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-      toast.success("Account created successfully. Please login.");
       return { success: true, user: res.data };
     } catch (error) {
       const msg = error?.response?.data?.error?.message || "Signup failed";
