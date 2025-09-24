@@ -6,6 +6,7 @@ import inventoryRoutes from './routes/inventory.route.js'
 import deliveryRoutes from './routes/delivery.route.js'
 import orderRoutes from './routes/order.route.js'
 import cartRoutes from './routes/cart.route.js'
+import emailVerificationRoutes from './routes/emailVerification.route.js'
 import dotenv from 'dotenv'
 dotenv.config()
 import { connectDB } from './lib/db.js'
@@ -37,6 +38,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
+app.use("/api/email-verification", emailVerificationRoutes);
 
 
 

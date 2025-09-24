@@ -91,8 +91,19 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
       }
       toast.success("Logged in successfully");
     } catch (error) {
-      const msg = error?.response?.data?.error?.message || "Login failed";
-      toast.error(msg);
+      const errorData = error?.response?.data;
+      const msg = errorData?.error?.message || "Login failed";
+      
+      // Handle email verification error specifically
+      if (errorData?.requiresEmailVerification) {
+        toast.error(msg);
+        // Redirect to email verification status page with the user's email
+        setTimeout(() => {
+          window.location.href = `/email-verification-status?email=${encodeURIComponent(errorData.email)}`;
+        }, 2000);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       set({ isLoggingIn: false });
     }

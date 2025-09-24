@@ -4,6 +4,7 @@ import Listing from "../models/listing.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
+import { sendVerificationEmail, generateVerificationToken } from "../lib/emailService.js";
 
 export const signup = async (req, res) => {
   try {
@@ -50,17 +51,43 @@ export const signup = async (req, res) => {
     const displayName = (typeof fullName === 'string' && fullName.trim()) ? fullName.trim() : email.split('@')[0]
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff&rounded=true&size=128`;
 
+    // Generate email verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const newUser = new User({
       email: email.toLowerCase().trim(),
       passwordHash,
       role: normalizedRole,
       fullName: typeof fullName === 'string' ? fullName.trim() : "",
       profilePic: defaultAvatar,
+      isEmailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
     });
 
     await newUser.save();
 
-    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role, fullName: newUser.fullName });
+    // Send verification email
+    const emailResult = await sendVerificationEmail(
+      newUser.email,
+      newUser.fullName,
+      verificationToken
+    );
+
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      // Don't fail the signup, just log the error
+    }
+
+    return res.status(201).json({ 
+      id: newUser._id, 
+      email: newUser.email, 
+      role: newUser.role, 
+      fullName: newUser.fullName,
+      isEmailVerified: newUser.isEmailVerified,
+      message: 'Account created successfully. Please check your email to verify your account.'
+    });
   } catch (error) {
     console.log("Error in signup controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
@@ -86,6 +113,18 @@ export const signin = async (req, res) => {
       return res.status(403).json({ error: { code: "ACCOUNT_SUSPENDED", message: "Your account is suspended. Please contact support." } });
     }
 
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ 
+        error: { 
+          code: "EMAIL_NOT_VERIFIED", 
+          message: "Please verify your email before logging in. Check your email for a verification link." 
+        },
+        requiresEmailVerification: true,
+        email: user.email
+      });
+    }
+
     const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordCorrect) {
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
@@ -98,7 +137,13 @@ export const signin = async (req, res) => {
 
     return res.status(200).json({
       accessToken,
-      user: { id: user._id, email: user.email, role: user.role, fullName: user.fullName },
+      user: { 
+        id: user._id, 
+        email: user.email, 
+        role: user.role, 
+        fullName: user.fullName,
+        isEmailVerified: user.isEmailVerified
+      },
     });
   } catch (error) {
     console.log("Error in signin controller: ", error.message);
@@ -175,8 +220,20 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin } = req.user;
-    return res.status(200).json({ id: _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin });
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified } = req.user;
+    return res.status(200).json({ 
+      id: _id, 
+      email, 
+      role, 
+      fullName, 
+      profilePic, 
+      createdAt, 
+      phone, 
+      address, 
+      bio, 
+      lastLogin,
+      isEmailVerified
+    });
   } catch (error) {
     console.log("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
