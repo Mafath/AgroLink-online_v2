@@ -13,6 +13,7 @@ const MyListings = () => {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [infoModal, setInfoModal] = useState(null)
+  const [newListExpireSort, setNewListExpireSort] = useState('soon') // 'soon' | 'later'
 
   const toInputDate = (value) => {
     try {
@@ -62,6 +63,19 @@ const MyListings = () => {
 
   useEffect(() => { load() }, [])
 
+  const daysTillExpire = (it) => {
+    const days = Number(it.expireAfterDays)
+    if (!Number.isFinite(days) || days <= 0) return null
+    const harvested = new Date(it.harvestedAt)
+    if (isNaN(harvested.getTime())) return null
+    const best = new Date(harvested.getFullYear(), harvested.getMonth(), harvested.getDate())
+    best.setDate(best.getDate() + days)
+    const today = new Date()
+    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const diffMs = best - startToday
+    return Math.ceil(diffMs / (24*60*60*1000))
+  }
+
   const handleCreate = async (e) => {
     e.preventDefault()
     if (!form.cropName || !form.pricePerKg || !form.capacityKg || !form.harvestedAt) {
@@ -108,7 +122,16 @@ const MyListings = () => {
       </div>
 
       <div className='card'>
-        <h3 className='text-xl font-semibold text-green-800 mb-4'>New Listings</h3>
+        <div className='flex items-center justify-between mb-4'>
+          <h3 className='text-xl font-semibold text-green-800'>New Listings</h3>
+          <div className='flex items-center gap-2'>
+            <label className='text-xs text-gray-600'>Sort by expiry:</label>
+            <select className='input-field py-1 h-8 text-xs' value={newListExpireSort} onChange={(e)=>setNewListExpireSort(e.target.value)}>
+              <option value='soon'>Soonest first</option>
+              <option value='later'>Latest first</option>
+            </select>
+          </div>
+        </div>
         {loading ? (
           <div>Loading...</div>
         ) : items.filter(item => item.status === 'AVAILABLE').length === 0 ? (
@@ -122,18 +145,32 @@ const MyListings = () => {
                   <th className='py-2 pr-4'>Price/kg</th>
                   <th className='py-2 pr-4 text-center'>Capacity (kg)</th>
                   <th className='py-2 pr-4'>Harvested</th>
+                  <th className='py-2 pr-4 text-center'>Days till expire</th>
                   <th className='py-2 pr-4'>Images</th>
                   <th className='py-2'>Status</th>
                   <th className='py-2 pl-4'>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {items.filter(item => item.status === 'AVAILABLE').map(it => (
+                {items
+                  .filter(item => item.status === 'AVAILABLE')
+                  .sort((a,b)=>{
+                    const da = daysTillExpire(a)
+                    const db = daysTillExpire(b)
+                    const na = (da == null ? Number.POSITIVE_INFINITY : da)
+                    const nb = (db == null ? Number.POSITIVE_INFINITY : db)
+                    return newListExpireSort === 'soon' ? na - nb : nb - na
+                  })
+                  .map(it => {
+                    const dte = daysTillExpire(it)
+                    const bestBefore = (()=>{ const days = Number(it.expireAfterDays); if(!Number.isFinite(days)||days<=0) return null; const d=new Date(it.harvestedAt); d.setDate(d.getDate()+days); return d })()
+                    return (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
                     <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
                     <td className='py-2 pr-4 text-center'>{it.capacityKg} kg</td>
                     <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4 text-center'>{dte != null ? dte : (bestBefore ? 0 : '—')}</td>
                     <td className='py-2 pr-4'>
                       {Array.isArray(it.images) && it.images.length > 0 ? (
                         <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
@@ -163,7 +200,7 @@ const MyListings = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
