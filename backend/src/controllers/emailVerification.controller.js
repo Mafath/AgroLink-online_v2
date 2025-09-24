@@ -5,12 +5,8 @@ import { sendVerificationEmail, generateVerificationToken } from '../lib/emailSe
 export const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-    
-    console.log('Verification request received for token:', token);
-    console.log('Token length:', token ? token.length : 'undefined');
 
     if (!token) {
-      console.log('No token provided');
       return res.status(400).json({
         success: false,
         message: 'Verification token is required'
@@ -18,49 +14,19 @@ export const verifyEmail = async (req, res) => {
     }
 
     // First, try to find user with the verification token
-    console.log('Searching for user with token:', token);
-    
-    // Debug: Check what tokens exist in the database
-    const allUsersWithTokens = await User.find({ 
-      emailVerificationToken: { $exists: true, $ne: null } 
-    }).select('email emailVerificationToken emailVerificationExpires isEmailVerified');
-    
-    console.log('All users with verification tokens:');
-    allUsersWithTokens.forEach(u => {
-      console.log(`- Email: ${u.email}, Token: ${u.emailVerificationToken?.substring(0, 10)}..., Expires: ${u.emailVerificationExpires}, Verified: ${u.isEmailVerified}`);
-    });
-    
-    // Debug: Check if any user has this exact token (even if expired)
-    const userWithExactToken = await User.findOne({ emailVerificationToken: token });
-    console.log('User with exact token found:', userWithExactToken ? `Yes - ${userWithExactToken.email}` : 'No');
-    
-    // Debug: Check all users to see if any match this token pattern
-    const allUsers = await User.find({}).select('email emailVerificationToken isEmailVerified');
-    console.log('All users in database:');
-    allUsers.forEach(u => {
-      console.log(`- Email: ${u.email}, Has Token: ${u.emailVerificationToken ? 'Yes' : 'No'}, Verified: ${u.isEmailVerified}`);
-    });
-    
     let user = await User.findOne({
       emailVerificationToken: token,
       emailVerificationExpires: { $gt: Date.now() } // Token not expired
     });
-    
-    console.log('User found with valid token:', user ? 'Yes' : 'No');
 
     // If not found, check if user is already verified (token was already used)
     if (!user) {
-      console.log('Checking if user is already verified...');
       user = await User.findOne({
         emailVerificationToken: token
       });
       
-      console.log('User found with token (already used):', user ? 'Yes' : 'No');
-      console.log('User isEmailVerified:', user ? user.isEmailVerified : 'N/A');
-      
       if (user && user.isEmailVerified) {
         // User is already verified, return success
-        console.log('Returning success for already verified user');
         return res.json({
           success: true,
           message: 'Email is already verified',
@@ -74,7 +40,6 @@ export const verifyEmail = async (req, res) => {
       }
       
       // Token is invalid or expired
-      console.log('Token is invalid or expired - token not found in database');
       return res.status(400).json({
         success: false,
         message: 'This verification link is no longer valid. Please request a new verification email from the login page.',
@@ -103,7 +68,7 @@ export const verifyEmail = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Email verification error:', error);
+    console.error('Email verification error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Internal server error during email verification'
@@ -188,7 +153,7 @@ export const resendVerificationEmail = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Resend verification email error:', error);
+    console.error('Resend verification email error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -225,7 +190,7 @@ export const checkVerificationStatus = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Check verification status error:', error);
+    console.error('Check verification status error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Internal server error'
@@ -284,7 +249,7 @@ export const sendVerificationEmailToUser = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Send verification email to user error:', error);
+    console.error('Send verification email to user error:', error.message);
     res.status(500).json({
       success: false,
       message: 'Internal server error'

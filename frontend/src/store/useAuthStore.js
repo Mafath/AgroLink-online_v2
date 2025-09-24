@@ -75,6 +75,11 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
 
 
   login: async (data) => {
+    // Prevent duplicate login attempts in StrictMode
+    if (useAuthStore.getState().isLoggingIn) {
+      return;
+    }
+    
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post("/auth/signin", data);

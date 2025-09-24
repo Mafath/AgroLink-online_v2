@@ -89,7 +89,7 @@ export const signup = async (req, res) => {
       message: 'Account created successfully. Please check your email to verify your account.'
     });
   } catch (error) {
-    console.log("Error in signup controller: ", error.message);
+    console.error("Error in signup controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
@@ -146,7 +146,7 @@ export const signin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log("Error in signin controller: ", error.message);
+    console.error("Error in signin controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
@@ -158,7 +158,7 @@ export const logout = (req, res) => {
   try {
     return res.status(200).json({ message: "Logged out" });
   } catch (error) {
-    console.log("Error in logout controller: ", error.message);
+    console.error("Error in logout controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
@@ -213,7 +213,7 @@ export const updateProfile = async (req, res) => {
 
     return res.status(200).json(updatedUser);
   } catch (error) {
-    console.log("error in update profile: ", error);
+    console.error("Error in update profile: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
@@ -235,7 +235,7 @@ export const getCurrentUser = (req, res) => {
       isEmailVerified
     });
   } catch (error) {
-    console.log("Error in getCurrentUser controller: ", error.message);
+    console.error("Error in getCurrentUser controller: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
   }
 };
@@ -268,7 +268,7 @@ export const getAdminStats = async (req, res) => {
       },
     });
   } catch (error) {
-    console.log('Error in getAdminStats: ', error.message);
+    console.error('Error in getAdminStats: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
@@ -307,7 +307,7 @@ export const adminListUsers = async (req, res) => {
 
     return res.status(200).json({ data: users });
   } catch (error) {
-    console.log('Error in adminListUsers: ', error.message);
+    console.error('Error in adminListUsers: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
@@ -345,7 +345,7 @@ export const adminUpdateUser = async (req, res) => {
     if (!updated) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
     return res.status(200).json(updated);
   } catch (error) {
-    console.log('Error in adminUpdateUser: ', error.message);
+    console.error('Error in adminUpdateUser: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
@@ -358,7 +358,7 @@ export const adminDeleteUser = async (req, res) => {
     if (!deleted) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
     return res.status(200).json({ ok: true });
   } catch (error) {
-    console.log('Error in adminDeleteUser: ', error.message);
+    console.error('Error in adminDeleteUser: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
@@ -414,7 +414,7 @@ export const adminCreateUser = async (req, res) => {
 
     return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role, fullName: newUser.fullName });
   } catch (error) {
-    console.log('Error in adminCreateUser: ', error.message);
+    console.error('Error in adminCreateUser: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
