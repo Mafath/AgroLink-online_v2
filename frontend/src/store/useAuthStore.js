@@ -1,6 +1,7 @@
 // here we can have bunch of different states and functions that we can use in our components
 import { create } from "zustand";
 import { axiosInstance, setAccessToken, clearAccessToken } from "../lib/axios.js";
+import { clearUserCart } from "../lib/cartUtils.js";
 import toast from "react-hot-toast";
 
 
@@ -39,7 +40,6 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
     set({ isSigningUp: true });
     try {
       const res = await axiosInstance.post("/auth/signup", data);
-      toast.success("Account created successfully. Please login.");
       return { success: true, user: res.data };
     } catch (error) {
       const msg = error?.response?.data?.error?.message || "Signup failed";
@@ -53,7 +53,15 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
 
   logout: async () => {
     try {
+      const currentUser = useAuthStore.getState().authUser;
       await axiosInstance.post("/auth/logout");
+      
+      // Clear user-specific cart data
+      if (currentUser) {
+        const userId = currentUser._id || currentUser.id;
+        clearUserCart(userId);
+      }
+      
       set({ authUser: null });
       clearAccessToken();
       sessionStorage.removeItem('accessToken');
@@ -66,6 +74,11 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
 
 
   login: async (data) => {
+    // Prevent duplicate login attempts in StrictMode
+    if (useAuthStore.getState().isLoggingIn) {
+      return;
+    }
+    
     set({ isLoggingIn: true });
     try {
       const res = await axiosInstance.post("/auth/signin", data);
@@ -82,8 +95,19 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
       }
       toast.success("Logged in successfully");
     } catch (error) {
-      const msg = error?.response?.data?.error?.message || "Login failed";
-      toast.error(msg);
+      const errorData = error?.response?.data;
+      const msg = errorData?.error?.message || "Login failed";
+      
+      // Handle email verification error specifically
+      if (errorData?.requiresEmailVerification) {
+        toast.error(msg);
+        // Redirect to email verification status page with the user's email
+        setTimeout(() => {
+          window.location.href = `/email-verification-status?email=${encodeURIComponent(errorData.email)}`;
+        }, 2000);
+      } else {
+        toast.error(msg);
+      }
     } finally {
       set({ isLoggingIn: false });
     }

@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, Truck, Package, Trash2, Plus, Minus } from 'lucide-react';
+import { ShoppingCart, Truck, Package, Trash2, Plus, Minus, Check } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
+import toast from 'react-hot-toast';
+import { 
+  getUserCart, 
+  updateUserCartItemQuantity, 
+  removeFromUserCart 
+} from '../lib/cartUtils';
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -10,31 +16,113 @@ const CartPage = () => {
   const [cart, setCart] = useState([]);
   const [loading, setLoading] = useState(false);
   const [deliveryType, setDeliveryType] = useState('PICKUP');
+  const [selectedItems, setSelectedItems] = useState(new Set());
 
   useEffect(() => {
-    // Load cart from localStorage or API
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCart(JSON.parse(savedCart));
-    }
-  }, []);
+    // Load user-specific cart from backend API
+    const loadCart = async () => {
+      if (authUser) {
+        try {
+          const userId = authUser._id || authUser.id;
+          const userCart = await getUserCart(userId);
+          setCart(userCart);
+          // Initialize all items as selected by default
+          setSelectedItems(new Set(userCart.map((_, index) => index)));
+        } catch (error) {
+          console.error('Error loading cart:', error);
+          setCart([]);
+          setSelectedItems(new Set());
+        }
+      } else {
+        setCart([]);
+        setSelectedItems(new Set());
+      }
+    };
 
-  const updateQuantity = (index, newQuantity) => {
-    if (newQuantity < 1) return;
-    const updatedCart = [...cart];
-    updatedCart[index].quantity = newQuantity;
-    setCart(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+    loadCart();
+  }, [authUser]);
+
+  const updateQuantity = async (index, newQuantity) => {
+    if (newQuantity < 1 || !authUser) return;
+    
+    const userId = authUser._id || authUser.id;
+    const item = cart[index];
+    const maxQuantity = item.maxQuantity;
+    
+    // Check if new quantity exceeds available capacity/stock
+    if (maxQuantity && newQuantity > maxQuantity) {
+      toast.error(`Quantity cannot exceed available ${item.unit} (${maxQuantity} ${item.unit})`);
+      return;
+    }
+    
+    try {
+      const success = await updateUserCartItemQuantity(userId, item.itemId, item.itemType, newQuantity);
+      if (success) {
+        // Reload cart to get updated data
+        const updatedCart = await getUserCart(userId);
+        setCart(updatedCart);
+      }
+    } catch (error) {
+      console.error('Error updating quantity:', error);
+      toast.error('Failed to update quantity');
+    }
   };
 
-  const removeItem = (index) => {
-    const updatedCart = cart.filter((_, i) => i !== index);
-    setCart(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart));
+  const removeItem = async (index) => {
+    if (!authUser) return;
+    
+    const userId = authUser._id || authUser.id;
+    const item = cart[index];
+    
+    try {
+      const success = await removeFromUserCart(userId, item.itemId, item.itemType);
+      if (success) {
+        // Reload cart to get updated data
+        const updatedCart = await getUserCart(userId);
+        setCart(updatedCart);
+        
+        // Update selected items set
+        const newSelectedItems = new Set();
+        selectedItems.forEach(selectedIndex => {
+          if (selectedIndex < index) {
+            newSelectedItems.add(selectedIndex);
+          } else if (selectedIndex > index) {
+            newSelectedItems.add(selectedIndex - 1);
+          }
+          // Skip the removed item (selectedIndex === index)
+        });
+        setSelectedItems(newSelectedItems);
+      }
+    } catch (error) {
+      console.error('Error removing item:', error);
+      toast.error('Failed to remove item');
+    }
+  };
+
+  const toggleItemSelection = (index) => {
+    const newSelectedItems = new Set(selectedItems);
+    if (newSelectedItems.has(index)) {
+      newSelectedItems.delete(index);
+    } else {
+      newSelectedItems.add(index);
+    }
+    setSelectedItems(newSelectedItems);
+  };
+
+  const selectAllItems = () => {
+    setSelectedItems(new Set(cart.map((_, index) => index)));
+  };
+
+  const deselectAllItems = () => {
+    setSelectedItems(new Set());
+  };
+
+  const getSelectedCartItems = () => {
+    return cart.filter((_, index) => selectedItems.has(index));
   };
 
   const calculateSubtotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return getSelectedCartItems().reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const calculateDeliveryFee = () => {
@@ -46,21 +134,23 @@ const CartPage = () => {
   };
 
   const handleProceedToPayment = () => {
-    if (cart.length === 0) {
-      alert('Your cart is empty');
+    const selectedCartItems = getSelectedCartItems();
+    
+    if (selectedCartItems.length === 0) {
+      toast.error('Please select at least one item to proceed to checkout');
       return;
     }
 
-    // Save cart and delivery type to localStorage for payment page
+    // Save selected cart items and delivery type to localStorage for payment page
     localStorage.setItem('checkoutData', JSON.stringify({
-      cart,
+      cart: selectedCartItems,
       deliveryType,
       subtotal: calculateSubtotal(),
       deliveryFee: calculateDeliveryFee(),
       total: calculateTotal()
     }));
 
-    navigate('/payment');
+    navigate('/stripe-checkout');
   };
 
   if (!authUser) {
@@ -105,10 +195,48 @@ const CartPage = () => {
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow-sm border">
                 <div className="p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Cart Items</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-gray-900">Cart Items</h2>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={selectAllItems}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-gray-300">|</span>
+                      <button
+                        onClick={deselectAllItems}
+                        className="text-sm text-gray-600 hover:text-gray-800 font-medium"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
                     {cart.map((item, index) => (
-                      <div key={index} className="flex items-center space-x-4 p-4 border border-gray-200 rounded-lg">
+                      <div key={index} className={`flex items-center space-x-4 p-4 border rounded-lg transition-colors ${
+                        selectedItems.has(index) 
+                          ? 'border-blue-300 bg-blue-50' 
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}>
+                        {/* Selection Checkbox */}
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => toggleItemSelection(index)}
+                            className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                              selectedItems.has(index)
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'border-gray-300 hover:border-blue-400'
+                            }`}
+                          >
+                            {selectedItems.has(index) && (
+                              <Check className="w-3 h-3" />
+                            )}
+                          </button>
+                        </div>
+
                         <img
                           src={item.image || '/placeholder-image.jpg'}
                           alt={item.title}
@@ -116,7 +244,12 @@ const CartPage = () => {
                         />
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900">{item.title}</h3>
-                          <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} each</p>
+                          <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} per {item.unit}</p>
+                          {item.maxQuantity && (
+                            <p className="text-xs text-gray-500">
+                              Available: {item.maxQuantity} {item.unit}
+                            </p>
+                          )}
                         </div>
                         <div className="flex items-center space-x-2">
                           <button
@@ -147,6 +280,13 @@ const CartPage = () => {
                       </div>
                     ))}
                   </div>
+                  
+                  {/* Selection Summary */}
+                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">{selectedItems.size}</span> of <span className="font-medium">{cart.length}</span> items selected
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -156,6 +296,13 @@ const CartPage = () => {
               <div className="bg-white rounded-lg shadow-sm border sticky top-4">
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
+                  
+                  {/* Selected Items Count */}
+                  <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <span className="font-medium">{selectedItems.size}</span> item{selectedItems.size !== 1 ? 's' : ''} selected for checkout
+                    </p>
+                  </div>
                   
                   {/* Delivery Type Selection */}
                   <div className="mb-6">
@@ -191,7 +338,7 @@ const CartPage = () => {
                   {/* Price Breakdown */}
                   <div className="space-y-2 mb-6">
                     <div className="flex justify-between text-sm">
-                      <span>Subtotal</span>
+                      <span>Subtotal ({selectedItems.size} items)</span>
                       <span>LKR {calculateSubtotal().toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between text-sm">
@@ -208,11 +355,21 @@ const CartPage = () => {
 
                   <button
                     onClick={handleProceedToPayment}
-                    disabled={loading}
-                    className="w-full btn-primary"
+                    disabled={loading || selectedItems.size === 0}
+                    className={`w-full py-3 px-6 rounded-lg font-semibold transition-colors duration-200 ${
+                      selectedItems.size === 0
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        : 'btn-primary'
+                    }`}
                   >
-                    {loading ? 'Processing...' : 'Proceed to Payment'}
+                    {loading ? 'Processing...' : `Proceed to Payment (${selectedItems.size} items)`}
                   </button>
+                  
+                  {selectedItems.size === 0 && (
+                    <p className="text-xs text-gray-500 text-center mt-2">
+                      Select items to proceed to checkout
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

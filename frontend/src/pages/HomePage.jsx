@@ -50,11 +50,11 @@ const HomePage = () => {
   const getRoleBasedActions = () => {
     if (!isAuthenticated) {
       return (
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link to="/signup" className="bg-primary-500 hover:bg-primary-600 text-white rounded-md h-12 px-6 flex items-center justify-center text-center">
+        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <Link to="/signup" className="bg-white text-primary-600 hover:bg-gray-100 font-semibold text-sm py-2.5 px-5 rounded-md transition-colors">
             Get Started
           </Link>
-          <Link to="/login" className="border-2 border-primary-500 text-white-500 hover:bg-primary-500 hover:text-white rounded-md h-12 px-6 flex items-center justify-center text-center">
+          <Link to="/login" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold text-sm py-2.5 px-5 rounded-md transition-colors">
             Sign In
           </Link>
         </div>
@@ -69,7 +69,7 @@ const HomePage = () => {
               <TrendingUp className="inline w-5 h-5 mr-2" />
               View Marketplace
             </Link>
-            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
+            <Link to="/profile" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 rounded-md h-10 px-6 flex items-center justify-center text-center transition-colors">
               Manage Profile
             </Link>
           </div>
@@ -81,7 +81,7 @@ const HomePage = () => {
               <ShoppingCart className="inline w-5 h-5 mr-2" />
               Browse Products
             </Link>         
-            <Link to="/profile" className="border-2 border-primary-500 text-primary-500 hover:bg-primary-500 hover:text-white rounded-md h-10 px-6 flex items-center justify-center text-center">
+            <Link to="/profile" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 rounded-md h-10 px-6 flex items-center justify-center text-center transition-colors">
               View Profile
             </Link>
           </div>
@@ -244,11 +244,11 @@ const HomePage = () => {
               Whether you're a farmer looking to reach more customers or a buyer 
               seeking fresh, local produce, AgroLink is your gateway to success.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/signup" className="bg-white text-primary-600 hover:bg-gray-100 font-semibold py-4 px-8 rounded-lg transition-colors">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link to="/signup" className="bg-white text-primary-600 hover:bg-gray-100 font-semibold text-sm py-2.5 px-5 rounded-md transition-colors">
                 Get Started Today
               </Link>
-              <Link to="/login" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold py-4 px-8 rounded-lg transition-colors">
+              <Link to="/login" className="border-2 border-white text-white hover:bg-white hover:text-primary-600 font-semibold text-sm py-2.5 px-5 rounded-md transition-colors">
                 Sign In
               </Link>
             </div>

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import toast from "react-hot-toast";
-import Logo from "../assets/AgroLink logo3.png";
+// import Logo from "../assets/AgroLink logo3.png";
+import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -11,20 +12,68 @@ const LoginPage = () => {
     email: "",
     password: "",
   });
+  const [touched, setTouched] = useState({ email: false, password: false });
+  const [errors, setErrors] = useState({ email: "", password: "" });
   const { login, isLoggingIn } = useAuthStore();
+
+  const validateEmail = (email) => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return "Email is required";
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(normalized)) return "Enter a valid email address";
+    return "";
+  };
+
+  const validatePassword = (pwd) => {
+    if (!pwd) return "Password is required";
+    return "";
+  };
+
+  const validateAll = (data) => ({
+    email: validateEmail(data.email),
+    password: validatePassword(data.password),
+  });
+
+  const isFormValid = useMemo(() => {
+    const v = validateAll(formData);
+    return !v.email && !v.password;
+  }, [formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    login(formData);
+    const v = validateAll(formData);
+    setErrors(v);
+    setTouched({ email: true, password: true });
+    if (!isFormValid) return;
+
+    login({
+      ...formData,
+      email: formData.email.trim().toLowerCase(),
+    });
   };
 
+  const handleBlur = (field) => (e) => {
+    setTouched((t) => ({ ...t, [field]: true }));
+    if (field === "email") {
+      const normalized = e.target.value.trim().toLowerCase();
+      setFormData((d) => ({ ...d, email: normalized }));
+      setErrors((er) => ({ ...er, email: validateEmail(normalized) }));
+    } else if (field === "password") {
+      setErrors((er) => ({ ...er, password: validatePassword(e.target.value) }));
+    }
+  };
+
+  const errorText = (text) => (
+    <p className="mt-1 text-xs text-red-600">{text}</p>
+  );
+
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center py-7 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
+    <div className="min-h-screen bg-bg flex items-center justify-center pt-0 pb-7 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8 mt-7">
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <img src={Logo} alt="AgroLink logo" className="w-16 h-16 rounded-2xl object-cover" />
+            <img src={Logo} alt="AgroLink logo" className="w-16 h-19 rounded-2xl object-cover" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900">Welcome back</h2>
           <p className="mt-2 text-sm text-gray-600">Sign in to your AgroLink account</p>
@@ -42,13 +91,20 @@ const LoginPage = () => {
               <div className="relative">
                 <input
                   type="email"
-                  required
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, email: value });
+                    if (touched.email) {
+                      setErrors((er) => ({ ...er, email: validateEmail(value) }));
+                    }
+                  }}
+                  onBlur={handleBlur("email")}
                   className={`input-field`}
                   placeholder="Enter your email address"
                 />
               </div>
+              {touched.email && errors.email && errorText(errors.email)}
             </div>
 
             {/* Password Field */}
@@ -60,9 +116,15 @@ const LoginPage = () => {
               <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  required
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setFormData({ ...formData, password: value });
+                    if (touched.password) {
+                      setErrors((er) => ({ ...er, password: validatePassword(value) }));
+                    }
+                  }}
+                  onBlur={handleBlur("password")}
                   className={`input-field pr-10`}
                   placeholder="Enter your password"
                 />
@@ -92,7 +154,11 @@ const LoginPage = () => {
             </div>
 
             {/* Submit Button */}
-            <button type="submit" className="btn-primary w-full flex justify-center items-center" disabled={isLoggingIn}>
+            <button
+              type="submit"
+              className={`btn-primary w-full flex justify-center items-center ${(!isFormValid || isLoggingIn) ? 'opacity-70 cursor-not-allowed' : ''}`}
+              disabled={isLoggingIn || !isFormValid}
+            >
               {isLoggingIn ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin mr-2" />

@@ -47,15 +47,31 @@ const AdminLogistics = () => {
   };
 
   const updateOrderStatus = async (orderId, status) => {
-    try {
-      await axiosInstance.patch(`/orders/${orderId}/status`, { status });
-      toast.success('Order status updated');
-      fetchData();
-    } catch (error) {
-      console.error('Failed to update order status:', error);
-      toast.error('Failed to update order status');
-    }
-  };
+  try {
+    // Determine endpoint: use /cancel for cancellations, /status otherwise
+    const endpoint =
+      status === 'CANCELLED' ? `/orders/${orderId}/cancel` : `/orders/${orderId}/status`;
+
+    await axiosInstance.patch(endpoint, status === 'CANCELLED' ? {} : { status });
+
+    toast.success(
+      status === 'CANCELLED'
+        ? 'Order cancelled successfully'
+        : 'Order status updated'
+    );
+
+    // Refresh orders & deliveries
+    fetchData();
+  } catch (error) {
+    console.error('updateOrderStatus error:', error);
+    toast.error(
+      status === 'CANCELLED'
+        ? 'Failed to cancel order'
+        : 'Failed to update order status'
+    );
+  }
+};
+
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -157,8 +173,10 @@ const AdminLogistics = () => {
               <a href="/admin/users" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Users & Roles</a>
               <a href="/admin/inventory" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Inventory</a>
               <a href="/admin/rentals" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Rentals</a>
+              <a href="/admin/listings" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Listings</a>
               <a href="/admin/drivers" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Drivers</a>
               <a href="/admin/logistics" className="block px-3 py-2 rounded-lg bg-green-100 text-green-700">Logistics</a>
+              <a href='/admin/orders' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Orders</a>
             </nav>
           </div>
 

@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore';
 import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import logoImg from '../assets/AgroLink logo3.png'
+import { getUserCartCount } from '../lib/cartUtils'
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -12,10 +13,32 @@ const Navbar = () => {
   const userRole = String(authUser?.role || '').toUpperCase();
   const isAdmin = userRole === 'ADMIN';
   const isDriver = userRole === 'DRIVER';
+  const isFarmer = userRole === 'FARMER';
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [cartCount, setCartCount] = useState(0);
+
+  // Update cart count when user changes
+  useEffect(() => {
+    const updateCartCount = async () => {
+      if (authUser) {
+        try {
+          const userId = authUser._id || authUser.id;
+          const count = await getUserCartCount(userId);
+          setCartCount(count);
+        } catch (error) {
+          console.error('Error fetching cart count:', error);
+          setCartCount(0);
+        }
+      } else {
+        setCartCount(0);
+      }
+    };
+
+    updateCartCount();
+  }, [authUser]);
 
   const handleLogout = async () => {
     await logout();
@@ -69,18 +92,30 @@ const Navbar = () => {
                 >
                   Home
                 </Link>
+
                 <Link
                   to="/marketplace"
                   className={`${isActive('/marketplace') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
                 >
                   Marketplace
                 </Link>
+
+                {isFarmer && (
+                  <Link
+                    to="/my-listings"
+                    className={`${isActive('/my-listings') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                  >
+                    My Listings
+                  </Link>
+                )}
+
                 <Link
-                  to="/my-listings"
-                  className={`${isActive('/my-listings') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                  to="/my-orders"
+                  className={`${isActive('/my-orders') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
                 >
-                  My Listings
+                  My Orders
                 </Link>
+
                 <Link
                   to="/delivery-tracking"
                   className={`${isActive('/delivery-tracking') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
@@ -104,7 +139,7 @@ const Navbar = () => {
                   >
                     <ShoppingCart className="w-5 h-5" />
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      {JSON.parse(localStorage.getItem('cart') || '[]').length}
+                      {cartCount}
                     </span>
                   </button>
                 )}
@@ -181,7 +216,15 @@ const Navbar = () => {
                         <>
                           <button onClick={() => handleNavigation('/')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Home</button>
                           <button onClick={() => handleNavigation('/marketplace')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Marketplace</button>
-                          <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          {isFarmer && (
+                            <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          )}
+                          <button
+                            onClick={() => handleNavigation('/my-orders')}
+                            className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors"
+                          >
+                            My Orders
+                          </button>
                           <button onClick={() => handleNavigation('/delivery-tracking')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Delivery Tracking</button>
                         </>
                       )}

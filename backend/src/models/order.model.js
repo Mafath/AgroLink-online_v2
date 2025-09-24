@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema({
-  listing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing', required: true },
+  listing: { type: mongoose.Schema.Types.ObjectId, required: true }, // Can reference Listing or InventoryProduct
+  itemType: { type: String, enum: ['listing', 'inventory'], required: true },
   quantity: { type: Number, required: true, min: 1 },
   price: { type: Number, required: true, min: 0 },
   title: { type: String, required: true },
@@ -38,6 +39,7 @@ const orderSchema = new mongoose.Schema({
   deliveryAddress: { type: addressSchema, required: function() { return this.deliveryType === 'DELIVERY'; } },
   contactName: { type: String, required: true, trim: true },
   contactPhone: { type: String, required: true, trim: true },
+  contactEmail: { type: String, required: true, trim: true },
   notes: { type: String, default: '', trim: true, maxlength: 1000 },
   delivery: { type: mongoose.Schema.Types.ObjectId, ref: 'Delivery', default: null },
   paymentMethod: { type: String, default: 'CASH', enum: ['CASH', 'CARD', 'BANK_TRANSFER'] },

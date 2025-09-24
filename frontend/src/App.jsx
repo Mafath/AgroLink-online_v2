@@ -3,6 +3,8 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import MyOrders from './pages/MyOrders';
+import AdminOrders from './pages/AdminOrders';
 import AdminDashboard from './pages/AdminDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminUsers from './pages/AdminUsers';
@@ -10,6 +12,7 @@ import AdminDrivers from './pages/AdminDrivers';
 import AdminLogistics from './pages/AdminLogistics';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
+import AdminListings from './pages/AdminListings';
 import AdminRentals from './pages/AdminRentals';
 import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
@@ -18,14 +21,19 @@ import MyListings from './pages/MyListings';
 import Marketplace from './pages/Marketplace';
 import ProfilePage from './pages/ProfilePage';
 import CartPage from './pages/CartPage';
-import PaymentPage from './pages/PaymentPage';
+import StripeStyleCheckout from './pages/StripeStyleCheckout';
 import DeliveryTrackingPage from './pages/DeliveryTrackingPage';
 import DebugPage from './pages/DebugPage';
+
 import HarvestDashboard from './pages/HarvestDashboard';
 import HarvestRequest from './pages/HarvestRequest';
 import HarvestSchedule from './pages/HarvestSchedule';
 import HarvestTrack from './pages/HarvestTrack';
 import HarvestReport from './pages/HarvestReport';
+
+
+import EmailVerificationPage from './pages/EmailVerificationPage';
+import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
 
 
 {/* Delete after testing */}
@@ -57,15 +65,21 @@ const App = () => {
       <Navbar />
       <main className='flex-1 pt-16 min-h-[90vh]'>
         <Routes>
+         {/* ...existing code... */}
+         <Route path="/my-orders" element={authUser ? <MyOrders /> : <Navigate to="/login" />} />
+         <Route path="/admin/orders" element={authUser && authUser.role === 'ADMIN' ? <AdminOrders /> : <Navigate to="/" />} />
           <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
+          <Route path="/email-verification-status" element={<EmailVerificationStatusPage />} />
           <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
           <Route path="/admin/users" element={authUser && authUser.role === 'ADMIN' ? <AdminUsers /> : <Navigate to="/" />} />
           <Route path="/admin/roles" element={authUser && authUser.role === 'ADMIN' ? <AdminRoles /> : <Navigate to="/" />} />
           <Route path="/admin/inventory" element={authUser && authUser.role === 'ADMIN' ? <AdminInventory /> : <Navigate to="/" />} />
+          <Route path="/admin/listings" element={authUser && authUser.role === 'ADMIN' ? <AdminListings /> : <Navigate to="/" />} />
           <Route path="/admin/rentals" element={authUser && authUser.role === 'ADMIN' ? <AdminRentals /> : <Navigate to="/" />} />
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
@@ -74,7 +88,7 @@ const App = () => {
           <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
               <Route path="/cart" element={authUser ? <CartPage /> : <Navigate to="/login" />} />
-              <Route path="/payment" element={authUser ? <PaymentPage /> : <Navigate to="/login" />} />
+              <Route path="/stripe-checkout" element={authUser ? <StripeStyleCheckout /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
               <Route path="/debug" element={<DebugPage />} />
          <Route path="/harvest-dashboard" element={<HarvestDashboard />} />
@@ -87,7 +101,17 @@ const App = () => {
       </main>
 
       <Footer />
-      <Toaster />
+      <Toaster 
+        toastOptions={{
+          duration: 5000, // 5 seconds instead of default 4 seconds
+          success: {
+            duration: 5000, // 6 seconds for success messages
+          },
+          error: {
+            duration: 7000, // 7 seconds for error messages (more important)
+          },
+        }}
+      />
     </div>
   )
 }

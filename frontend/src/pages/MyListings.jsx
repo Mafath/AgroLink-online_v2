@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Plus, X, Edit, Trash2 } from 'lucide-react'
+import { Plus, X, Edit, Trash2, Info } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const MyListings = () => {
@@ -12,6 +12,7 @@ const MyListings = () => {
   const [preview, setPreview] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editForm, setEditForm] = useState(null)
+  const [infoModal, setInfoModal] = useState(null)
 
   const toInputDate = (value) => {
     try {
@@ -89,34 +90,35 @@ const MyListings = () => {
   }
 
   const mapStatus = (s) => {
-    if (s === 'ACTIVE') return 'AVAILABLE'
-    if (s === 'SOLD_OUT') return 'SOLD'
-    if (s === 'INACTIVE') return 'REMOVED'
+    if (s === 'AVAILABLE') return 'AVAILABLE'
+    if (s === 'SOLD') return 'SOLD'
+    if (s === 'REMOVED') return 'REMOVED'
     return s
   }
 
   return (
-    <div className='p-4 mt-20 max-w-5xl mx-auto'>
-      <div className='flex items-center justify-between mb-4'>
-        <h2 className='text-3xl md:text-4xl font-bold text-accent-600 text-center w-full'>My Listings</h2>
-        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 ml-4 whitespace-nowrap'>
+    <div className='p-4 max-w-7xl mx-auto'>
+      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>My Listings</h2>
+      <div className='flex items-center justify-end mb-4'>
+        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 whitespace-nowrap'>
           <Plus className='w-4 h-4' /> Add new post
         </button>
       </div>
 
       <div className='card'>
+        <h3 className='text-xl font-semibold text-green-800 mb-4'>New Listings</h3>
         {loading ? (
           <div>Loading...</div>
-        ) : items.length === 0 ? (
-          <div className='text-gray-500 text-sm'>No listings yet.</div>
+        ) : items.filter(item => item.status !== 'SOLD').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No active listings yet.</div>
         ) : (
-          <div className='overflow-x-auto'>
+          <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
             <table className='w-full text-sm'>
               <thead>
                 <tr className='text-left border-b'>
                   <th className='py-2 pr-4'>Crop</th>
                   <th className='py-2 pr-4'>Price/kg</th>
-                  <th className='py-2 pr-4'>Capacity (kg)</th>
+                  <th className='py-2 pr-4 text-center'>Capacity (kg)</th>
                   <th className='py-2 pr-4'>Harvested</th>
                   <th className='py-2 pr-4'>Images</th>
                   <th className='py-2'>Status</th>
@@ -124,11 +126,11 @@ const MyListings = () => {
                 </tr>
               </thead>
               <tbody>
-                {items.map(it => (
+                {items.filter(item => item.status !== 'SOLD').map(it => (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
-                    <td className='py-2 pr-4'>{Number(it.pricePerKg).toFixed(2)}</td>
-                    <td className='py-2 pr-4'>{it.capacityKg}</td>
+                    <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4 text-center'>{it.capacityKg} kg</td>
                     <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
                     <td className='py-2 pr-4'>
                       {Array.isArray(it.images) && it.images.length > 0 ? (
@@ -141,12 +143,73 @@ const MyListings = () => {
                         <span className='text-gray-400'>No images</span>
                       )}
                     </td>
-                    <td className='py-2'>{mapStatus(it.status)}</td>
+                    <td className='py-2'>
+                      <span className={`px-2 py-1 rounded-full text-xs ${
+                        it.status === 'AVAILABLE' ? 'bg-blue-100 text-blue-800' :
+                        it.status === 'SOLD' ? 'bg-green-100 text-green-800' :
+                        it.status === 'REMOVED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {mapStatus(it.status)}
+                      </span>
+                    </td>
                     <td className='py-2 pl-4'>
                       <div className='flex gap-2'>
+                        <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => setInfoModal(it)}><Info className='w-3 h-3' /> Info</button>
                         <button className='border px-2 py-1 rounded-md text-xs flex items-center gap-1' onClick={() => handleOpenEdit(it)}><Edit className='w-3 h-3' /> Edit</button>
                         <button className='border px-2 py-1 rounded-md text-xs text-red-600 flex items-center gap-1' onClick={() => setConfirmDelete(it)}><Trash2 className='w-3 h-3' /> Delete</button>
                       </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Sold Items Table */}
+      <div className='card mt-6'>
+        <h3 className='text-xl font-semibold text-red-800 mb-4'>Sold Items</h3>
+        {loading ? (
+          <div>Loading...</div>
+        ) : items.filter(item => item.status === 'SOLD').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No sold items yet.</div>
+        ) : (
+          <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='text-left border-b'>
+                  <th className='py-2 pr-4'>Crop</th>
+                  <th className='py-2 pr-4'>Price/kg</th>
+                  <th className='py-2 pr-4'>Harvested Date</th>
+                  <th className='py-2 pr-4'>Sold Date</th>
+                  <th className='py-2 pr-4'>Images</th>
+                  <th className='py-2'>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter(item => item.status === 'SOLD').map(it => (
+                  <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
+                    <td className='py-2 pr-4'>{it.cropName}</td>
+                    <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4'>{(it.soldAt ? new Date(it.soldAt) : (it.updatedAt ? new Date(it.updatedAt) : null))?.toLocaleDateString?.() || 'N/A'}</td>
+                    <td className='py-2 pr-4'>
+                      {Array.isArray(it.images) && it.images.length > 0 ? (
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                          {it.images.slice(0,4).map((src, idx) => (
+                            <img key={idx} src={src} alt={`${it.cropName} ${idx+1}`} className='w-8 h-8 object-cover rounded border' />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400 text-xs'>No images</span>
+                      )}
+                    </td>
+                    <td className='py-2'>
+                      <span className='px-2 py-1 rounded-full text-xs bg-green-100 text-green-800'>
+                        SOLD
+                      </span>
                     </td>
                   </tr>
                 ))}
@@ -164,21 +227,71 @@ const MyListings = () => {
             <form onSubmit={handleCreate} className='space-y-4'>
               <div>
                 <label className='form-label'>Crop Name</label>
-                <input className='input-field' value={form.cropName} onChange={e => setForm({ ...form, cropName: e.target.value })} />
+                <input
+                  className='input-field'
+                  value={form.cropName}
+                  onChange={e => {
+                    const onlyAlphaNum = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '')
+                    setForm({ ...form, cropName: onlyAlphaNum })
+                  }}
+                  inputMode='text'
+                  pattern='[A-Za-z0-9 ]*'
+                />
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                 <div>
                   <label className='form-label'>Price per kg</label>
-                  <input type='number' step='0.01' className='input-field' value={form.pricePerKg} onChange={e => setForm({ ...form, pricePerKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='0.01'
+                    className='input-field'
+                    value={form.pricePerKg}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '') return setForm({ ...form, pricePerKg: '' })
+                      const n = Number(v)
+                      setForm({ ...form, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0.00'
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Capacity (kg)</label>
-                  <input type='number' className='input-field' value={form.capacityKg} onChange={e => setForm({ ...form, capacityKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='1'
+                    className='input-field'
+                    value={form.capacityKg}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '') return setForm({ ...form, capacityKg: '' })
+                      const n = Number(v)
+                      setForm({ ...form, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0'
+                  />
                 </div>
               </div>
               <div>
                 <label className='form-label'>Harvested date</label>
-                <input type='date' className='input-field' value={form.harvestedAt} onChange={e => setForm({ ...form, harvestedAt: e.target.value })} />
+                <input
+                  type='date'
+                  className='input-field'
+                  value={form.harvestedAt}
+                  max={toInputDate(new Date())}
+                  onChange={e => {
+                    const v = e.target.value
+                    const today = new Date()
+                    const picked = v ? new Date(v) : null
+                    if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                      // clamp to today
+                      return setForm({ ...form, harvestedAt: toInputDate(new Date()) })
+                    }
+                    setForm({ ...form, harvestedAt: v })
+                  }}
+                />
               </div>
               <div>
                 <label className='form-label'>Images (up to 4)</label>
@@ -228,22 +341,71 @@ const MyListings = () => {
             <div className='space-y-3'>
               <div>
                 <label className='form-label'>Crop Name</label>
-                <input className='input-field py-2 px-3 text-sm' value={editForm.cropName} onChange={(e) => setEditForm({ ...editForm, cropName: e.target.value })} />
+                <input
+                  className='input-field py-2 px-3 text-sm'
+                  value={editForm.cropName}
+                  onChange={(e) => {
+                    const onlyAlphaNum = e.target.value.replace(/[^a-zA-Z0-9 ]/g, '')
+                    setEditForm({ ...editForm, cropName: onlyAlphaNum })
+                  }}
+                  inputMode='text'
+                  pattern='[A-Za-z0-9 ]*'
+                />
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <div>
                   <label className='form-label'>Price per kg</label>
-                  <input type='number' step='0.01' className='input-field py-2 px-3 text-sm' value={editForm.pricePerKg} onChange={(e) => setEditForm({ ...editForm, pricePerKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='0.01'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.pricePerKg}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '') return setEditForm({ ...editForm, pricePerKg: '' })
+                      const n = Number(v)
+                      setEditForm({ ...editForm, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0.00'
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Capacity (kg)</label>
-                  <input type='number' className='input-field py-2 px-3 text-sm' value={editForm.capacityKg} onChange={(e) => setEditForm({ ...editForm, capacityKg: e.target.value })} />
+                  <input
+                    type='number'
+                    min='0'
+                    step='1'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.capacityKg}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      if (v === '') return setEditForm({ ...editForm, capacityKg: '' })
+                      const n = Number(v)
+                      setEditForm({ ...editForm, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                    }}
+                    placeholder='0'
+                  />
                 </div>
               </div>
               <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
                 <div>
                   <label className='form-label'>Harvested date</label>
-                  <input type='date' className='input-field py-2 px-3 text-sm' value={editForm.harvestedAt} onChange={(e) => setEditForm({ ...editForm, harvestedAt: e.target.value })} />
+                  <input
+                    type='date'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.harvestedAt}
+                    max={toInputDate(new Date())}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      const today = new Date()
+                      const picked = v ? new Date(v) : null
+                      if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                        return setEditForm({ ...editForm, harvestedAt: toInputDate(new Date()) })
+                      }
+                      setEditForm({ ...editForm, harvestedAt: v })
+                    }}
+                  />
                 </div>
                 <div>
                   <label className='form-label'>Status</label>
@@ -348,6 +510,80 @@ const MyListings = () => {
                   toast.error('Failed to delete')
                 }
               }}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {infoModal && (
+        <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
+          <div className='card w-full max-w-2xl relative max-h-[85vh] overflow-y-auto mx-4'>
+            <button onClick={() => setInfoModal(null)} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100'><X className='w-4 h-4' /></button>
+            <h3 className='text-lg font-semibold mb-4'>Listing Information</h3>
+            <div className='space-y-4'>
+              {/* Images */}
+              {Array.isArray(infoModal.images) && infoModal.images.length > 0 && (
+                <div>
+                  <label className='form-label'>Images</label>
+                  <div className='grid grid-cols-2 sm:grid-cols-4 gap-2'>
+                    {infoModal.images.map((src, idx) => (
+                      <img key={idx} src={src} alt={'img'+idx} className='w-full h-24 object-cover rounded-md border' />
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Basic Information */}
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Crop Name</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{infoModal.cropName}</div>
+                </div>
+                <div>
+                  <label className='form-label'>Status</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{mapStatus(infoModal.status)}</div>
+                </div>
+              </div>
+
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Price per kg</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>LKR {Number(infoModal.pricePerKg).toFixed(2)}</div>
+                </div>
+                <div>
+                  <label className='form-label'>Capacity (kg)</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{infoModal.capacityKg}</div>
+                </div>
+              </div>
+
+              <div>
+                <label className='form-label'>Harvested Date</label>
+                <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.harvestedAt).toLocaleDateString()}</div>
+              </div>
+
+              {infoModal.details && (
+                <div>
+                  <label className='form-label'>Details</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border whitespace-pre-wrap'>{infoModal.details}</div>
+                </div>
+              )}
+
+              {/* Additional Information */}
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Created</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.createdAt).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <label className='form-label'>Last Updated</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.updatedAt).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <div className='flex justify-end gap-2 pt-4'>
+                <button onClick={() => setInfoModal(null)} className='border px-4 py-2 rounded-lg'>Close</button>
+                <button onClick={() => { setInfoModal(null); handleOpenEdit(infoModal); }} className='btn-primary'>Edit Listing</button>
+              </div>
             </div>
           </div>
         </div>

@@ -12,6 +12,18 @@ export const getAllListings = async (req, res) => {
   }
 };
 
+export const getAllListingsAll = async (req, res) => {
+  try {
+    const listings = await Listing.find({})
+      .sort({ createdAt: -1 })
+      .populate({ path: 'farmer', select: 'fullName email role' });
+    return res.status(200).json(listings);
+  } catch (error) {
+    console.log("Error in getAllListingsAll: ", error.message);
+    return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
+  }
+};
+
 export const getMyListings = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -30,6 +42,33 @@ export const createListing = async (req, res) => {
 
     if (!cropName || pricePerKg == null || capacityKg == null || !harvestedAt) {
       return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Required fields missing" } });
+    }
+
+    const nameStr = String(cropName).trim();
+    const validName = /^[A-Za-z0-9 ]+$/.test(nameStr);
+    const priceNum = Number(pricePerKg);
+    const capacityNum = Number(capacityKg);
+    const validPrice = Number.isFinite(priceNum) && priceNum >= 0;
+    const validCapacity = Number.isInteger(capacityNum) && capacityNum >= 0;
+    const harvestedDate = new Date(harvestedAt);
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const isFuture = harvestedDate > todayMidnight;
+
+    if (!validName) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Crop name must contain letters and numbers only' } });
+    }
+    if (!validPrice) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Price must be a non-negative number' } });
+    }
+    if (!validCapacity) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Capacity must be a non-negative integer' } });
+    }
+    if (!(harvestedDate instanceof Date) || isNaN(harvestedDate.getTime())) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid harvested date' } });
+    }
+    if (isFuture) {
+      return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Harvested date cannot be in the future' } });
     }
 
     let imageUrls = [];
@@ -55,11 +94,11 @@ export const createListing = async (req, res) => {
 
     const listing = await Listing.create({
       farmer: userId,
-      cropName: String(cropName).trim(),
-      pricePerKg: Number(pricePerKg),
-      capacityKg: Number(capacityKg),
+      cropName: nameStr,
+      pricePerKg: priceNum,
+      capacityKg: capacityNum,
       details: details ? String(details).trim() : "",
-      harvestedAt: new Date(harvestedAt),
+      harvestedAt: harvestedDate,
       images: imageUrls,
       status: 'AVAILABLE',
     });
@@ -82,11 +121,40 @@ export const updateListing = async (req, res) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Listing not found' } });
     }
 
-    if (cropName != null) listing.cropName = String(cropName).trim();
-    if (pricePerKg != null) listing.pricePerKg = Number(pricePerKg);
-    if (capacityKg != null) listing.capacityKg = Number(capacityKg);
+    if (cropName != null) {
+      const nameStr = String(cropName).trim();
+      if (!/^[A-Za-z0-9 ]+$/.test(nameStr)) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Crop name must contain letters and numbers only' } });
+      }
+      listing.cropName = nameStr;
+    }
+    if (pricePerKg != null) {
+      const priceNum = Number(pricePerKg);
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Price must be a non-negative number' } });
+      }
+      listing.pricePerKg = priceNum;
+    }
+    if (capacityKg != null) {
+      const capacityNum = Number(capacityKg);
+      if (!Number.isInteger(capacityNum) || capacityNum < 0) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Capacity must be a non-negative integer' } });
+      }
+      listing.capacityKg = capacityNum;
+    }
     if (details != null) listing.details = String(details).trim();
-    if (harvestedAt != null) listing.harvestedAt = new Date(harvestedAt);
+    if (harvestedAt != null) {
+      const harvestedDate = new Date(harvestedAt);
+      if (!(harvestedDate instanceof Date) || isNaN(harvestedDate.getTime())) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid harvested date' } });
+      }
+      const today = new Date();
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      if (harvestedDate > todayMidnight) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Harvested date cannot be in the future' } });
+      }
+      listing.harvestedAt = harvestedDate;
+    }
     if (status != null) listing.status = String(status).toUpperCase();
 
     if (Array.isArray(images)) {
