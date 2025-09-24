@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../store/useAuthStore';
 import { axiosInstance } from '../lib/axios';
-import { Package } from 'lucide-react';
+import { Package, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const statusColors = {
@@ -53,8 +53,15 @@ const MyOrders = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center mb-8">
+        <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+          <button
+            onClick={() => navigate('/delivery-tracking')}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-black text-white hover:bg-gray-900"
+          >
+            <Truck className="w-4 h-4" />
+            Delivery Tracking
+          </button>
         </div>
 
         {loading ? (
