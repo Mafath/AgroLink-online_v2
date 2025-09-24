@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
 import { Truck, Package, MapPin, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
@@ -6,6 +7,7 @@ import { axiosInstance } from '../lib/axios';
 const DeliveryTrackingPage = () => {
   const { authUser } = useAuthStore();
   const [deliveries, setDeliveries] = useState([]);
+  const { orderId } = useParams();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,8 +16,13 @@ const DeliveryTrackingPage = () => {
 
   const fetchDeliveries = async () => {
     try {
-      const response = await axiosInstance.get('/deliveries/me');
-      setDeliveries(response.data);
+      if (orderId) {
+        const response = await axiosInstance.get(`/deliveries/order/${orderId}`);
+        setDeliveries(Array.isArray(response.data) ? response.data : (response.data ? [response.data] : []));
+      } else {
+        const response = await axiosInstance.get('/deliveries/me');
+        setDeliveries(response.data);
+      }
     } catch (error) {
       console.error('Failed to fetch deliveries:', error);
     } finally {

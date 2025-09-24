@@ -90,6 +90,7 @@ const App = () => {
               <Route path="/cart" element={authUser ? <CartPage /> : <Navigate to="/login" />} />
               <Route path="/stripe-checkout" element={authUser ? <StripeStyleCheckout /> : <Navigate to="/login" />} />
               <Route path="/delivery-tracking" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
+              <Route path="/delivery-tracking/:orderId" element={authUser ? <DeliveryTrackingPage /> : <Navigate to="/login" />} />
               <Route path="/debug" element={authUser ? <DebugPage /> : <Navigate to="/login" />} />
          <Route path="/harvest-dashboard" element={authUser ? <HarvestDashboard /> : <Navigate to="/login" />} />
           <Route path="/harvest-request" element={authUser ? <HarvestRequest /> : <Navigate to="/login" />} />

@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
 import {
   createDeliveryRequest,
   getMyDeliveries,
+  getMyDeliveryByOrder,
   adminListDeliveries,
   assignDriver,
   driverUpdateStatus,
@@ -14,6 +15,7 @@ const router = express.Router();
 // Farmers and buyers create requests and view their own
 router.post('/', requireAuth, requireRole('FARMER', 'BUYER'), createDeliveryRequest);
 router.get('/me', requireAuth, requireRole('FARMER', 'BUYER'), getMyDeliveries);
+router.get('/order/:orderId', requireAuth, requireRole('FARMER', 'BUYER'), getMyDeliveryByOrder);
 
 // Admin lists all and assigns drivers
 router.get('/', requireAuth, requireRole('ADMIN'), adminListDeliveries);

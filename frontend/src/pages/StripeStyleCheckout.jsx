@@ -412,16 +412,25 @@ const StripeStyleCheckout = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
-                      <input
-                        type="text"
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Province *</label>
+                      <select
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-                        placeholder="Province"
                         required
-                      />
+                      >
+                        <option value="">Select province</option>
+                        <option value="Western">Western</option>
+                        <option value="Central">Central</option>
+                        <option value="Southern">Southern</option>
+                        <option value="Northern">Northern</option>
+                        <option value="Eastern">Eastern</option>
+                        <option value="North Western">North Western</option>
+                        <option value="North Central">North Central</option>
+                        <option value="Uva">Uva</option>
+                        <option value="Sabaragamuwa">Sabaragamuwa</option>
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Postal Code *</label>
