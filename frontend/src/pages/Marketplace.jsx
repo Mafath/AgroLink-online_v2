@@ -206,21 +206,21 @@ const Marketplace = () => {
       ) : sortedItems.length === 0 ? (
         <div className='text-gray-500 text-sm'>No matching products.</div>
       ) : (
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4'>
+        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
           {sortedItems.map(it => (
-            <div key={it._id} className='card flex flex-col'>
+            <div key={it._id} className='card p-3 flex flex-col text-sm'>
               {Array.isArray(it.images) && it.images.length > 0 ? (
-                <div className='overflow-hidden rounded-lg -mt-2 -mx-2 mb-3'>
-                  <img src={it.images[0]} alt={isFarmer ? it.name : it.cropName} className='w-full h-28 object-cover' />
+                <div className='overflow-hidden rounded-lg -mt-1 -mx-1 mb-2'>
+                  <img src={it.images[0]} alt={isFarmer ? it.name : it.cropName} className='w-full h-24 object-cover' />
                 </div>
               ) : (
-                <div className='w-full h-28 bg-gray-100 rounded-lg -mt-2 -mx-2 mb-3 grid place-items-center text-gray-400 text-sm'>
+                <div className='w-full h-24 bg-gray-100 rounded-lg -mt-1 -mx-1 mb-2 grid place-items-center text-gray-400 text-xs'>
                   No image
                 </div>
               )}
-              <div className='text-lg font-semibold'>{isFarmer ? it.name : it.cropName}</div>
-              <div className='mt-2 text-sm text-gray-700'>
-                Price: LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}
+              <div className='text-base font-semibold'>{isFarmer ? it.name : it.cropName}</div>
+              <div className='mt-1 text-sm font-semibold text-gray-900'>
+                LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}
               </div>
               {isFarmer ? (
                 <>
@@ -230,16 +230,29 @@ const Marketplace = () => {
                 </>
               ) : (
                 <>
-                  <div className='text-sm text-gray-700'>Available: {it.capacityKg} kg</div>
-                  <div className='text-xs text-gray-500 mt-1'>Harvested: {new Date(it.harvestedAt).toLocaleDateString()}</div>
-                  <div className='text-sm mt-2 text-gray-700'>
-                    Posted by: {it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Farmer')}
+                  <div className='mt-1'>
+                    <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700 border'>
+                      {it.capacityKg} kg available
+                    </span>
+                  </div>
+                  <div className='mt-1 text-[11px] text-gray-600 flex flex-col'>
+                    <span>Harvested {new Date(it.harvestedAt).toLocaleDateString()}</span>
+                    {(() => {
+                      const days = Number(it.expireAfterDays)
+                      if (!Number.isFinite(days) || days <= 0) return null
+                      const d = new Date(it.harvestedAt)
+                      d.setDate(d.getDate() + days)
+                      return <span>Best before {d.toLocaleDateString()}</span>
+                    })()}
+                  </div>
+                  <div className='text-[11px] mt-1 text-gray-500'>
+                    by {it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Farmer')}
                   </div>
                 </>
               )}
               <div className='mt-3 space-y-2'>
                 <div className='flex items-center gap-2'>
-                  <label className='text-xs text-gray-600'>Qty:</label>
+                  <label className='text-[11px] text-gray-600'>Qty:</label>
                   <input
                     type='number'
                     min='1'
@@ -251,13 +264,13 @@ const Marketplace = () => {
                       const clamped = Math.max(1, Math.min(max, raw))
                       updateQuantity(it._id, clamped)
                     }}
-                    className='w-16 px-2 py-1 text-xs border border-gray-300 rounded'
+                    className='w-14 px-2 py-1 text-xs border border-gray-300 rounded'
                   />
-                  <span className='text-xs text-gray-500'>{isFarmer ? 'units' : 'kg'}</span>
+                  <span className='text-[11px] text-gray-500'>{isFarmer ? 'units' : 'kg'}</span>
                 </div>
                 <div className='flex gap-2'>
-                  <button className='border px-3 py-2 rounded-md text-xs' onClick={() => { setSelected(it); setSelectedImageIndex(0) }}>View info</button>
-                  <button className='btn-primary flex-1 px-3 py-2 text-xs flex items-center justify-center gap-1' onClick={() => addToCart(it)}>
+                  <button className='border px-2.5 py-1.5 rounded-md text-xs' onClick={() => { setSelected(it); setSelectedImageIndex(0) }}>View info</button>
+                  <button className='btn-primary flex-1 px-2.5 py-1.5 text-xs flex items-center justify-center gap-1' onClick={() => addToCart(it)}>
                     <ShoppingCart className='w-3 h-3' />
                     Add to cart
                   </button>

@@ -43,6 +43,12 @@ const listingSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    expireAfterDays: {
+      // number of days after harvestedAt when the listing expires
+      type: Number,
+      min: 1,
+      default: null,
+    },
     status: {
       type: String,
       enum: ["AVAILABLE", "SOLD", "REMOVED"],

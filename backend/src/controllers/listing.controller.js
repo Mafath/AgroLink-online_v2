@@ -38,7 +38,7 @@ export const getMyListings = async (req, res) => {
 export const createListing = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { cropName, pricePerKg, capacityKg, details, harvestedAt, images } = req.body || {};
+    const { cropName, pricePerKg, capacityKg, details, harvestedAt, expireAfterDays, images } = req.body || {};
 
     if (!cropName || pricePerKg == null || capacityKg == null || !harvestedAt) {
       return res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "Required fields missing" } });
@@ -51,6 +51,7 @@ export const createListing = async (req, res) => {
     const validPrice = Number.isFinite(priceNum) && priceNum >= 0;
     const validCapacity = Number.isInteger(capacityNum) && capacityNum >= 0;
     const harvestedDate = new Date(harvestedAt);
+    const expireDaysNum = expireAfterDays != null ? Number(expireAfterDays) : null;
     const today = new Date();
     const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     const isFuture = harvestedDate > todayMidnight;
@@ -69,6 +70,11 @@ export const createListing = async (req, res) => {
     }
     if (isFuture) {
       return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Harvested date cannot be in the future' } });
+    }
+    if (expireDaysNum != null) {
+      if (!Number.isInteger(expireDaysNum) || expireDaysNum < 1) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'expireAfterDays must be a positive integer' } });
+      }
     }
 
     let imageUrls = [];
@@ -99,6 +105,7 @@ export const createListing = async (req, res) => {
       capacityKg: capacityNum,
       details: details ? String(details).trim() : "",
       harvestedAt: harvestedDate,
+      expireAfterDays: expireDaysNum,
       images: imageUrls,
       status: 'AVAILABLE',
     });
@@ -114,7 +121,7 @@ export const updateListing = async (req, res) => {
   try {
     const userId = req.user._id;
     const { id } = req.params;
-    const { cropName, pricePerKg, capacityKg, details, harvestedAt, images, status } = req.body || {};
+    const { cropName, pricePerKg, capacityKg, details, harvestedAt, expireAfterDays, images, status } = req.body || {};
 
     const listing = await Listing.findOne({ _id: id, farmer: userId });
     if (!listing) {
@@ -154,6 +161,13 @@ export const updateListing = async (req, res) => {
         return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Harvested date cannot be in the future' } });
       }
       listing.harvestedAt = harvestedDate;
+    }
+    if (expireAfterDays != null) {
+      const expireDaysNum = Number(expireAfterDays);
+      if (!Number.isInteger(expireDaysNum) || expireDaysNum < 1) {
+        return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'expireAfterDays must be a positive integer' } });
+      }
+      listing.expireAfterDays = expireDaysNum;
     }
     if (status != null) listing.status = String(status).toUpperCase();
 

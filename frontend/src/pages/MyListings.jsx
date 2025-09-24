@@ -7,7 +7,7 @@ const MyListings = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+  const [form, setForm] = useState({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -43,6 +43,7 @@ const MyListings = () => {
       harvestedAt: toInputDate(it.harvestedAt),
       details: it.details || '',
       status: toBackendStatus(it.status || 'AVAILABLE'),
+      expireAfterDays: it.expireAfterDays ?? '',
       images: [], // selecting new images replaces existing ones; empty keeps current
     })
   }
@@ -75,12 +76,13 @@ const MyListings = () => {
         capacityKg: Number(form.capacityKg),
         details: form.details,
         harvestedAt: form.harvestedAt,
+        expireAfterDays: form.expireAfterDays ? Number(form.expireAfterDays) : undefined,
         images: form.images,
       }
       const res = await axiosInstance.post('/listings', payload)
       toast.success('Listing created')
       setShowForm(false)
-      setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+      setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
       setItems(prev => [res.data, ...prev])
     } catch (e) {
       toast.error(e?.response?.data?.error?.message || 'Failed to create')
@@ -294,6 +296,22 @@ const MyListings = () => {
                 />
               </div>
               <div>
+                <label className='form-label'>Expire after (days)</label>
+                <input
+                  type='number'
+                  min='1'
+                  step='1'
+                  className='input-field'
+                  value={form.expireAfterDays}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '')
+                    setForm({ ...form, expireAfterDays: v })
+                  }}
+                  placeholder='e.g., 21 for ~3 weeks'
+                />
+                <p className='text-xs text-gray-500 mt-1'>Enter the period until this produce expires (in days).</p>
+              </div>
+              <div>
                 <label className='form-label'>Images (up to 4)</label>
                 <input
                   type='file'
@@ -408,9 +426,24 @@ const MyListings = () => {
                   />
                 </div>
                 <div>
-                  <label className='form-label'>Status</label>
-                  <input className='input-field py-2 px-3 text-sm bg-gray-100' value={editForm.status} readOnly disabled />
+                  <label className='form-label'>Expire after (days)</label>
+                  <input
+                    type='number'
+                    min='1'
+                    step='1'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.expireAfterDays}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '')
+                      setEditForm({ ...editForm, expireAfterDays: v })
+                    }}
+                    placeholder='e.g., 21'
+                  />
                 </div>
+              </div>
+              <div>
+                <label className='form-label'>Status</label>
+                <input className='input-field py-2 px-3 text-sm bg-gray-100' value={editForm.status} readOnly disabled />
               </div>
               <div>
                 <label className='form-label'>Current images</label>
@@ -467,6 +500,7 @@ const MyListings = () => {
                         capacityKg: Number(editForm.capacityKg),
                         details: editForm.details,
                         harvestedAt: editForm.harvestedAt,
+                        expireAfterDays: editForm.expireAfterDays ? Number(editForm.expireAfterDays) : undefined,
                       }
                       if (Array.isArray(editForm.images) && editForm.images.length > 0) {
                         payload.images = editForm.images
@@ -556,9 +590,15 @@ const MyListings = () => {
                 </div>
               </div>
 
-              <div>
-                <label className='form-label'>Harvested Date</label>
-                <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.harvestedAt).toLocaleDateString()}</div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Harvested Date</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.harvestedAt).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <label className='form-label'>Expire after (days)</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{infoModal.expireAfterDays != null ? infoModal.expireAfterDays : '—'}</div>
+                </div>
               </div>
 
               {infoModal.details && (
