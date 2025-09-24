@@ -55,7 +55,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
               overflow: hidden;
             }
             .header {
-              background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+              background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
               color: white;
               padding: 40px 30px;
               text-align: center;
@@ -125,19 +125,19 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
             }
             .button {
               display: inline-block;
-              background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+              background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
               color: white;
               padding: 16px 40px;
               text-decoration: none;
               border-radius: 8px;
               font-weight: 600;
               font-size: 16px;
-              box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+              box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
               transition: all 0.3s ease;
             }
             .button:hover {
               transform: translateY(-2px);
-              box-shadow: 0 6px 16px rgba(34, 197, 94, 0.4);
+              box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
             }
             .link-container {
               background-color: #f7fafc;
@@ -189,7 +189,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
             .social-links a {
               display: inline-block;
               margin: 0 10px;
-              color: #22c55e;
+              color: #3b82f6;
               text-decoration: none;
               font-weight: 500;
             }
@@ -213,7 +213,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
             <div class="header">
               <div class="logo-container">
                 <div class="logo">
-                  <img src="https://your-domain.com/AgroLink_logo3-removebg-preview.png" alt="AgroLink Logo" />
+                  <img src="${process.env.FRONTEND_URL || 'http://localhost:5173'}/agrolink-logo.png" alt="AgroLink Logo" />
                 </div>
                 <h1>AgroLink</h1>
                 <h2>Email Verification Required</h2>
@@ -329,7 +329,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
               overflow: hidden;
             }
             .header {
-              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+              background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
               color: white;
               padding: 40px 30px;
               text-align: center;
@@ -399,19 +399,19 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
             }
             .button {
               display: inline-block;
-              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+              background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
               color: white;
               padding: 16px 40px;
               text-decoration: none;
               border-radius: 8px;
               font-weight: 600;
               font-size: 16px;
-              box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+              box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
               transition: all 0.3s ease;
             }
             .button:hover {
               transform: translateY(-2px);
-              box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+              box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
             }
             .link-container {
               background-color: #f7fafc;
@@ -463,7 +463,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
             .social-links a {
               display: inline-block;
               margin: 0 10px;
-              color: #ef4444;
+              color: #6366f1;
               text-decoration: none;
               font-weight: 500;
             }
@@ -487,7 +487,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
             <div class="header">
               <div class="logo-container">
                 <div class="logo">
-                  <img src="https://your-domain.com/AgroLink_logo3-removebg-preview.png" alt="AgroLink Logo" />
+                  <img src="${process.env.FRONTEND_URL || 'http://localhost:5173'}/agrolink-logo.png" alt="AgroLink Logo" />
                 </div>
                 <h1>AgroLink</h1>
                 <h2>Password Reset Request</h2>
