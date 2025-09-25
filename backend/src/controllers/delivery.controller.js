@@ -1,4 +1,5 @@
 import Delivery, { STATUS } from '../models/delivery.model.js';
+import { sendDeliveryCancellationEmail } from '../lib/emailService.js';
 
 export const createDeliveryRequest = async (req, res) => {
   try {
@@ -150,7 +151,9 @@ export const adminCancelDelivery = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const delivery = await Delivery.findById(id).populate('order');
+    const delivery = await Delivery.findById(id)
+      .populate('order')
+      .populate('requester', 'fullName email');
     if (!delivery) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found' } });
 
     if (delivery.status === 'COMPLETED') {
@@ -162,6 +165,18 @@ export const adminCancelDelivery = async (req, res) => {
 
     delivery.addStatus('CANCELLED', req.user._id);
     await delivery.save();
+
+    // Send cancellation email to customer
+    try {
+      const emailResult = await sendDeliveryCancellationEmail(delivery, delivery.requester);
+      if (!emailResult.success) {
+        console.error('Failed to send cancellation email:', emailResult.error);
+        // Don't fail the cancellation, just log the error
+      }
+    } catch (emailError) {
+      console.error('Error sending cancellation email:', emailError);
+      // Don't fail the cancellation, just log the error
+    }
 
     return res.json(delivery);
   } catch (error) {
