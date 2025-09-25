@@ -55,13 +55,6 @@ const MyOrders = () => {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
-          <button
-            onClick={() => navigate('/delivery-tracking')}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold bg-black text-white hover:bg-gray-900"
-          >
-            <Truck className="w-4 h-4" />
-            Delivery Tracking
-          </button>
         </div>
 
         {loading ? (
@@ -82,14 +75,16 @@ const MyOrders = () => {
           <div className="space-y-6">
             {orders.map(order => (
               <div key={order._id} className="bg-white rounded-xl shadow-sm border p-6">
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex items-start justify-between mb-2">
                   <div>
                     <span className="text-xs text-gray-500">Order ID</span>
                     <span className="ml-2 font-semibold text-gray-900">{order.orderNumber || order._id}</span>
                   </div>
-                  <button className={`px-3 py-1 rounded-full text-xs font-semibold focus:outline-none ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</button>
+                  <div className="flex flex-col items-end gap-2">
+                    <button className={`px-3 py-1 rounded-full text-xs font-semibold focus:outline-none ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</button>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-4 mb-4">
+                <div className="flex flex-wrap gap-4 mb-4 items-end">
                   <div>
                     <span className="text-xs text-gray-500">Date</span>
                     <div className="font-medium text-gray-700">{new Date(order.createdAt).toLocaleDateString()}</div>
@@ -102,6 +97,14 @@ const MyOrders = () => {
                     <span className="text-xs text-gray-500">Total</span>
                     <div className="font-semibold text-green-700">LKR {order.total?.toFixed(2)}</div>
                   </div>
+                  {order.deliveryType === 'DELIVERY' && (
+                    <button
+                      onClick={() => navigate(`/delivery-tracking/${order._id}`)}
+                      className="ml-auto px-3 py-1.5 rounded-lg bg-black text-white text-xs font-semibold inline-flex items-center gap-2"
+                    >
+                      <Truck className="w-4 h-4" /> Track delivery
+                    </button>
+                  )}
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <div className="text-sm font-semibold text-gray-800 mb-2">Order Items</div>

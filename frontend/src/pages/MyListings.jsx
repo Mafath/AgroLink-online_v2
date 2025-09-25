@@ -7,12 +7,13 @@ const MyListings = () => {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+  const [form, setForm] = useState({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
   const [saving, setSaving] = useState(false)
   const [preview, setPreview] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [editForm, setEditForm] = useState(null)
   const [infoModal, setInfoModal] = useState(null)
+  const [newListExpireSort, setNewListExpireSort] = useState('soon') // 'soon' | 'later'
 
   const toInputDate = (value) => {
     try {
@@ -43,6 +44,7 @@ const MyListings = () => {
       harvestedAt: toInputDate(it.harvestedAt),
       details: it.details || '',
       status: toBackendStatus(it.status || 'AVAILABLE'),
+      expireAfterDays: it.expireAfterDays ?? '',
       images: [], // selecting new images replaces existing ones; empty keeps current
     })
   }
@@ -61,6 +63,19 @@ const MyListings = () => {
 
   useEffect(() => { load() }, [])
 
+  const daysTillExpire = (it) => {
+    const days = Number(it.expireAfterDays)
+    if (!Number.isFinite(days) || days <= 0) return null
+    const harvested = new Date(it.harvestedAt)
+    if (isNaN(harvested.getTime())) return null
+    const best = new Date(harvested.getFullYear(), harvested.getMonth(), harvested.getDate())
+    best.setDate(best.getDate() + days)
+    const today = new Date()
+    const startToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+    const diffMs = best - startToday
+    return Math.ceil(diffMs / (24*60*60*1000))
+  }
+
   const handleCreate = async (e) => {
     e.preventDefault()
     if (!form.cropName || !form.pricePerKg || !form.capacityKg || !form.harvestedAt) {
@@ -75,12 +90,13 @@ const MyListings = () => {
         capacityKg: Number(form.capacityKg),
         details: form.details,
         harvestedAt: form.harvestedAt,
+        expireAfterDays: form.expireAfterDays ? Number(form.expireAfterDays) : undefined,
         images: form.images,
       }
       const res = await axiosInstance.post('/listings', payload)
       toast.success('Listing created')
       setShowForm(false)
-      setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', images: [] })
+      setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
       setItems(prev => [res.data, ...prev])
     } catch (e) {
       toast.error(e?.response?.data?.error?.message || 'Failed to create')
@@ -106,10 +122,19 @@ const MyListings = () => {
       </div>
 
       <div className='card'>
-        <h3 className='text-xl font-semibold text-green-800 mb-4'>New Listings</h3>
+        <div className='flex items-center justify-between mb-4'>
+          <h3 className='text-xl font-semibold text-green-800'>New Listings</h3>
+          <div className='flex items-center gap-2'>
+            <label className='text-xs text-gray-600'>Sort by expiry:</label>
+            <select className='input-field py-1 h-8 text-xs' value={newListExpireSort} onChange={(e)=>setNewListExpireSort(e.target.value)}>
+              <option value='soon'>Soonest first</option>
+              <option value='later'>Latest first</option>
+            </select>
+          </div>
+        </div>
         {loading ? (
           <div>Loading...</div>
-        ) : items.filter(item => item.status !== 'SOLD').length === 0 ? (
+        ) : items.filter(item => item.status === 'AVAILABLE').length === 0 ? (
           <div className='text-gray-500 text-sm'>No active listings yet.</div>
         ) : (
           <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
@@ -120,18 +145,32 @@ const MyListings = () => {
                   <th className='py-2 pr-4'>Price/kg</th>
                   <th className='py-2 pr-4 text-center'>Capacity (kg)</th>
                   <th className='py-2 pr-4'>Harvested</th>
+                  <th className='py-2 pr-4 text-center'>Days till expire</th>
                   <th className='py-2 pr-4'>Images</th>
                   <th className='py-2'>Status</th>
                   <th className='py-2 pl-4'>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {items.filter(item => item.status !== 'SOLD').map(it => (
+                {items
+                  .filter(item => item.status === 'AVAILABLE')
+                  .sort((a,b)=>{
+                    const da = daysTillExpire(a)
+                    const db = daysTillExpire(b)
+                    const na = (da == null ? Number.POSITIVE_INFINITY : da)
+                    const nb = (db == null ? Number.POSITIVE_INFINITY : db)
+                    return newListExpireSort === 'soon' ? na - nb : nb - na
+                  })
+                  .map(it => {
+                    const dte = daysTillExpire(it)
+                    const bestBefore = (()=>{ const days = Number(it.expireAfterDays); if(!Number.isFinite(days)||days<=0) return null; const d=new Date(it.harvestedAt); d.setDate(d.getDate()+days); return d })()
+                    return (
                   <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
                     <td className='py-2 pr-4'>{it.cropName}</td>
                     <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
                     <td className='py-2 pr-4 text-center'>{it.capacityKg} kg</td>
                     <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4 text-center'>{dte != null ? dte : (bestBefore ? 0 : '—')}</td>
                     <td className='py-2 pr-4'>
                       {Array.isArray(it.images) && it.images.length > 0 ? (
                         <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
@@ -161,7 +200,7 @@ const MyListings = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           </div>
@@ -213,6 +252,63 @@ const MyListings = () => {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Removed Items Table */}
+      <div className='card mt-6'>
+        <h3 className='text-xl font-semibold text-gray-800 mb-4'>Removed Items</h3>
+        {loading ? (
+          <div>Loading...</div>
+        ) : items.filter(item => item.status === 'REMOVED').length === 0 ? (
+          <div className='text-gray-500 text-sm'>No removed items.</div>
+        ) : (
+          <div className='overflow-x-auto border border-gray-200 rounded-lg p-4'>
+            <table className='w-full text-sm'>
+              <thead>
+                <tr className='text-left border-b'>
+                  <th className='py-2 pr-4'>Crop</th>
+                  <th className='py-2 pr-4'>Price/kg</th>
+                  <th className='py-2 pr-4'>Harvested</th>
+                  <th className='py-2 pr-4'>Best before</th>
+                  <th className='py-2 pr-4'>Images</th>
+                  <th className='py-2'>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.filter(item => item.status === 'REMOVED').map(it => {
+                  const bestBefore = (() => {
+                    const days = Number(it.expireAfterDays)
+                    if (!Number.isFinite(days) || days <= 0) return null
+                    const d = new Date(it.harvestedAt)
+                    d.setDate(d.getDate() + days)
+                    return d
+                  })()
+                  return (
+                  <tr key={it._id} className='border-b last:border-0 hover:bg-gray-50'>
+                    <td className='py-2 pr-4'>{it.cropName}</td>
+                    <td className='py-2 pr-4'>LKR {Number(it.pricePerKg).toFixed(2)}</td>
+                    <td className='py-2 pr-4'>{new Date(it.harvestedAt).toLocaleDateString()}</td>
+                    <td className='py-2 pr-4'>{bestBefore ? bestBefore.toLocaleDateString() : '—'}</td>
+                    <td className='py-2 pr-4'>
+                      {Array.isArray(it.images) && it.images.length > 0 ? (
+                        <div className='grid grid-cols-4 gap-1 max-w-[180px]'>
+                          {it.images.slice(0,4).map((src, idx) => (
+                            <img key={idx} src={src} alt={'img'+idx} className='w-10 h-10 object-cover rounded' />
+                          ))}
+                        </div>
+                      ) : (
+                        <span className='text-gray-400'>No images</span>
+                      )}
+                    </td>
+                    <td className='py-2'>
+                      <span className='px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-800'>REMOVED</span>
+                    </td>
+                  </tr>
+                )})}
               </tbody>
             </table>
           </div>
@@ -292,6 +388,22 @@ const MyListings = () => {
                     setForm({ ...form, harvestedAt: v })
                   }}
                 />
+              </div>
+              <div>
+                <label className='form-label'>Expire after (days)</label>
+                <input
+                  type='number'
+                  min='1'
+                  step='1'
+                  className='input-field'
+                  value={form.expireAfterDays}
+                  onChange={(e) => {
+                    const v = e.target.value.replace(/\D/g, '')
+                    setForm({ ...form, expireAfterDays: v })
+                  }}
+                  placeholder='e.g., 21 for ~3 weeks'
+                />
+                <p className='text-xs text-gray-500 mt-1'>Enter the period until this produce expires (in days).</p>
               </div>
               <div>
                 <label className='form-label'>Images (up to 4)</label>
@@ -408,9 +520,24 @@ const MyListings = () => {
                   />
                 </div>
                 <div>
-                  <label className='form-label'>Status</label>
-                  <input className='input-field py-2 px-3 text-sm bg-gray-100' value={editForm.status} readOnly disabled />
+                  <label className='form-label'>Expire after (days)</label>
+                  <input
+                    type='number'
+                    min='1'
+                    step='1'
+                    className='input-field py-2 px-3 text-sm'
+                    value={editForm.expireAfterDays}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/\D/g, '')
+                      setEditForm({ ...editForm, expireAfterDays: v })
+                    }}
+                    placeholder='e.g., 21'
+                  />
                 </div>
+              </div>
+              <div>
+                <label className='form-label'>Status</label>
+                <input className='input-field py-2 px-3 text-sm bg-gray-100' value={editForm.status} readOnly disabled />
               </div>
               <div>
                 <label className='form-label'>Current images</label>
@@ -467,6 +594,7 @@ const MyListings = () => {
                         capacityKg: Number(editForm.capacityKg),
                         details: editForm.details,
                         harvestedAt: editForm.harvestedAt,
+                        expireAfterDays: editForm.expireAfterDays ? Number(editForm.expireAfterDays) : undefined,
                       }
                       if (Array.isArray(editForm.images) && editForm.images.length > 0) {
                         payload.images = editForm.images
@@ -556,9 +684,15 @@ const MyListings = () => {
                 </div>
               </div>
 
-              <div>
-                <label className='form-label'>Harvested Date</label>
-                <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.harvestedAt).toLocaleDateString()}</div>
+              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                <div>
+                  <label className='form-label'>Harvested Date</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{new Date(infoModal.harvestedAt).toLocaleDateString()}</div>
+                </div>
+                <div>
+                  <label className='form-label'>Expire after (days)</label>
+                  <div className='text-sm bg-gray-50 p-2 rounded border'>{infoModal.expireAfterDays != null ? infoModal.expireAfterDays : '—'}</div>
+                </div>
               </div>
 
               {infoModal.details && (

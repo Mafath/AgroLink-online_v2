@@ -154,8 +154,14 @@ export const signin = async (req, res) => {
 // Backward-compat alias
 export const login = signin;
 
-export const logout = (req, res) => {
+export const logout = async (req, res) => {
   try {
+    // If a driver logs out, mark them UNAVAILABLE
+    if (req.user && String(req.user.role).toUpperCase() === 'DRIVER') {
+      try {
+        await User.findByIdAndUpdate(req.user._id, { availability: 'UNAVAILABLE' });
+      } catch (_) {}
+    }
     return res.status(200).json({ message: "Logged out" });
   } catch (error) {
     console.error("Error in logout controller: ", error.message);
@@ -220,7 +226,7 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified } = req.user;
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified, availability, service_area } = req.user;
     return res.status(200).json({ 
       id: _id, 
       email, 
@@ -232,7 +238,9 @@ export const getCurrentUser = (req, res) => {
       address, 
       bio, 
       lastLogin,
-      isEmailVerified
+      isEmailVerified,
+      availability,
+      service_area
     });
   } catch (error) {
     console.error("Error in getCurrentUser controller: ", error.message);

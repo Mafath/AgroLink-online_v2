@@ -4,6 +4,7 @@ import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
 import mongoose from 'mongoose';
+import { sendOrderPlacedEmail } from '../lib/emailService.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
 const updateStockQuantities = async (items, isCancellation = false) => {
@@ -191,6 +192,13 @@ export const createOrder = async (req, res) => {
       // Link delivery to order
       order.delivery = delivery._id;
       await order.save();
+    }
+
+    // Fire-and-forget order confirmation email
+    try {
+      await sendOrderPlacedEmail(order, req.user);
+    } catch (e) {
+      console.error('Failed to send order confirmation email:', e);
     }
 
     return res.status(201).json(order);
@@ -449,6 +457,13 @@ export const createOrderFromCart = async (req, res) => {
       // Link delivery to order
       order.delivery = delivery._id;
       await order.save();
+    }
+
+    // Fire-and-forget order confirmation email
+    try {
+      await sendOrderPlacedEmail(order, req.user);
+    } catch (e) {
+      console.error('Failed to send order confirmation email (cart):', e);
     }
 
     return res.status(201).json(order);

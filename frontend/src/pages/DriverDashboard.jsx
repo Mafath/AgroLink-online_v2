@@ -135,22 +135,21 @@ const DriverDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-none mx-0 w-full px-8 py-6">
-         <div className="flex items-center justify-between mb-6">
-           <div>
-             <h1 className="text-3xl font-semibold">Driver Dashboard</h1>
-             <p className="text-gray-600">Welcome back, {authUser?.fullName || 'Driver'}</p>
-           </div>
-           <div className="flex items-center space-x-6">
-             <div className="text-right">
-               <div className="text-2xl font-bold text-primary-600">{deliveries.length}</div>
-               <div className="text-sm text-gray-600">Total Deliveries</div>
-             </div>
-             <div className="text-right">
-               <div className="text-sm text-gray-600 mb-2">Availability</div>
-               <AvailabilityToggle />
-             </div>
-           </div>
-         </div>
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-semibold">Driver Dashboard</h1>
+            <p className="text-gray-600">Welcome back, {authUser?.fullName || 'Driver'}</p>
+          </div>
+          <div></div>
+        </div>
+
+        {/* Availability toggle (left side, below header) */}
+        <div className="mb-6">
+          <div className="inline-flex items-center gap-3">
+            <span className="text-sm text-gray-600">Availability : </span>
+            <AvailabilityToggle />
+          </div>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
@@ -229,7 +228,7 @@ const DriverDashboard = () => {
         </div>
 
         {/* Deliveries List */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {filteredDeliveries.length === 0 ? (
             <div className="text-center py-12">
               <Truck className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -238,30 +237,30 @@ const DriverDashboard = () => {
             </div>
           ) : (
             filteredDeliveries.map((delivery) => (
-              <div key={delivery._id} className="bg-white rounded-lg shadow-sm border">
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
+              <div key={delivery._id} className="bg-white rounded-lg shadow-sm border w-full max-w-6xl mx-auto">
+                <div className="p-4">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">
+                      <h3 className="text-base font-semibold text-gray-900">
                         Order #{delivery.order?.orderNumber || 'N/A'}
                       </h3>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-xs text-gray-600">
                         Created: {new Date(delivery.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(delivery.status)}`}>
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(delivery.status)}`}>
                       {getStatusText(delivery.status)}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {/* Customer Info */}
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <h4 className="font-medium text-gray-900 mb-2 flex items-center text-sm">
                         <User className="w-4 h-4 mr-2" />
                         Customer Information
                       </h4>
-                      <div className="space-y-1 text-sm text-gray-600">
+                      <div className="space-y-1 text-xs text-gray-600">
                         <p><strong>Name:</strong> {delivery.contactName}</p>
                         <p><strong>Phone:</strong> {delivery.phone}</p>
                         <p><strong>Order Total:</strong> LKR {delivery.order?.total?.toFixed(2) || 'N/A'}</p>
@@ -271,16 +270,16 @@ const DriverDashboard = () => {
 
                     {/* Delivery Address */}
                     <div>
-                      <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <h4 className="font-medium text-gray-900 mb-2 flex items-center text-sm">
                         <MapPin className="w-4 h-4 mr-2" />
                         Delivery Address
                       </h4>
-                      <div className="space-y-1 text-sm text-gray-600">
+                      <div className="space-y-1 text-xs text-gray-600">
                         <p>{delivery.address.line1}</p>
                         {delivery.address.line2 && <p>{delivery.address.line2}</p>}
                         <p>{delivery.address.city}, {delivery.address.state} {delivery.address.postalCode}</p>
                         {delivery.notes && (
-                          <p className="mt-2 p-2 bg-gray-50 rounded">
+                          <p className="mt-2 p-2 bg-gray-50 rounded text-xs">
                             <strong>Notes:</strong> {delivery.notes}
                           </p>
                         )}
@@ -290,13 +289,13 @@ const DriverDashboard = () => {
 
                   {/* Status History */}
                   {delivery.statusHistory && delivery.statusHistory.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className="font-medium text-gray-900 mb-3">Status History</h4>
-                      <div className="space-y-2">
+                    <div className="mt-4">
+                      <h4 className="font-medium text-gray-900 mb-2 text-sm">Status History</h4>
+                      <div className="space-y-1.5">
                         {delivery.statusHistory
                           .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
                           .map((history, index) => (
-                            <div key={index} className="flex items-center space-x-3 text-sm">
+                            <div key={index} className="flex items-center space-x-3 text-xs">
                               {getStatusIcon(history.status)}
                               <span className="text-gray-600">{getStatusText(history.status)}</span>
                               <span className="text-gray-400">
@@ -309,7 +308,7 @@ const DriverDashboard = () => {
                   )}
 
                   {/* Action Button */}
-                  <div className="mt-6 flex justify-end">
+                  <div className="mt-4 flex justify-end">
                     {getNextStatus(delivery.status) && (
                       <button
                         onClick={() => updateDeliveryStatus(delivery._id, getNextStatus(delivery.status))}
@@ -354,7 +353,7 @@ const AvailabilityToggle = () => {
   };
 
   return (
-    <button onClick={onToggle} disabled={saving} className={`px-4 py-2 rounded-full text-sm font-medium ${current === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+    <button onClick={onToggle} disabled={saving} className={`px-4 py-2 rounded-full text-sm font-medium ${current === 'AVAILABLE' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-800'}`}>
       {saving ? 'Saving…' : current === 'AVAILABLE' ? 'Available' : 'Unavailable'}
     </button>
   );
@@ -368,8 +367,22 @@ const AvailabilityPrompt = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (isDriver && isUnavailable) setOpen(true);
-  }, [isDriver, isUnavailable]);
+    if (!isDriver || !isUnavailable) return;
+    const userId = authUser?.id || authUser?._id;
+    const lastLogin = authUser?.lastLogin ? new Date(authUser.lastLogin).getTime() : null;
+    if (!userId || !lastLogin) {
+      // Fallback: if we lack identifiers, behave like current logic but avoid reopening repeatedly
+      if (!open) setOpen(true);
+      return;
+    }
+
+    const flagKey = `availabilityPromptShown:${userId}:${lastLogin}`;
+    const alreadyShown = sessionStorage.getItem(flagKey) === '1';
+    if (!alreadyShown) {
+      sessionStorage.setItem(flagKey, '1');
+      setOpen(true);
+    }
+  }, [isDriver, isUnavailable, authUser?.id, authUser?._id, authUser?.lastLogin]);
 
   if (!open) return null;
 
@@ -381,7 +394,7 @@ const AvailabilityPrompt = () => {
         <div className='flex items-center justify-end gap-2'>
           <button className='border px-3 py-2 rounded-md' onClick={() => setOpen(false)}>Not now</button>
           <button
-            className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium'
+            className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center'
             disabled={saving}
             onClick={async () => {
               setSaving(true);

@@ -62,6 +62,22 @@ export const getMyDeliveries = async (req, res) => {
   }
 };
 
+// Get delivery by order id for the current requester
+export const getMyDeliveryByOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    if (!orderId) return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'orderId required' } });
+    const delivery = await Delivery.findOne({ requester: req.user._id, order: orderId })
+      .populate('order', 'orderNumber items total status')
+      .populate('driver', 'fullName email phone');
+    if (!delivery) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found for this order' } });
+    return res.json(delivery);
+  } catch (error) {
+    console.error('getMyDeliveryByOrder error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch delivery' } });
+  }
+};
+
 export const adminListDeliveries = async (req, res) => {
   try {
     const { status } = req.query;
@@ -126,6 +142,31 @@ export const getDriverDeliveries = async (req, res) => {
   } catch (error) {
     console.error('getDriverDeliveries error:', error);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch driver deliveries' } });
+  }
+};
+
+// Admin can cancel a delivery at any time
+export const adminCancelDelivery = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const delivery = await Delivery.findById(id).populate('order');
+    if (!delivery) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found' } });
+
+    if (delivery.status === 'COMPLETED') {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Cannot cancel a completed delivery' } });
+    }
+    if (delivery.status === 'CANCELLED') {
+      return res.status(200).json(delivery);
+    }
+
+    delivery.addStatus('CANCELLED', req.user._id);
+    await delivery.save();
+
+    return res.json(delivery);
+  } catch (error) {
+    console.error('adminCancelDelivery error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to cancel delivery' } });
   }
 };
 
