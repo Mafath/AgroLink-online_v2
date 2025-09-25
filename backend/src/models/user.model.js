@@ -63,7 +63,7 @@ const userSchema = new mongoose.Schema(
       enum: ["AVAILABLE", "UNAVAILABLE"],
       index: true,
     },
-    // Driver-only field (populated only when role === 'DRIVER')
+    // Driver and Agronomist field (populated when role === 'DRIVER' or 'AGRONOMIST')
     service_area: {
       type: String,
       default: "",

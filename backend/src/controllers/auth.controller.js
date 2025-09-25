@@ -156,8 +156,8 @@ export const login = signin;
 
 export const logout = async (req, res) => {
   try {
-    // If a driver logs out, mark them UNAVAILABLE
-    if (req.user && String(req.user.role).toUpperCase() === 'DRIVER') {
+    // If a driver or agronomist logs out, mark them UNAVAILABLE
+    if (req.user && (String(req.user.role).toUpperCase() === 'DRIVER' || String(req.user.role).toUpperCase() === 'AGRONOMIST')) {
       try {
         await User.findByIdAndUpdate(req.user._id, { availability: 'UNAVAILABLE' });
       } catch (_) {}
@@ -180,7 +180,7 @@ export const updateProfile = async (req, res) => {
     }
     if (typeof availability === 'string') {
       const me = await User.findById(userId).select('role');
-      if (String(me.role).toUpperCase() === 'DRIVER') {
+      if (String(me.role).toUpperCase() === 'DRIVER' || String(me.role).toUpperCase() === 'AGRONOMIST') {
         const normalized = availability.toUpperCase();
         if (['AVAILABLE','UNAVAILABLE'].includes(normalized)) {
           updateFields.availability = normalized;
@@ -254,11 +254,12 @@ export const checkAuth = getCurrentUser;
 // Admin: simple stats for dashboard
 export const getAdminStats = async (req, res) => {
   try {
-    const [totalUsers, farmers, buyers, drivers, listingsTotal, listingsAvailable] = await Promise.all([
+    const [totalUsers, farmers, buyers, drivers, agronomists, listingsTotal, listingsAvailable] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ role: 'FARMER' }),
       User.countDocuments({ role: 'BUYER' }),
       User.countDocuments({ role: 'DRIVER' }),
+      User.countDocuments({ role: 'AGRONOMIST' }),
       Listing.countDocuments(),
       Listing.countDocuments({ status: 'AVAILABLE' }),
     ]);
@@ -269,6 +270,7 @@ export const getAdminStats = async (req, res) => {
         farmers,
         buyers,
         drivers,
+        agronomists,
       },
       listings: {
         total: listingsTotal,

@@ -6,7 +6,7 @@ import DefaultAvatar from '../assets/User Avatar.jpg'
 import toast from 'react-hot-toast'
 import AdminSidebar from '../components/AdminSidebar'
 
-const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Consultant']
+const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Agronomist']
 const statuses = ['Active', 'Suspended']
 
 const Card = ({ children, className = '' }) => (
@@ -27,7 +27,7 @@ const LineChart = ({ categories = ['Jan','Feb','Mar','Apr','May','Jun'], series 
   }} series={series} />
 )
 
-const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver','Consultant'], series = [5,45,40,10,5] }) => (
+const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver','Agronomist'], series = [5,45,40,10,5] }) => (
   <Chart key={Array.isArray(series) ? series.join(',') : 'static'} type='donut' height={220} options={{
     chart:{toolbar:{show:false}},
     labels,
@@ -73,15 +73,15 @@ const BarChart = ({ categories = [], series = [] }) => (
 )
 
 const AdminConsultants = () => {
-  const [query, setQuery] = useState({ role: 'Consultant', status: '' , availability: '', expertise_crop: ''})
+  const [query, setQuery] = useState({ role: 'AGRONOMIST', status: '' , availability: '', expertise: ''})
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', expertise_crop: '' })
+  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', expertise: '' })
   const [showPassword, setShowPassword] = useState(false)
-  const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', expertise_crop: '' })
-  const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, expertise_crop: false })
+  const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', expertise: '' })
+  const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, expertise: false })
 
   // Validation functions
   const validateFullName = (name) => {
@@ -110,8 +110,8 @@ const AdminConsultants = () => {
     return ''
   }
 
-  const validateExpertiseCrop = (expertise_crop) => {
-    if (!expertise_crop || !expertise_crop.trim()) return 'Expertise crop is required'
+  const validateExpertise = (expertise) => {
+    if (!expertise || !expertise.trim()) return 'Expertise is required'
     return ''
   }
 
@@ -119,7 +119,7 @@ const AdminConsultants = () => {
     fullName: validateFullName(form.fullName),
     email: validateEmail(form.email),
     password: validatePassword(form.password),
-    expertise_crop: validateExpertiseCrop(form.expertise_crop)
+    expertise: validateExpertise(form.expertise)
   })
 
   const isFormValid = () => {
@@ -142,8 +142,8 @@ const AdminConsultants = () => {
       case 'password':
         error = validatePassword(value)
         break
-      case 'expertise_crop':
-        error = validateExpertiseCrop(value)
+      case 'expertise':
+        error = validateExpertise(value)
         break
     }
     
@@ -155,9 +155,9 @@ const AdminConsultants = () => {
   }
 
   const resetForm = () => {
-    setCreateForm({ fullName: '', email: '', password: '', expertise_crop: '' })
-    setFormErrors({ fullName: '', email: '', password: '', expertise_crop: '' })
-    setFormTouched({ fullName: false, email: false, password: false, expertise_crop: false })
+    setCreateForm({ fullName: '', email: '', password: '', expertise: '' })
+    setFormErrors({ fullName: '', email: '', password: '', expertise: '' })
+    setFormTouched({ fullName: false, email: false, password: false, expertise: false })
     setShowPassword(false)
   }
 
@@ -175,7 +175,7 @@ const AdminConsultants = () => {
     }
   }
 
-  useEffect(() => { fetchConsultants() }, [query.role, query.status, query.availability, query.expertise_crop])
+  useEffect(() => { fetchConsultants() }, [query.role, query.status, query.availability, query.expertise])
 
   const items = resp.data
   const filteredItems = useMemo(() => {
@@ -231,7 +231,7 @@ const AdminConsultants = () => {
   }, [items])
 
   const roleCounts = useMemo(() => {
-    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0, CONSULTANT: 0 }
+    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0, AGRONOMIST: 0 }
     for (const u of (Array.isArray(items) ? items : [])) {
       const r = String(u.role || '').toUpperCase()
       if (counts[r] != null) counts[r] += 1
@@ -239,18 +239,18 @@ const AdminConsultants = () => {
     return counts
   }, [items])
 
-  const expertiseCropData = useMemo(() => {
-    const crops = ['Tomatoes','Wheat','Corn','Rice','Potatoes','Onions','Carrots','Lettuce']
-    const available = Object.fromEntries(crops.map(c => [c, 0]))
-    const unavailable = Object.fromEntries(crops.map(c => [c, 0]))
+  const expertiseData = useMemo(() => {
+    const cropTypes = ['Tomatoes', 'Wheat', 'Corn', 'Rice', 'Potatoes', 'Onions', 'Carrots', 'Lettuce']
+    const available = Object.fromEntries(cropTypes.map(c => [c, 0]))
+    const unavailable = Object.fromEntries(cropTypes.map(c => [c, 0]))
     for (const u of (Array.isArray(items) ? items : [])) {
-      if (String(u.role || '').toUpperCase() !== 'CONSULTANT') continue
-      const c = typeof u.expertise_crop === 'string' && u.expertise_crop.trim() ? u.expertise_crop.trim() : null
+      if (String(u.role || '').toUpperCase() !== 'AGRONOMIST') continue
+      const c = typeof u.expertise === 'string' && u.expertise.trim() ? u.expertise.trim() : null
       if (!c || available[c] == null) continue
       const isAvail = String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE'
       if (isAvail) available[c] += 1; else unavailable[c] += 1
     }
-    const categories = crops
+    const categories = cropTypes
     const series = [
       { name: 'Available', data: categories.map(c => available[c]) },
       { name: 'Unavailable', data: categories.map(c => unavailable[c]) },
@@ -280,7 +280,7 @@ const AdminConsultants = () => {
       <div className='max-w-none mx-0 w-full px-8 py-6'>
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
-          <h1 className='text-3xl font-semibold ml-2'>Consultants Management</h1>
+          <h1 className='text-3xl font-semibold ml-2'>Agronomist Management</h1>
           <div />
         </div>
 
@@ -295,7 +295,7 @@ const AdminConsultants = () => {
             <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-4'>
             <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
               <div>
-                <div className='text-md font-medium text-gray-700'>Consultants</div>
+                <div className='text-md font-medium text-gray-700'>Agronomists</div>
               </div>
               <div className='flex justify-center'>
                 <div />
@@ -312,8 +312,8 @@ const AdminConsultants = () => {
                     return (<option key={val} value={val}>{label}</option>)
                   })}
                 </select>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.expertise_crop || ''} onChange={e => setQuery(q => ({ ...q, expertise_crop: e.target.value }))}>
-                  <option value=''>Any Expertise Crop</option>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.expertise || ''} onChange={e => setQuery(q => ({ ...q, expertise: e.target.value }))}>
+                  <option value=''>Any Expertise</option>
                   <option value='Tomatoes'>Tomatoes</option>
                   <option value='Wheat'>Wheat</option>
                   <option value='Corn'>Corn</option>
@@ -333,7 +333,7 @@ const AdminConsultants = () => {
                   onClick={() => setCreating(true)}
                 >
                   <Plus className='w-3.5 h-3.5' />
-                  Add Consultant
+                  Add Agronomist
                 </button>
               </div>
             </div>
@@ -344,7 +344,7 @@ const AdminConsultants = () => {
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
-                    <th className='py-3 px-3 text-center align-middle'>Expertise Crop</th>
+                    <th className='py-3 px-3 text-center align-middle'>Expertise</th>
                     <th className='py-3 px-3 text-center align-middle'>Availability</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
@@ -356,7 +356,7 @@ const AdminConsultants = () => {
                       <td className='py-6 text-center text-gray-500' colSpan={6}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No consultants</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No agronomists</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -375,7 +375,9 @@ const AdminConsultants = () => {
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
                     <td className='py-2 px-3 text-center align-middle'>
-                      {u.expertise_crop || '—'}
+                      <div className='text-xs text-gray-600 max-w-32 truncate' title={u.expertise || '—'}>
+                        {u.expertise || '—'}
+                      </div>
                     </td>
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
@@ -393,7 +395,7 @@ const AdminConsultants = () => {
                           <Pencil className='w-3 h-3' />
                           <span className='text-xs'>Edit</span>
                         </button>
-                        <button className='icon-btn bg-red-100 text-red-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={async () => { if (confirm('Delete consultant?')) { await axiosInstance.delete(`auth/admin/users/${u._id}`); fetchConsultants(); }}} title='Delete'>
+                        <button className='icon-btn bg-red-100 text-red-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={async () => { if (confirm('Delete agronomist?')) { await axiosInstance.delete(`auth/admin/users/${u._id}`); fetchConsultants(); }}} title='Delete'>
                           <Trash2 className='w-3 h-3' />
                           <span className='text-xs'>Delete</span>
                         </button>
@@ -412,7 +414,7 @@ const AdminConsultants = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>Consultants Availability</div>
+                    <div className='text-sm text-gray-600'>Agronomists Availability</div>
                     <div className='text-2xl font-semibold mt-1'>{availableConsultantsCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>available</span></div>
                     <div className='mt-2 text-sm text-gray-700'>Unavailable: <span className='font-semibold'>{unavailableConsultantsCount.toLocaleString()}</span></div>
                   </div>
@@ -424,7 +426,7 @@ const AdminConsultants = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                   <div>
-                    <div className='text-sm text-gray-600'>Total Active Consultants</div>
+                    <div className='text-sm text-gray-600'>Total Active Agronomists</div>
                     <div className='text-2xl font-semibold mt-1'>{activeUsersCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>total</span></div>
                     <div className='mt-3 text-xs text-gray-600'>Current status</div>
                   </div>
@@ -436,7 +438,7 @@ const AdminConsultants = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>Suspended Consultants</div>
+                    <div className='text-sm text-gray-600'>Suspended Agronomists</div>
                     <div className='text-2xl font-semibold mt-1'>{suspendedUsersCount.toLocaleString()} <span className='text-rose-600 text-xs align-middle'>total</span></div>
                     <div className='mt-3'>
                       <span className='text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full'>Current</span>
@@ -455,9 +457,9 @@ const AdminConsultants = () => {
             <div className='grid grid-cols-4 gap-6'>
               <Card className='col-span-4'>
                 <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Consultants by Expertise Crop</div>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Agronomists by Crop Type</div>
                   <div className='rounded-lg border border-dashed'>
-                    <BarChart categories={expertiseCropData.categories} series={expertiseCropData.series} />
+                    <BarChart categories={expertiseData.categories} series={expertiseData.series} />
                   </div>
                 </div>
               </Card>
@@ -473,7 +475,7 @@ const AdminConsultants = () => {
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-md p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Add Consultant</h2>
+              <h2 className='text-lg font-semibold'>Add Agronomist</h2>
               <button onClick={() => setCreating(false)} className='text-gray-500'>Close</button>
             </div>
             <div className='space-y-3'>
@@ -498,7 +500,7 @@ const AdminConsultants = () => {
                   value={createForm.email} 
                   onChange={e => handleFormFieldChange('email', e.target.value)}
                   onBlur={() => handleFormFieldBlur('email')}
-                  placeholder='consultant@example.com' 
+                  placeholder='agronomist@example.com' 
                 />
                 {formTouched.email && formErrors.email && (
                   <p className='mt-1 text-xs text-red-600'>{formErrors.email}</p>
@@ -532,14 +534,14 @@ const AdminConsultants = () => {
                 )}
               </div>
               <div>
-                <label className='text-xs text-gray-500'>Expertise Crop *</label>
+                <label className='text-xs text-gray-500'>Expertise *</label>
                 <select 
-                  className={`input-field mt-1 w-full ${formTouched.expertise_crop && formErrors.expertise_crop ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  value={createForm.expertise_crop} 
-                  onChange={e => handleFormFieldChange('expertise_crop', e.target.value)}
-                  onBlur={() => handleFormFieldBlur('expertise_crop')}
+                  className={`input-field mt-1 w-full ${formTouched.expertise && formErrors.expertise ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={createForm.expertise} 
+                  onChange={e => handleFormFieldChange('expertise', e.target.value)}
+                  onBlur={() => handleFormFieldBlur('expertise')}
                 >
-                  <option value=''>Select expertise crop</option>
+                  <option value=''>Select expertise area</option>
                   <option value='Tomatoes'>Tomatoes</option>
                   <option value='Wheat'>Wheat</option>
                   <option value='Corn'>Corn</option>
@@ -549,8 +551,8 @@ const AdminConsultants = () => {
                   <option value='Carrots'>Carrots</option>
                   <option value='Lettuce'>Lettuce</option>
                 </select>
-                {formTouched.expertise_crop && formErrors.expertise_crop && (
-                  <p className='mt-1 text-xs text-red-600'>{formErrors.expertise_crop}</p>
+                {formTouched.expertise && formErrors.expertise && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.expertise}</p>
                 )}
               </div>
               <div className='flex items-center justify-end gap-2 pt-2'>
@@ -574,7 +576,7 @@ const AdminConsultants = () => {
                   disabled={!isFormValid()}
                   onClick={async () => {
                     // Mark all fields as touched to show any remaining errors
-                    setFormTouched({ fullName: true, email: true, password: true, expertise_crop: true })
+                    setFormTouched({ fullName: true, email: true, password: true, expertise: true })
                     
                     if (!isFormValid()) {
                       return
@@ -583,7 +585,7 @@ const AdminConsultants = () => {
                     try {
                       const payload = { 
                         ...createForm, 
-                        role: 'CONSULTANT', 
+                        role: 'AGRONOMIST', 
                         availability: 'UNAVAILABLE',
                         fullName: createForm.fullName.trim(),
                         email: createForm.email.trim().toLowerCase()
@@ -592,15 +594,15 @@ const AdminConsultants = () => {
                       setCreating(false);
                       resetForm();
                       fetchConsultants();
-                      toast.success('Consultant account added successfully');
+                      toast.success('Agronomist account added successfully');
                     } catch (error) {
-                      const errorMessage = error?.response?.data?.error?.message || 'Failed to create consultant account. Please try again.';
+                      const errorMessage = error?.response?.data?.error?.message || 'Failed to create agronomist account. Please try again.';
                       toast.error(errorMessage);
-                      console.error('Error creating consultant:', error);
+                      console.error('Error creating agronomist:', error);
                     }
                   }}
                 >
-                  Create Consultant
+                  Create Agronomist
                 </button>
               </div>
             </div>
@@ -613,7 +615,7 @@ const AdminConsultants = () => {
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-3xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Consultant Details</h2>
+              <h2 className='text-lg font-semibold'>Agronomist Details</h2>
               <button onClick={() => setSelected(null)} className='text-gray-500'>Close</button>
             </div>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -638,20 +640,20 @@ const AdminConsultants = () => {
               {/* Right: actions */}
               <div className='space-y-3'>
                 <div>
-                  <label className='text-xs text-gray-500'>Expertise Crop</label>
+                  <label className='text-xs text-gray-500'>Expertise</label>
                   <select
                     className='input-field mt-1'
-                    value={selected.expertise_crop || ''}
+                    value={selected.expertise || ''}
                     onChange={async (e) => {
-                      const expertise_crop = e.target.value
+                      const expertise = e.target.value
                       try {
-                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { expertise_crop })
+                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { expertise })
                         fetchConsultants()
-                        setSelected(s => ({ ...s, expertise_crop }))
+                        setSelected(s => ({ ...s, expertise }))
                       } catch (_) { /* silent */ }
                     }}
                   >
-                    <option value=''>Select expertise crop</option>
+                    <option value=''>Select expertise area</option>
                     <option value='Tomatoes'>Tomatoes</option>
                     <option value='Wheat'>Wheat</option>
                     <option value='Corn'>Corn</option>
