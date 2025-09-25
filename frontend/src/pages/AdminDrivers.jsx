@@ -3,6 +3,7 @@ import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
 import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
+import toast from 'react-hot-toast'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
 const statuses = ['Active', 'Suspended']
@@ -78,6 +79,86 @@ const AdminDrivers = () => {
   const [creating, setCreating] = useState(false)
   const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', service_area: '' })
   const [showPassword, setShowPassword] = useState(false)
+  const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', service_area: '' })
+  const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, service_area: false })
+
+  // Validation functions
+  const validateFullName = (name) => {
+    if (!name || !name.trim()) return 'Full name is required'
+    if (name.trim().length < 2) return 'Full name must be at least 2 characters'
+    if (name.trim().length > 50) return 'Full name must be less than 50 characters'
+    if (!/^[a-zA-Z\s]+$/.test(name.trim())) return 'Full name can only contain letters and spaces'
+    return ''
+  }
+
+  const validateEmail = (email) => {
+    if (!email || !email.trim()) return 'Email is required'
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
+    if (!emailRegex.test(email.trim())) return 'Please enter a valid email address'
+    return ''
+  }
+
+  const validatePassword = (password) => {
+    if (!password) return 'Password is required'
+    if (password.length < 8) return 'Password must be at least 8 characters'
+    if (password.length > 128) return 'Password must be less than 128 characters'
+    if (!/(?=.*[a-z])/.test(password)) return 'Password must contain at least one lowercase letter'
+    if (!/(?=.*[A-Z])/.test(password)) return 'Password must contain at least one uppercase letter'
+    if (!/(?=.*\d)/.test(password)) return 'Password must contain at least one number'
+    if (!/(?=.*[@$!%*?&])/.test(password)) return 'Password must contain at least one special character (@$!%*?&)'
+    return ''
+  }
+
+  const validateServiceArea = (area) => {
+    if (!area || !area.trim()) return 'Service area is required'
+    return ''
+  }
+
+  const validateAll = (form) => ({
+    fullName: validateFullName(form.fullName),
+    email: validateEmail(form.email),
+    password: validatePassword(form.password),
+    service_area: validateServiceArea(form.service_area)
+  })
+
+  const isFormValid = () => {
+    const errors = validateAll(createForm)
+    return !Object.values(errors).some(error => error !== '')
+  }
+
+  const handleFormFieldChange = (field, value) => {
+    setCreateForm(prev => ({ ...prev, [field]: value }))
+    
+    // Validate the field immediately
+    let error = ''
+    switch (field) {
+      case 'fullName':
+        error = validateFullName(value)
+        break
+      case 'email':
+        error = validateEmail(value)
+        break
+      case 'password':
+        error = validatePassword(value)
+        break
+      case 'service_area':
+        error = validateServiceArea(value)
+        break
+    }
+    
+    setFormErrors(prev => ({ ...prev, [field]: error }))
+  }
+
+  const handleFormFieldBlur = (field) => {
+    setFormTouched(prev => ({ ...prev, [field]: true }))
+  }
+
+  const resetForm = () => {
+    setCreateForm({ fullName: '', email: '', password: '', service_area: '' })
+    setFormErrors({ fullName: '', email: '', password: '', service_area: '' })
+    setFormTouched({ fullName: false, email: false, password: false, service_area: false })
+    setShowPassword(false)
+  }
 
   const fetchDrivers = async () => {
     setLoading(true)
@@ -313,7 +394,8 @@ const AdminDrivers = () => {
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
-                    <td className='py-2 px-3 flex items-center justify-center gap-3 align-middle'>
+                    <td className='py-2 px-3 text-center align-middle'>
+                        <div className='flex items-center justify-center gap-2'>
                         <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
@@ -326,6 +408,7 @@ const AdminDrivers = () => {
                           <Trash2 className='w-3 h-3' />
                           <span className='text-xs'>Delete</span>
                         </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -406,22 +489,42 @@ const AdminDrivers = () => {
             </div>
             <div className='space-y-3'>
               <div>
-                <label className='text-xs text-gray-500'>Full Name</label>
-                <input className='input-field mt-1 w-full' value={createForm.fullName} onChange={e => setCreateForm(f => ({ ...f, fullName: e.target.value }))} placeholder='John Doe' />
+                <label className='text-xs text-gray-500'>Full Name *</label>
+                <input 
+                  className={`input-field mt-1 w-full ${formTouched.fullName && formErrors.fullName ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={createForm.fullName} 
+                  onChange={e => handleFormFieldChange('fullName', e.target.value)}
+                  onBlur={() => handleFormFieldBlur('fullName')}
+                  placeholder='John Doe' 
+                />
+                {formTouched.fullName && formErrors.fullName && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.fullName}</p>
+                )}
               </div>
               <div>
-                <label className='text-xs text-gray-500'>Email</label>
-                <input className='input-field mt-1 w-full' type='email' value={createForm.email} onChange={e => setCreateForm(f => ({ ...f, email: e.target.value }))} placeholder='driver@example.com' />
+                <label className='text-xs text-gray-500'>Email *</label>
+                <input 
+                  className={`input-field mt-1 w-full ${formTouched.email && formErrors.email ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  type='email' 
+                  value={createForm.email} 
+                  onChange={e => handleFormFieldChange('email', e.target.value)}
+                  onBlur={() => handleFormFieldBlur('email')}
+                  placeholder='driver@example.com' 
+                />
+                {formTouched.email && formErrors.email && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.email}</p>
+                )}
               </div>
               <div>
-                <label className='text-xs text-gray-500'>Password</label>
+                <label className='text-xs text-gray-500'>Password *</label>
                 <div className='relative'>
                   <input
-                    className='input-field mt-1 w-full pr-10'
+                    className={`input-field mt-1 w-full pr-10 ${formTouched.password && formErrors.password ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
                     type={showPassword ? 'text' : 'password'}
                     value={createForm.password}
-                    onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                    placeholder='Minimum 8 characters'
+                    onChange={e => handleFormFieldChange('password', e.target.value)}
+                    onBlur={() => handleFormFieldBlur('password')}
+                    placeholder='Enter a strong password'
                   />
                   <button
                     type='button'
@@ -432,10 +535,21 @@ const AdminDrivers = () => {
                     {showPassword ? <EyeOff className='w-4 h-4' /> : <Eye className='w-4 h-4' />}
                   </button>
                 </div>
+                {formTouched.password && formErrors.password && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.password}</p>
+                )}
+                {!formTouched.password && (
+                  <p className='mt-1 text-xs text-gray-500'>Must contain uppercase, lowercase, number, and special character</p>
+                )}
               </div>
               <div>
-                <label className='text-xs text-gray-500'>Service Area</label>
-                <select className='input-field mt-1 w-full' value={createForm.service_area} onChange={e => setCreateForm(f => ({ ...f, service_area: e.target.value }))}>
+                <label className='text-xs text-gray-500'>Service Area *</label>
+                <select 
+                  className={`input-field mt-1 w-full ${formTouched.service_area && formErrors.service_area ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={createForm.service_area} 
+                  onChange={e => handleFormFieldChange('service_area', e.target.value)}
+                  onBlur={() => handleFormFieldBlur('service_area')}
+                >
                   <option value=''>Select a province</option>
                   <option value='Northern'>Northern</option>
                   <option value='North Central'>North Central</option>
@@ -447,22 +561,58 @@ const AdminDrivers = () => {
                   <option value='Uva'>Uva</option>
                   <option value='Southern'>Southern</option>
                 </select>
+                {formTouched.service_area && formErrors.service_area && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.service_area}</p>
+                )}
               </div>
               <div className='flex items-center justify-end gap-2 pt-2'>
-                <button className='border px-3 py-2 rounded-md' onClick={() => setCreating(false)}>Cancel</button>
-                <button
-                  className='btn-primary px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center'
-                  onClick={async () => {
-                    try {
-                      const payload = { ...createForm, role: 'DRIVER', availability: 'UNAVAILABLE' };
-                      await axiosInstance.post('auth/admin/users', payload);
-                      setCreating(false);
-                      setCreateForm({ fullName: '', email: '', password: '', service_area: '' });
-                      fetchDrivers();
-                    } catch (_) { /* silent */ }
+                <button 
+                  type='button'
+                  className='border px-3 py-2 rounded-md hover:bg-gray-50' 
+                  onClick={() => {
+                    setCreating(false)
+                    resetForm()
                   }}
                 >
-                  Create
+                  Cancel
+                </button>
+                <button
+                  type='button'
+                  className={`px-3.5 h-9 rounded-full text-[13px] font-medium inline-flex items-center justify-center ${
+                    isFormValid() 
+                      ? 'btn-primary' 
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  disabled={!isFormValid()}
+                  onClick={async () => {
+                    // Mark all fields as touched to show any remaining errors
+                    setFormTouched({ fullName: true, email: true, password: true, service_area: true })
+                    
+                    if (!isFormValid()) {
+                      return
+                    }
+
+                    try {
+                      const payload = { 
+                        ...createForm, 
+                        role: 'DRIVER', 
+                        availability: 'UNAVAILABLE',
+                        fullName: createForm.fullName.trim(),
+                        email: createForm.email.trim().toLowerCase()
+                      };
+                      const response = await axiosInstance.post('auth/admin/users', payload);
+                      setCreating(false);
+                      resetForm();
+                      fetchDrivers();
+                      toast.success('Driver account added successfully');
+                    } catch (error) {
+                      const errorMessage = error?.response?.data?.error?.message || 'Failed to create driver account. Please try again.';
+                      toast.error(errorMessage);
+                      console.error('Error creating driver:', error);
+                    }
+                  }}
+                >
+                  Create Driver
                 </button>
               </div>
             </div>

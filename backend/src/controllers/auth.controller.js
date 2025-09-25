@@ -409,6 +409,10 @@ export const adminCreateUser = async (req, res) => {
     const displayName = (typeof fullName === 'string' && fullName.trim()) ? fullName.trim() : email.split('@')[0];
     const defaultAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=0D8ABC&color=fff&rounded=true&size=128`;
 
+    // Generate email verification token for admin-created accounts
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const newUser = new User({
       email: email.toLowerCase().trim(),
       passwordHash,
@@ -420,11 +424,33 @@ export const adminCreateUser = async (req, res) => {
         : (normalizedRole === 'AGRONOMIST' ? (String(availability || 'AVAILABLE').toUpperCase()) : undefined),
       service_area: normalizedRole === 'DRIVER' ? (typeof service_area === 'string' ? service_area : '') : undefined,
       expertise: typeof expertise === 'string' ? expertise.trim() : '',
+      isEmailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
     });
 
     await newUser.save();
 
-    return res.status(201).json({ id: newUser._id, email: newUser.email, role: newUser.role, fullName: newUser.fullName });
+    // Send verification email for admin-created accounts
+    const emailResult = await sendVerificationEmail(
+      newUser.email,
+      newUser.fullName,
+      verificationToken
+    );
+
+    if (!emailResult.success) {
+      console.error('Failed to send verification email for admin-created user:', emailResult.error);
+      // Don't fail the user creation, just log the error
+    }
+
+    return res.status(201).json({ 
+      id: newUser._id, 
+      email: newUser.email, 
+      role: newUser.role, 
+      fullName: newUser.fullName,
+      isEmailVerified: newUser.isEmailVerified,
+      message: 'Account created successfully. Verification email sent to user.'
+    });
   } catch (error) {
     console.error('Error in adminCreateUser: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
