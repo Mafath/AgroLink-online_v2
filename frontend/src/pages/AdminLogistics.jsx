@@ -8,6 +8,7 @@ const AdminLogistics = () => {
   const [drivers, setDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('assigned'); // 'assigned' | 'unassigned' | 'cancelled'
 
   useEffect(() => {
     fetchData();
@@ -79,8 +80,33 @@ const AdminLogistics = () => {
   };
 
   const filteredDeliveries = deliveries.filter(delivery => {
-    if (statusFilter !== 'all' && delivery.status !== statusFilter) return false;
+    if (activeTab === 'assigned' && statusFilter !== 'all' && delivery.status !== statusFilter) return false;
     return true;
+  });
+
+  // Split into unassigned vs assigned (exclude cancelled here)
+  const unassignedDeliveries = filteredDeliveries.filter(d => !d.driver && d.status !== 'CANCELLED');
+  const assignedDeliveries = filteredDeliveries.filter(d => !!d.driver && d.status !== 'CANCELLED');
+  // Cancelled (independent of status filter to always show in tab)
+  const cancelledDeliveries = deliveries.filter(d => d.status === 'CANCELLED');
+
+  // Sort by most recent first
+  const sortedUnassigned = [...unassignedDeliveries].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime() || 0;
+    const bTime = new Date(b.createdAt).getTime() || 0;
+    return bTime - aTime;
+  });
+
+  const sortedAssigned = [...assignedDeliveries].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime() || 0;
+    const bTime = new Date(b.createdAt).getTime() || 0;
+    return bTime - aTime;
+  });
+  
+  const sortedCancelled = [...cancelledDeliveries].sort((a, b) => {
+    const aTime = new Date(a.createdAt).getTime() || 0;
+    const bTime = new Date(b.createdAt).getTime() || 0;
+    return bTime - aTime;
   });
 
   if (loading) {
@@ -98,10 +124,53 @@ const AdminLogistics = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-none mx-0 w-full px-8 py-6">
         {/* Top bar */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <h1 className="text-3xl font-semibold ml-2">Logistics Management</h1>
-          <div className="flex space-x-2">
+          <div className="flex items-center space-x-2">
             <span className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white">Deliveries ({deliveries.length})</span>
+          </div>
+        </div>
+        <div className="flex justify-center mb-6">
+          <div className="flex items-center gap-3">
+            <button
+              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                activeTab === 'assigned'
+                  ? 'bg-green-600 text-white shadow-green-200'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+              onClick={() => setActiveTab('assigned')}
+            >
+              <span className="inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 8v5a3 3 0 0 1-3 3H9l-4 4V8a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3Z"/></svg>
+                Assigned
+              </span>
+            </button>
+            <button
+              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                activeTab === 'unassigned'
+                  ? 'bg-indigo-600 text-white shadow-indigo-200'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+              onClick={() => setActiveTab('unassigned')}
+            >
+              <span className="inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                Unassigned
+              </span>
+            </button>
+            <button
+              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                activeTab === 'cancelled'
+                  ? 'bg-red-600 text-white shadow-red-200'
+                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+              }`}
+              onClick={() => setActiveTab('cancelled')}
+            >
+              <span className="inline-flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                Cancelled
+              </span>
+            </button>
           </div>
         </div>
 
@@ -123,38 +192,41 @@ const AdminLogistics = () => {
           {/* Main Content */}
           <div className="space-y-6">
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-          <div className="flex items-center space-x-4">
-            <Filter className="w-5 h-5 text-gray-500" />
-            <div className="flex space-x-4">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="border border-gray-300 rounded-lg px-3 py-2"
-              >
-                <option value="all">All Statuses</option>
-                <option value="PENDING">Pending</option>
-                <option value="PAID">Paid</option>
-                <option value="PROCESSING">Processing</option>
-                <option value="SHIPPED">Shipped</option>
-                <option value="DELIVERED">Delivered</option>
-                <option value="CANCELLED">Cancelled</option>
-              </select>
-              {/* Delivery status filter only */}
+        {/* Filters - visible only on Assigned tab */}
+        {activeTab === 'assigned' && (
+          <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+            <div className="flex items-center space-x-4">
+              <Filter className="w-5 h-5 text-gray-500" />
+              <div className="flex space-x-4">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="ASSIGNED">Assigned</option>
+                  <option value="PREPARING">Preparing</option>
+                  <option value="COLLECTED">Collected</option>
+                  <option value="IN_TRANSIT">In Transit</option>
+                  <option value="COMPLETED">Completed</option>
+                </select>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* Deliveries */}
+        {/* Tables */}
+        {activeTab === 'unassigned' ? (
+          // Unassigned Deliveries
           <div className="bg-white rounded-lg shadow-sm border">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Order
-                    </th>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700" colSpan="6">Unassigned Deliveries ({sortedUnassigned.length})</th>
+                  </tr>
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Customer
                     </th>
@@ -164,16 +236,14 @@ const AdminLogistics = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Driver
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredDeliveries.map((delivery) => (
+                  {sortedUnassigned.map((delivery) => (
                     <tr key={delivery._id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
@@ -210,43 +280,32 @@ const AdminLogistics = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        {delivery.driver ? (
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">
-                              {delivery.driver.fullName}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              {delivery.driver.email}
-                            </div>
-                          </div>
-                        ) : (
-                          (() => {
-                            const province = (delivery.address?.state || '').toString().trim().toLowerCase();
-                            const eligibleDrivers = drivers.filter((driver) => {
-                              const area = (driver.service_area || '').toString().trim().toLowerCase();
-                              const isAvailable = (driver.availability || '').toString().toUpperCase() === 'AVAILABLE';
-                              return area === province && isAvailable;
-                            });
-                            return (
-                              <select
-                                onChange={(e) => assignDriver(delivery._id, e.target.value)}
-                                className="border border-gray-300 rounded px-2 py-1 text-xs w-40"
-                                defaultValue=""
-                              >
-                                <option value="">Assign Driver</option>
-                                {eligibleDrivers.length === 0 ? (
-                                  <option value="" disabled>No drivers for this province</option>
-                                ) : (
-                                  eligibleDrivers.map((driver) => (
-                                    <option key={driver._id} value={driver._id}>
-                                      {driver.fullName}
-                                    </option>
-                                  ))
-                                )}
-                              </select>
-                            );
-                          })()
-                        )}
+                        {(() => {
+                          const province = (delivery.address?.state || '').toString().trim().toLowerCase();
+                          const eligibleDrivers = drivers.filter((driver) => {
+                            const area = (driver.service_area || '').toString().trim().toLowerCase();
+                            const isAvailable = (driver.availability || '').toString().toUpperCase() === 'AVAILABLE';
+                            return area === province && isAvailable;
+                          });
+                          return (
+                            <select
+                              onChange={(e) => assignDriver(delivery._id, e.target.value)}
+                              className="border border-gray-300 rounded px-2 py-1 text-xs w-40"
+                              defaultValue=""
+                            >
+                              <option value="">Assign Driver</option>
+                              {eligibleDrivers.length === 0 ? (
+                                <option value="" disabled>No drivers for this province</option>
+                              ) : (
+                                eligibleDrivers.map((driver) => (
+                                  <option key={driver._id} value={driver._id}>
+                                    {driver.fullName}
+                                  </option>
+                                ))
+                              )}
+                            </select>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
@@ -267,6 +326,138 @@ const AdminLogistics = () => {
               </table>
             </div>
           </div>
+        ) : activeTab === 'assigned' ? (
+          // Assigned Deliveries
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700" colSpan="6">Assigned Deliveries ({sortedAssigned.length})</th>
+                  </tr>
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedAssigned.map((delivery) => (
+                    <tr key={delivery._id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">#{delivery.order?.orderNumber || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{new Date(delivery.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{delivery.contactName}</div>
+                          <div className="text-sm text-gray-500">{delivery.phone}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{delivery.address.line1}</div>
+                        <div className="text-sm text-gray-500">{delivery.address.city}, {delivery.address.state}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getDeliveryStatusIcon(delivery.status)}
+                          <span className="ml-2 text-sm text-gray-900">{delivery.status}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{delivery.driver?.fullName}</div>
+                          <div className="text-sm text-gray-500">{delivery.driver?.email}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          onClick={() => cancelDelivery(delivery._id)}
+                          disabled={delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'}
+                          className={`px-3 py-1 rounded border ${
+                            delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'
+                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                              : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+                          }`}
+                        >
+                          Cancel Delivery
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          // Cancelled Deliveries
+          <div className="bg-white rounded-lg shadow-sm border">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-sm font-semibold text-gray-700" colSpan="6">Cancelled Deliveries ({sortedCancelled.length})</th>
+                  </tr>
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {sortedCancelled.map((delivery) => (
+                    <tr key={delivery._id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">#{delivery.order?.orderNumber || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{new Date(delivery.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{delivery.contactName}</div>
+                          <div className="text-sm text-gray-500">{delivery.phone}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{delivery.address.line1}</div>
+                        <div className="text-sm text-gray-500">{delivery.address.city}, {delivery.address.state}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {getDeliveryStatusIcon(delivery.status)}
+                          <span className="ml-2 text-sm text-gray-900">{delivery.status}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{delivery.driver?.fullName || '-'}</div>
+                          <div className="text-sm text-gray-500">{delivery.driver?.email || ''}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <button
+                          disabled
+                          className={`px-3 py-1 rounded border bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed`}
+                        >
+                          Cancelled
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
           </div>
         </div>
       </div>
