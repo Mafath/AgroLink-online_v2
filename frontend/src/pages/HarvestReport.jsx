@@ -1,10 +1,14 @@
-// src/pages/HarvestReport.jsx
-import React, { useState, useEffect } from "react";
-import { Sun, Moon } from "lucide-react";
-import { useNavigate } from "react-router-dom"; // ✅ added
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    {children}
+  </div>
+)
 
 const HarvestReport = () => {
-  const [darkMode, setDarkMode] = useState(false);
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     image: null,
     description: "",
@@ -25,18 +29,6 @@ const HarvestReport = () => {
       reply: "",
     },
   ]);
-
-  const navigate = useNavigate(); // ✅ added
-
-  // Apply dark mode to <html> for Tailwind dark classes
-  useEffect(() => {
-    const html = document.documentElement;
-    if (darkMode) {
-      html.classList.add("dark");
-    } else {
-      html.classList.remove("dark");
-    }
-  }, [darkMode]);
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -83,121 +75,135 @@ const HarvestReport = () => {
   };
 
   return (
-    <div className={`min-h-screen px-6 py-12 transition-colors duration-300 ${darkMode ? "bg-gray-900" : "bg-white"}`}>
-      {/* Header with Dark/Light Toggle */}
-      <div className="flex justify-between items-center mb-6">
-        <h1 className={`${darkMode ? "text-white" : "text-black"} text-3xl font-bold`}>
-          📝 Report Crop Issue
-        </h1>
-        <button
-          onClick={() => setDarkMode(!darkMode)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg shadow-md bg-gray-200 dark:bg-gray-700 dark:text-white hover:scale-105 transition"
-        >
-          {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-          {darkMode ? "Light Mode" : "Dark Mode"}
-        </button>
-      </div>
-
-      {/* Back Button moved under the title */}
-      <div className="mb-10">
-        <button
-          onClick={() => navigate("/harvest-dashboard")}
-          className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg shadow hover:bg-green-700 transition"
-        >
-          ⬅ Back
-        </button>
-      </div>
-
-      {/* Report Form */}
-      <div className={`bg-green-100 dark:bg-green-800 rounded-2xl shadow-lg p-6 max-w-2xl mx-auto mb-12`}>
-        <h2 className={`${darkMode ? "text-white" : "text-black"} text-2xl font-bold mb-4`}>
-          Submit a New Report
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">
-              Upload Image
-            </label>
-            <input
-              type="file"
-              name="image"
-              accept="image/*"
-              onChange={handleChange}
-              className="w-full text-gray-700 dark:text-gray-200"
-              required
-            />
-            {formData.image && (
-              <img
-                src={URL.createObjectURL(formData.image)}
-                alt="Preview"
-                className="mt-2 rounded-lg max-h-48 object-cover"
-              />
-            )}
-          </div>
-          <div>
-            <label className="block mb-1 font-medium text-gray-700 dark:text-gray-300">
-              Description
-            </label>
-            <textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              rows="3"
-              className="w-full px-3 py-2 border border-green-300 dark:border-green-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 dark:bg-green-900 dark:text-white"
-              placeholder="Describe the issue..."
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-          >
-            Submit Report
-          </button>
-        </form>
-      </div>
-
-      {/* Reports List */}
-      <h2 className={`${darkMode ? "text-white" : "text-black"} text-2xl font-semibold mb-6 text-center`}>
-        Previous Reports
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reports.map((report) => (
-          <div
-            key={report.id}
-            className="bg-green-50 dark:bg-green-900 rounded-2xl shadow-lg p-6 transition-shadow hover:shadow-2xl"
-          >
-            {report.image && (
-              <img
-                src={report.image}
-                alt="Report"
-                className="w-full h-48 object-cover rounded-lg mb-4"
-              />
-            )}
-            <p className="text-gray-800 dark:text-gray-100 mb-2">
-              <span className="font-medium">Description:</span> {report.description}
-            </p>
-            <p
-              className={`px-3 py-1 rounded-full text-sm font-medium mb-2 inline-block ${
-                report.status === "Pending"
-                  ? "bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100"
-                  : "bg-blue-200 text-blue-800 dark:bg-blue-700 dark:text-blue-100"
-              }`}
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-none mx-0 w-full px-8 py-6'>
+        {/* Top bar */}
+        <div className='flex items-center justify-between mb-8'>
+          <div className='flex items-center gap-4'>
+            <button 
+              onClick={() => navigate('/harvest-dashboard')}
+              className='flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors duration-200'
             >
-              {report.status}
-            </p>
-            {report.status === "Replied" && (
-              <p className="text-gray-700 dark:text-gray-300 mt-2">
-                <span className="font-medium">Expert Reply:</span> {report.reply}
-              </p>
-            )}
+              <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10 19l-7-7m0 0l7-7m-7 7h18' />
+              </svg>
+              <span className='text-sm font-medium'>Back to Dashboard</span>
+            </button>
+            <div className='h-6 w-px bg-gray-300'></div>
+            <div className='text-center'>
+              <h1 className='text-4xl font-bold text-gray-900 mb-2'>📝 Report Crop Issue</h1>
+              <p className='text-gray-600'>Report crop diseases and get expert advice</p>
+            </div>
           </div>
-        ))}
-        {reports.length === 0 && (
-          <p className="text-center text-gray-600 dark:text-gray-400 col-span-full">
-            No reports submitted yet.
-          </p>
-        )}
+        </div>
+
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+          {/* Report Form */}
+          <div className='lg:col-span-1'>
+            <Card>
+              <div className='p-6'>
+                <h2 className='text-xl font-semibold text-gray-900 mb-4'>Submit New Report</h2>
+                <form onSubmit={handleSubmit} className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-2'>
+                      Upload Image
+                    </label>
+                    <input
+                      type='file'
+                      name='image'
+                      accept='image/*'
+                      onChange={handleChange}
+                      className='input-field w-full'
+                      required
+                    />
+                    {formData.image && (
+                      <img
+                        src={URL.createObjectURL(formData.image)}
+                        alt='Preview'
+                        className='mt-3 rounded-lg max-h-48 object-cover w-full'
+                      />
+                    )}
+                  </div>
+                  
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-2'>
+                      Description
+                    </label>
+                    <textarea
+                      name='description'
+                      value={formData.description}
+                      onChange={handleChange}
+                      rows='4'
+                      className='input-field w-full'
+                      placeholder='Describe the crop issue, symptoms, or problem you are experiencing...'
+                      required
+                    />
+                  </div>
+                  
+                  <button
+                    type='submit'
+                    className='w-full btn-primary py-2 px-4 rounded-md text-sm font-medium'
+                  >
+                    Submit Report
+                  </button>
+                </form>
+              </div>
+            </Card>
+          </div>
+
+          {/* Reports List */}
+          <div className='lg:col-span-2'>
+            <Card>
+              <div className='p-6'>
+                <h2 className='text-xl font-semibold text-gray-900 mb-4'>Previous Reports</h2>
+                {reports.length === 0 ? (
+                  <div className='text-center py-8'>
+                    <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
+                      <svg className='w-8 h-8 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                        <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
+                      </svg>
+                    </div>
+                    <h3 className='text-lg font-semibold text-gray-900 mb-2'>No reports yet</h3>
+                    <p className='text-gray-500'>Submit your first crop issue report to get started.</p>
+                  </div>
+                ) : (
+                  <div className='space-y-4'>
+                    {reports.map((report) => (
+                      <div key={report.id} className='border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow'>
+                        <div className='flex items-start justify-between mb-3'>
+                          <div className='flex-1'>
+                            <p className='text-gray-900 font-medium mb-2'>{report.description}</p>
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
+                              report.status === "Pending"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : "bg-green-100 text-green-800"
+                            }`}>
+                              {report.status}
+                            </span>
+                          </div>
+                          {report.image && (
+                            <img
+                              src={report.image}
+                              alt='Report'
+                              className='w-20 h-20 object-cover rounded-lg ml-4'
+                            />
+                          )}
+                        </div>
+                        
+                        {report.status === "Replied" && report.reply && (
+                          <div className='mt-3 p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400'>
+                            <p className='text-sm font-medium text-blue-900 mb-1'>💡 Expert Reply:</p>
+                            <p className='text-sm text-blue-800'>{report.reply}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
