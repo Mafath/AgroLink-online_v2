@@ -130,49 +130,6 @@ const AdminLogistics = () => {
             <span className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white">Deliveries ({deliveries.length})</span>
           </div>
         </div>
-        <div className="flex justify-center mb-6">
-          <div className="flex items-center gap-3">
-            <button
-              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
-                activeTab === 'assigned'
-                  ? 'bg-green-600 text-white shadow-green-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('assigned')}
-            >
-              <span className="inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 8v5a3 3 0 0 1-3 3H9l-4 4V8a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3Z"/></svg>
-                Assigned
-              </span>
-            </button>
-            <button
-              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
-                activeTab === 'unassigned'
-                  ? 'bg-indigo-600 text-white shadow-indigo-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('unassigned')}
-            >
-              <span className="inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                Unassigned
-              </span>
-            </button>
-            <button
-              className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
-                activeTab === 'cancelled'
-                  ? 'bg-red-600 text-white shadow-red-200'
-                  : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
-              }`}
-              onClick={() => setActiveTab('cancelled')}
-            >
-              <span className="inline-flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                Cancelled
-              </span>
-            </button>
-          </div>
-        </div>
 
         <div className="grid grid-cols-[240px,1fr] gap-6">
           {/* Sidebar */}
@@ -183,7 +140,8 @@ const AdminLogistics = () => {
               <a href="/admin/inventory" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Inventory</a>
               <a href="/admin/rentals" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Rentals</a>
               <a href="/admin/listings" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Listings</a>
-              <a href="/admin/drivers" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Drivers</a>
+              <a href="/admin/harvest" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Harvest Management</a>
+              <a href="/admin/drivers" className="block px-3 py-2 rounded-lg hover:bg-gray-50">Driver Management</a>
               <a href="/admin/logistics" className="block px-3 py-2 rounded-lg bg-green-100 text-green-700">Logistics</a>
               <a href='/admin/orders' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Orders</a>
             </nav>
@@ -192,28 +150,73 @@ const AdminLogistics = () => {
           {/* Main Content */}
           <div className="space-y-6">
 
-        {/* Filters - visible only on Assigned tab */}
-        {activeTab === 'assigned' && (
-          <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+        {/* Filters and Tab Buttons */}
+        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <Filter className="w-5 h-5 text-gray-500" />
               <div className="flex space-x-4">
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2"
-                >
-                  <option value="all">All Statuses</option>
-                  <option value="ASSIGNED">Assigned</option>
-                  <option value="PREPARING">Preparing</option>
-                  <option value="COLLECTED">Collected</option>
-                  <option value="IN_TRANSIT">In Transit</option>
-                  <option value="COMPLETED">Completed</option>
-                </select>
+                {activeTab === 'assigned' && (
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2"
+                  >
+                    <option value="all">All Statuses</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="PREPARING">Preparing</option>
+                    <option value="COLLECTED">Collected</option>
+                    <option value="IN_TRANSIT">In Transit</option>
+                    <option value="COMPLETED">Completed</option>
+                  </select>
+                )}
               </div>
             </div>
+            
+            {/* Tab Buttons */}
+            <div className="flex items-center gap-3">
+              <button
+                className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                  activeTab === 'assigned'
+                    ? 'bg-green-600 text-white shadow-green-200'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => setActiveTab('assigned')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 8v5a3 3 0 0 1-3 3H9l-4 4V8a3 3 0 0 1 3-3h9a3 3 0 0 1 3 3Z"/></svg>
+                  Assigned
+                </span>
+              </button>
+              <button
+                className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                  activeTab === 'unassigned'
+                    ? 'bg-indigo-600 text-white shadow-indigo-200'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => setActiveTab('unassigned')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Unassigned
+                </span>
+              </button>
+              <button
+                className={`px-5 py-2 text-sm rounded-full transition-all shadow ${
+                  activeTab === 'cancelled'
+                    ? 'bg-red-600 text-white shadow-red-200'
+                    : 'bg-white text-gray-700 border border-gray-200 hover:bg-gray-50'
+                }`}
+                onClick={() => setActiveTab('cancelled')}
+              >
+                <span className="inline-flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  Cancelled
+                </span>
+              </button>
+            </div>
           </div>
-        )}
+        </div>
 
         {/* Tables */}
         {activeTab === 'unassigned' ? (

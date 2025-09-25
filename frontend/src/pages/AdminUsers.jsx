@@ -198,6 +198,7 @@ const AdminUsers = () => {
               <a href='/admin/inventory' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Inventory</a>
               <a href='/admin/rentals' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Rentals</a>
               <a href='/admin/listings' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Listings</a>
+              <a href='/admin/harvest' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Harvest Management</a>
               <a href='/admin/drivers' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Driver Management</a>
               <a href='/admin/logistics' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Logistics</a>
               <a href='/admin/orders' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Orders</a>
