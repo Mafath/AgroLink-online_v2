@@ -97,7 +97,7 @@ export const createHarvestRequest = async (req, res) => {
       headers: req.headers.authorization ? 'Authorization header present' : 'No authorization header'
     });
 
-    const { farmerName, cropType, expectedYield, harvestDate, notes } = req.body;
+    const { farmerName, cropType, expectedYield, harvestDate, notes, personalizedData } = req.body;
 
     if (!farmerName || !cropType || !expectedYield || !harvestDate) {
       return res.status(400).json({ error: { code: "BAD_REQUEST", message: "All required fields must be provided" } });
@@ -110,6 +110,7 @@ export const createHarvestRequest = async (req, res) => {
       expectedYield,
       harvestDate,
       notes: notes || "",
+      personalizedData: personalizedData || {},
       status: "REQUEST_PENDING",
       tracking: [
         { progress: "Harvest schedule requested", updatedBy: req.user._id },

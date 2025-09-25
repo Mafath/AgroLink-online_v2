@@ -40,6 +40,9 @@ const harvestSchema = new mongoose.Schema(
     adminAdvice: { type: String, trim: true, default: "" },
     scheduledDate: { type: Date }, // Date when agronomist accepted and harvest is scheduled
 
+    // Personalized data from comprehensive harvest request form
+    personalizedData: { type: mongoose.Schema.Types.Mixed, default: {} },
+
     // Tracking progress
     tracking: { type: [trackingSchema], default: [] },
 
