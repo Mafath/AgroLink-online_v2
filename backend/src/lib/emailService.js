@@ -756,5 +756,75 @@ export const sendDeliveryCancellationEmail = async (delivery, customer) => {
   }
 };
 
+// Send order cancellation email
+export const sendOrderCancellationEmail = async (order, customer) => {
+  try {
+    const transporter = createTransporter();
+
+    const customerName = customer?.fullName || order.contactName || 'Customer';
+    const customerEmail = customer?.email || order.contactEmail;
+    const siteUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+
+    const subject = `Order Cancelled - ${order.orderNumber || order._id}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Order Cancelled - AgroLink</title>
+        </head>
+        <body style="font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f9fafb;padding:24px;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <div style="background:#dc2626;color:#ffffff;padding:20px 24px;">
+              <div style="font-size:20px;font-weight:700;">AgroLink</div>
+              <div style="margin-top:6px;font-size:14px;opacity:.9;">Order Cancelled</div>
+            </div>
+
+            <div style="padding:24px;">
+              <div style="font-size:18px;font-weight:600;color:#111827;">Hi ${customerName},</div>
+              <div style="margin-top:8px;color:#374151;">Your order has been successfully cancelled.</div>
+
+              <div style="margin-top:16px;color:#374151;font-size:14px;">
+                <div><strong>Order #</strong> ${order.orderNumber || order._id}</div>
+                <div><strong>Cancelled On</strong> ${new Date().toLocaleString()}</div>
+                <div><strong>Order Total</strong> LKR ${Number(order.total || 0).toFixed(2)}</div>
+              </div>
+
+              <div style="margin-top:20px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;">
+                <div style="color:#0369a1;font-weight:600;margin-bottom:8px;">ℹ️ Refund Information</div>
+                <div style="color:#0c4a6e;font-size:14px;">
+                  If you paid by card, your refund will be processed within 3-5 business days. For cash payments, no refund is needed as payment was not yet collected.
+                </div>
+              </div>
+
+              <div style="margin-top:20px;">
+                <a href="${siteUrl}/my-orders" style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:600;">View My Orders</a>
+              </div>
+            </div>
+
+            <div style="background:#f9fafb;padding:16px 24px;color:#6b7280;font-size:12px;text-align:center;">
+              © ${new Date().getFullYear()} AgroLink. This is an automated message; please do not reply.
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const result = await transporter.sendMail({
+      from: `"AgroLink" <${process.env.EMAIL_USER}>`,
+      to: customerEmail,
+      subject,
+      html,
+    });
+
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending order cancellation email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Named export added to default for convenience in some import styles
-export const orderEmails = { sendOrderPlacedEmail, sendDeliveryCancellationEmail };
+export const orderEmails = { sendOrderPlacedEmail, sendDeliveryCancellationEmail, sendOrderCancellationEmail };

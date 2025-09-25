@@ -3,15 +3,8 @@ import { useAuthStore } from '../store/useAuthStore';
 import { axiosInstance } from '../lib/axios';
 import { Package, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 
-const statusColors = {
-  PENDING: 'bg-yellow-100 text-yellow-700',
-  PAID: 'bg-green-100 text-green-700',
-  PROCESSING: 'bg-blue-100 text-blue-700',
-  SHIPPED: 'bg-purple-100 text-purple-700',
-  DELIVERED: 'bg-green-200 text-green-800',
-  CANCELLED: 'bg-red-100 text-red-700',
-};
 
 const MyOrders = () => {
   const { authUser } = useAuthStore();
@@ -80,9 +73,6 @@ const MyOrders = () => {
                     <span className="text-xs text-gray-500">Order ID</span>
                     <span className="ml-2 font-semibold text-gray-900">{order.orderNumber || order._id}</span>
                   </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <button className={`px-3 py-1 rounded-full text-xs font-semibold focus:outline-none ${statusColors[order.status] || 'bg-gray-100 text-gray-700'}`}>{order.status}</button>
-                  </div>
                 </div>
                 <div className="flex flex-wrap gap-4 mb-4 items-end">
                   <div>
@@ -120,25 +110,41 @@ const MyOrders = () => {
                       </div>
                     ))}
                   </div>
-                    {order.status !== 'CANCELLED' && order.status !== 'DELIVERED' && (
-                      <button
-                        onClick={async () => {
-                          if (!window.confirm('Are you sure you want to cancel this order?')) return;
-                          try {
-                            const res = await axiosInstance.patch(`/orders/${order._id}/cancel`);
-                            setOrders((prev) =>
-                              prev.map((o) => (o._id === order._id ? { ...o, status: 'CANCELLED' } : o))
-                            );
-                            toast.success('Order cancelled successfully');
-                          } catch (err) {
-                            toast.error('Failed to cancel order');
-                          }
-                        }}
-                        className="mt-2 px-3 py-1 rounded-lg bg-red-600 text-white text-xs font-semibold"
-                      >
-                        Cancel Order
-                      </button>
-                    )}
+                    {order.status !== 'DELIVERED' && (() => {
+                      const orderDate = new Date(order.createdAt);
+                      const now = new Date();
+                      const hoursSinceOrder = (now - orderDate) / (1000 * 60 * 60);
+                      const canCancel = hoursSinceOrder < 24;
+                      const isCancelled = order.status === 'CANCELLED';
+                      
+                      return (
+                        <button
+                          onClick={async () => {
+                            if (isCancelled) return;
+                            if (!window.confirm('Are you sure you want to cancel this order?')) return;
+                            try {
+                              const res = await axiosInstance.patch(`/orders/${order._id}/cancel`);
+                              setOrders((prev) =>
+                                prev.map((o) => (o._id === order._id ? { ...o, status: 'CANCELLED' } : o))
+                              );
+                              toast.success('Order cancelled successfully');
+                            } catch (err) {
+                              toast.error('Failed to cancel order');
+                            }
+                          }}
+                          disabled={isCancelled || !canCancel}
+                          className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold ${
+                            isCancelled
+                              ? 'bg-gray-400 text-white cursor-not-allowed'
+                              : canCancel 
+                                ? 'bg-red-600 text-white hover:bg-red-700' 
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
+                        >
+                          {isCancelled ? 'Cancelled' : 'Cancel Order'}
+                        </button>
+                      );
+                    })()}
                 </div>
               </div>
             ))}

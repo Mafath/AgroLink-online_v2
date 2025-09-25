@@ -4,7 +4,7 @@ import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
 import mongoose from 'mongoose';
-import { sendOrderPlacedEmail } from '../lib/emailService.js';
+import { sendOrderPlacedEmail, sendOrderCancellationEmail } from '../lib/emailService.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
 const updateStockQuantities = async (items, isCancellation = false) => {
@@ -510,6 +510,21 @@ export const cancelOrder = async (req, res) => {
     order.status = 'CANCELLED';
     await order.save();
 
+    // If this order has a delivery, cancel it too
+    if (order.delivery) {
+      try {
+        const delivery = await Delivery.findById(order.delivery);
+        if (delivery && delivery.status !== 'COMPLETED' && delivery.status !== 'CANCELLED') {
+          delivery.addStatus('CANCELLED', req.user._id);
+          await delivery.save();
+          console.log(`Delivery ${delivery._id} cancelled due to order cancellation`);
+        }
+      } catch (deliveryError) {
+        console.error('Error cancelling associated delivery:', deliveryError);
+        // Don't fail the order cancellation, just log the error
+      }
+    }
+
     // Restore stock quantities for cancelled order
     try {
       const itemsToRestore = order.items.map(item => ({
@@ -521,6 +536,18 @@ export const cancelOrder = async (req, res) => {
     } catch (stockRestoreError) {
       console.error('Error restoring stock quantities:', stockRestoreError);
       // Log the error but don't fail the cancellation
+    }
+
+    // Send cancellation email to customer
+    try {
+      const emailResult = await sendOrderCancellationEmail(order, req.user);
+      if (!emailResult.success) {
+        console.error('Failed to send order cancellation email:', emailResult.error);
+        // Don't fail the cancellation, just log the error
+      }
+    } catch (emailError) {
+      console.error('Error sending order cancellation email:', emailError);
+      // Don't fail the cancellation, just log the error
     }
 
     return res.status(200).json({ message: 'Order cancelled successfully', order });
