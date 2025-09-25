@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, Truck, TrendingUp, Users, MapPin, Star } from 'lucide-react';
+import { ShoppingCart, Truck, TrendingUp, Users, MapPin, Star, Leaf } from 'lucide-react';
 
 const HomePage = () => {
   const { authUser } = useAuthStore();
@@ -129,6 +129,14 @@ const HomePage = () => {
             {subtitle}
           </p>
           {getRoleBasedActions()}
+          {isAuthenticated && user?.role === 'FARMER' && (
+            <div className="mt-6">
+              <Link to="/harvest-dashboard" className="inline-flex items-center bg-green-600 hover:bg-green-700 text-white rounded-md h-10 px-6 transition-colors">
+                <Leaf className="w-5 h-5 mr-2" />
+                Harvest (Temporary)
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 

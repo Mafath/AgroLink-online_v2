@@ -1,31 +1,40 @@
 // src/pages/HarvestTrack.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom"; // ✅ added
+import { axiosInstance } from "../lib/axios";
 
 const HarvestTrack = () => {
-  const [schedules, setSchedules] = useState([
-    {
-      id: 1,
-      cropType: "Tomatoes",
-      expertName: "Dr. John Doe",
-      expectedYield: 200,
-      harvestDate: "2025-09-25",
-      status: "Ongoing",
-      progress: 40,
-      notes: "Irrigation completed last week",
-    },
-    {
-      id: 2,
-      cropType: "Cabbage",
-      expertName: "Dr. Jane Smith",
-      expectedYield: 180,
-      harvestDate: "2025-09-30",
-      status: "Ongoing",
-      progress: 20,
-      notes: "Fertilizer applied",
-    },
-  ]);
+  const [schedules, setSchedules] = useState([]);
+
+  useEffect(() => {
+    const fetchOngoing = async () => {
+      try {
+        // Try farmer scheduled
+        const farmerRes = await axiosInstance.get('/harvest/requests', { params: { status: 'SCHEDULED' } });
+        let items = farmerRes?.data?.requests || [];
+
+        const mapped = (items || []).map(r => ({
+          id: r._id,
+          cropType: r.crop,
+          expertName: r.expertName || '—',
+          expectedYield: r.expectedYield || 0,
+          harvestDate: r.harvestDate ? new Date(r.harvestDate).toISOString().slice(0,10) : '—',
+          scheduledDate: r.scheduledDate ? new Date(r.scheduledDate).toISOString().slice(0,10) : '—',
+          status: r.status === 'ACCEPTED' || r.status === 'SCHEDULED' || r.status === 'IN_PROGRESS' ? 'Ongoing' : r.status,
+          progress: r.tracking && r.tracking.length > 0 ? r.tracking[r.tracking.length - 1].progress : 0,
+          notes: r.adminAdvice || '',
+          farmerName: r.farmerName || r.farmer?.fullName || '—',
+          tracking: r.tracking || [],
+          expertId: r.expertId,
+        }));
+        setSchedules(mapped);
+      } catch (_) {
+        setSchedules([]);
+      }
+    };
+    fetchOngoing();
+  }, []);
 
   const [darkMode, setDarkMode] = useState(false);
   const navigate = useNavigate(); // ✅ added
@@ -36,12 +45,48 @@ const HarvestTrack = () => {
     );
   };
 
-  const markCompleted = (id) => {
-    setSchedules((prev) =>
-      prev.map((s) =>
-        s.id === id ? { ...s, status: "Completed", progress: 100 } : s
-      )
-    );
+  const addProgressUpdate = async (id, progress, notes) => {
+    try {
+      await axiosInstance.post(`/harvest/${id}/update`, {
+        progress: `${progress}% completed`,
+        notes: notes
+      });
+      
+      // Update local state
+      setSchedules((prev) =>
+        prev.map((s) => 
+          s.id === id 
+            ? { 
+                ...s, 
+                progress: progress,
+                notes: notes,
+                tracking: [...(s.tracking || []), {
+                  progress: `${progress}% completed`,
+                  notes: notes,
+                  updatedAt: new Date(),
+                  updatedBy: 'current_user'
+                }]
+              } 
+            : s
+        )
+      );
+    } catch (error) {
+      console.error('Failed to update progress:', error);
+    }
+  };
+
+  const markCompleted = async (id) => {
+    try {
+      await axiosInstance.post(`/harvest/${id}/status`, { status: 'COMPLETED' });
+      
+      setSchedules((prev) =>
+        prev.map((s) =>
+          s.id === id ? { ...s, status: "COMPLETED", progress: 100 } : s
+        )
+      );
+    } catch (error) {
+      console.error('Failed to mark as completed:', error);
+    }
   };
 
   return (
@@ -98,17 +143,26 @@ const HarvestTrack = () => {
               </span>
             </div>
 
-            <p className="mb-1">
-              <span className="font-medium">Expert:</span> {schedule.expertName}
-            </p>
-            <p className="mb-1">
-              <span className="font-medium">Expected Yield:</span>{" "}
-              {schedule.expectedYield} kg
-            </p>
-            <p className="mb-3">
-              <span className="font-medium">Harvest Date:</span>{" "}
-              {schedule.harvestDate}
-            </p>
+            <div className="space-y-2 mb-4">
+              <p className="text-sm">
+                <span className="font-medium">👨‍🌾 Farmer:</span> {schedule.farmerName}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">📅 Scheduled Date:</span> {schedule.scheduledDate}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">🌾 Expected Yield:</span> {schedule.expectedYield} kg
+              </p>
+            </div>
+
+            {/* Expert Advice */}
+            {schedule.notes && (
+              <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-1">💡 Expert Advice:</p>
+                <p className="text-sm text-blue-700 dark:text-blue-300">{schedule.notes}</p>
+              </div>
+            )}
+
 
             {/* Progress Bar */}
             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-4">
@@ -119,43 +173,102 @@ const HarvestTrack = () => {
             </div>
             <p className="text-sm mb-3">Progress: {schedule.progress}%</p>
 
-            {/* Notes */}
-            <textarea
-              value={schedule.notes}
-              onChange={(e) => handleUpdate(schedule.id, "notes", e.target.value)}
-              rows="2"
-              className={`w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm mb-3 ${
-                darkMode
-                  ? "bg-gray-800 border border-green-600 text-white"
-                  : "bg-white border border-green-300 text-gray-900"
-              }`}
-            />
+            {/* Progress Tracking Form */}
+            {schedule.status === "Ongoing" && (
+              <div className="space-y-3 mb-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Update Progress (%)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    placeholder="Enter progress percentage"
+                    className={`w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm ${
+                      darkMode
+                        ? "bg-gray-800 border border-green-600 text-white"
+                        : "bg-white border border-green-300 text-gray-900"
+                    }`}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        const progress = Number(e.target.value);
+                        const notes = e.target.nextElementSibling?.value || '';
+                        if (progress >= 0 && progress <= 100) {
+                          addProgressUpdate(schedule.id, progress, notes);
+                          e.target.value = '';
+                          e.target.nextElementSibling.value = '';
+                        }
+                      }
+                    }}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium mb-1">Add Notes/Updates</label>
+                  <textarea
+                    placeholder="Add progress notes, observations, or updates..."
+                    rows="2"
+                    className={`w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm ${
+                      darkMode
+                        ? "bg-gray-800 border border-green-600 text-white"
+                        : "bg-white border border-green-300 text-gray-900"
+                    }`}
+                  />
+                </div>
+                
+                <button
+                  onClick={() => {
+                    const progressInput = document.querySelector(`input[placeholder="Enter progress percentage"]`);
+                    const notesInput = document.querySelector(`textarea[placeholder="Add progress notes, observations, or updates..."]`);
+                    const progress = Number(progressInput?.value || 0);
+                    const notes = notesInput?.value || '';
+                    if (progress >= 0 && progress <= 100) {
+                      addProgressUpdate(schedule.id, progress, notes);
+                      progressInput.value = '';
+                      notesInput.value = '';
+                    }
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition-colors text-sm"
+                >
+                  📝 Add Progress Update
+                </button>
+              </div>
+            )}
 
-            {/* Update progress */}
-            <input
-              type="number"
-              min="0"
-              max="100"
-              value={schedule.progress}
-              onChange={(e) =>
-                handleUpdate(schedule.id, "progress", Number(e.target.value))
-              }
-              className={`w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-sm mb-3 ${
-                darkMode
-                  ? "bg-gray-800 border border-green-600 text-white"
-                  : "bg-white border border-green-300 text-gray-900"
-              }`}
-            />
+            {/* Tracking History */}
+            {schedule.tracking && schedule.tracking.length > 0 && (
+              <div className="mb-4">
+                <p className="text-sm font-medium mb-2">📋 Progress History:</p>
+                <div className="max-h-32 overflow-y-auto space-y-1">
+                  {schedule.tracking.slice(-3).map((track, idx) => (
+                    <div key={idx} className="text-xs p-2 bg-gray-100 dark:bg-gray-800 rounded">
+                      <p className="font-medium">{track.progress}</p>
+                      {track.notes && <p className="text-gray-600 dark:text-gray-400">{track.notes}</p>}
+                      <p className="text-gray-500 dark:text-gray-500">
+                        {new Date(track.updatedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
+            {/* Action Buttons */}
             {schedule.status === "Ongoing" ? (
-              <button
-                onClick={() => markCompleted(schedule.id)}
-                className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
-              >
-                Mark as Completed ✅
-              </button>
+              <div className="space-y-2">
+                <button
+                  onClick={() => markCompleted(schedule.id)}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition-colors"
+                >
+                  ✅ Mark as Completed
+                </button>
+              </div>
+            ) : schedule.status === "COMPLETED" ? (
+              <div className="text-center p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <p className="font-medium text-green-800 dark:text-green-200">🎉 Harvest Completed!</p>
+                <p className="text-sm text-green-600 dark:text-green-400">Great job on your harvest!</p>
+              </div>
             ) : (
-              <p className="font-medium text-center">Harvest Completed 🎉</p>
+              <p className="font-medium text-center text-gray-500">Status: {schedule.status}</p>
             )}
           </div>
         ))}

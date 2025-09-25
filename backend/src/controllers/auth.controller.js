@@ -325,7 +325,7 @@ export const adminUpdateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const updates = {};
-    const allowed = ['role', 'status', 'availability', 'service_area'];
+    const allowed = ['role', 'status', 'availability', 'service_area', 'expertise'];
     for (const key of allowed) {
       if (req.body[key] != null) {
         const val = req.body[key];
@@ -340,11 +340,12 @@ export const adminUpdateUser = async (req, res) => {
         }
       }
     }
-    // Only drivers can have availability; if role switched to DRIVER and availability omitted, default to UNAVAILABLE
+    // Availability rules by role
     if (updates.availability) {
       const target = await User.findById(id).select('role');
       if (!target) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'User not found' } });
-      if (String(target.role).toUpperCase() !== 'DRIVER') delete updates.availability;
+      const role = String(target.role).toUpperCase();
+      if (role !== 'DRIVER' && role !== 'AGRONOMIST') delete updates.availability;
     }
     if (updates.role && updates.role.toUpperCase && updates.role.toUpperCase() === 'DRIVER' && updates.availability == null) {
       updates.availability = 'UNAVAILABLE';
@@ -374,7 +375,7 @@ export const adminDeleteUser = async (req, res) => {
 // Admin: create user (ADMIN/DRIVER/others) with password
 export const adminCreateUser = async (req, res) => {
   try {
-    const { email, password, role = 'DRIVER', fullName, availability, service_area } = req.body || {};
+    const { email, password, role = 'DRIVER', fullName, availability, service_area, expertise } = req.body || {};
 
     if (!email || !password) {
       return res
@@ -390,7 +391,7 @@ export const adminCreateUser = async (req, res) => {
     }
 
     const normalizedRole = String(role || 'DRIVER').toUpperCase();
-    const allowedRoles = ['ADMIN', 'DRIVER', 'FARMER', 'BUYER'];
+    const allowedRoles = ['ADMIN', 'DRIVER', 'FARMER', 'BUYER', 'AGRONOMIST'];
     if (!allowedRoles.includes(normalizedRole)) {
       return res.status(400).json({ error: { code: 'ROLE_INVALID', message: 'Invalid role' } });
     }
@@ -414,8 +415,11 @@ export const adminCreateUser = async (req, res) => {
       role: normalizedRole,
       fullName: typeof fullName === 'string' ? fullName.trim() : '',
       profilePic: defaultAvatar,
-      availability: normalizedRole === 'DRIVER' ? (String(availability || 'UNAVAILABLE').toUpperCase()) : undefined,
+      availability: normalizedRole === 'DRIVER'
+        ? (String(availability || 'UNAVAILABLE').toUpperCase())
+        : (normalizedRole === 'AGRONOMIST' ? (String(availability || 'AVAILABLE').toUpperCase()) : undefined),
       service_area: normalizedRole === 'DRIVER' ? (typeof service_area === 'string' ? service_area : '') : undefined,
+      expertise: typeof expertise === 'string' ? expertise.trim() : '',
     });
 
     await newUser.save();

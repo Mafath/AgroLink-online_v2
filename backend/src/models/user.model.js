@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["FARMER", "BUYER", "ADMIN", "DRIVER"],
+      enum: ["FARMER", "BUYER", "ADMIN", "DRIVER", "AGRONOMIST"],
       default: "BUYER",
       index: true,
     },
@@ -39,6 +39,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+    },
+    expertise: {
+      type: String,
+      default: "",
+      trim: true,
+      maxlength: 200,
     },
     bio: {
       type: String,
