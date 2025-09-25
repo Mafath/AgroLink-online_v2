@@ -90,7 +90,12 @@ const MyOrders = () => {
                   {order.deliveryType === 'DELIVERY' && (
                     <button
                       onClick={() => navigate(`/delivery-tracking/${order._id}`)}
-                      className="ml-auto px-3 py-1.5 rounded-lg bg-black text-white text-xs font-semibold inline-flex items-center gap-2"
+                      disabled={order.status === 'CANCELLED'}
+                      className={`ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 ${
+                        order.status === 'CANCELLED'
+                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          : 'bg-black text-white hover:bg-gray-800'
+                      }`}
                     >
                       <Truck className="w-4 h-4" /> Track delivery
                     </button>
@@ -116,33 +121,54 @@ const MyOrders = () => {
                       const hoursSinceOrder = (now - orderDate) / (1000 * 60 * 60);
                       const canCancel = hoursSinceOrder < 24;
                       const isCancelled = order.status === 'CANCELLED';
+                      const isDeliveryCompleted = order.delivery?.status === 'COMPLETED';
+                      const isTimeExpired = !canCancel && !isCancelled && !isDeliveryCompleted;
                       
                       return (
-                        <button
-                          onClick={async () => {
-                            if (isCancelled) return;
-                            if (!window.confirm('Are you sure you want to cancel this order?')) return;
-                            try {
-                              const res = await axiosInstance.patch(`/orders/${order._id}/cancel`);
-                              setOrders((prev) =>
-                                prev.map((o) => (o._id === order._id ? { ...o, status: 'CANCELLED' } : o))
-                              );
-                              toast.success('Order cancelled successfully');
-                            } catch (err) {
-                              toast.error('Failed to cancel order');
-                            }
-                          }}
-                          disabled={isCancelled || !canCancel}
-                          className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold ${
-                            isCancelled
-                              ? 'bg-gray-400 text-white cursor-not-allowed'
-                              : canCancel 
-                                ? 'bg-red-600 text-white hover:bg-red-700' 
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          }`}
-                        >
-                          {isCancelled ? 'Cancelled' : 'Cancel Order'}
-                        </button>
+                        <div>
+                          <button
+                            onClick={async () => {
+                              if (isCancelled || isDeliveryCompleted) return;
+                              if (!window.confirm('Are you sure you want to cancel this order?')) return;
+                              try {
+                                const res = await axiosInstance.patch(`/orders/${order._id}/cancel`);
+                                setOrders((prev) =>
+                                  prev.map((o) => (o._id === order._id ? { ...o, status: 'CANCELLED' } : o))
+                                );
+                                toast.success('Order cancelled successfully');
+                              } catch (err) {
+                                toast.error('Failed to cancel order');
+                              }
+                            }}
+                            disabled={isCancelled || isDeliveryCompleted || !canCancel}
+                            className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold ${
+                              isCancelled
+                                ? 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                                : isDeliveryCompleted
+                                  ? 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                                  : canCancel 
+                                    ? 'bg-red-600 text-white hover:bg-red-700' 
+                                    : 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                            }`}
+                          >
+                            {isCancelled ? 'Cancelled' : 'Cancel Order'}
+                          </button>
+                          {isTimeExpired && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              *Cannot cancel the order after 24 hrs
+                            </p>
+                          )}
+                          {isCancelled && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              *Order cancelled by you
+                            </p>
+                          )}
+                          {isDeliveryCompleted && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              *Cannot cancel the order after delivery is completed
+                            </p>
+                          )}
+                        </div>
                       );
                     })()}
                 </div>
