@@ -2,6 +2,8 @@
 import React, { useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { axiosInstance } from "../lib/axios";
+import toast from "react-hot-toast";
 
 const HarvestRequest = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -19,11 +21,25 @@ const HarvestRequest = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Harvest Request Submitted:", formData);
-    alert("Harvest schedule requested successfully!");
-    // You can later integrate API call here
+    try {
+      const payload = {
+        farmerName: formData.farmerName,
+        cropType: formData.cropType,
+        expectedYield: Number(formData.expectedYield),
+        harvestDate: formData.harvestDate,
+        notes: formData.notes,
+      };
+      const { data } = await axiosInstance.post("/harvest/request", payload);
+      console.log("Harvest Request Submitted:", data);
+      toast.success("Harvest schedule requested successfully!");
+      navigate("/harvest-schedule");
+    } catch (error) {
+      console.error("Harvest request failed:", error);
+      const message = error?.response?.data?.error?.message || "Failed to submit harvest request";
+      toast.error(message);
+    }
   };
 
   return (

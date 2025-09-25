@@ -1,7 +1,8 @@
 // src/pages/HarvestSchedule.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { axiosInstance } from "../lib/axios";
 
 const HarvestSchedule = () => {
   const [darkMode, setDarkMode] = useState(false);
@@ -9,40 +10,34 @@ const HarvestSchedule = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();  // ✅ already added
 
-  const [schedules] = useState([
-    {
-      id: 1,
-      cropType: "Tomatoes",
-      expertName: "Dr. John Doe",
-      expectedYield: 200,
-      harvestDate: "2025-09-25",
-      status: "Ongoing",
-    },
-    {
-      id: 2,
-      cropType: "Lettuce",
-      expertName: "Dr. Jane Smith",
-      expectedYield: 150,
-      harvestDate: "2025-09-20",
-      status: "Completed",
-    },
-    {
-      id: 3,
-      cropType: "Cabbage",
-      expertName: "Dr. John Doe",
-      expectedYield: 180,
-      harvestDate: "Pending",
-      status: "Request Pending",
-    },
-    {
-      id: 4,
-      cropType: "Carrots",
-      expertName: "Dr. Alex Green",
-      expectedYield: 220,
-      harvestDate: "2025-09-28",
-      status: "Completed",
-    },
-  ]);
+  const [schedules, setSchedules] = useState([]);
+
+  useEffect(() => {
+    const fetchSchedules = async () => {
+      try {
+        // Fetch all harvest requests (pending and ongoing)
+        const { data } = await axiosInstance.get('/harvest/requests', { 
+          params: { status: 'REQUEST_PENDING,ACCEPTED,SCHEDULED,IN_PROGRESS' } 
+        });
+
+        const mapped = (data?.requests || []).map((r) => ({
+          id: r._id,
+          cropType: r.crop,
+          expertName: r.expertName || '—',
+          expectedYield: r.expectedYield || 0,
+          harvestDate: r.harvestDate ? new Date(r.harvestDate).toISOString().slice(0,10) : 'Pending',
+          scheduledDate: r.scheduledDate ? new Date(r.scheduledDate).toISOString().slice(0,10) : '—',
+          status: r.status === 'REQUEST_PENDING' ? 'Request Pending' : 'Ongoing',
+        }));
+
+        setSchedules(mapped);
+      } catch (error) {
+        console.error('Failed to load harvest schedules:', error);
+        setSchedules([]);
+      }
+    };
+    fetchSchedules();
+  }, []);
 
   const getStatusBadge = (status) => {
     switch (status) {
@@ -150,6 +145,13 @@ const HarvestSchedule = () => {
               <span className="font-medium">Harvest Date:</span>{" "}
               {schedule.harvestDate}
             </p>
+            
+            {schedule.status === "Ongoing" && schedule.scheduledDate && (
+              <p>
+                <span className="font-medium">Scheduled Date:</span>{" "}
+                {schedule.scheduledDate}
+              </p>
+            )}
 
             {schedule.status === "Ongoing" && (
               <button
