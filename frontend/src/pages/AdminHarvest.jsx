@@ -60,6 +60,10 @@ const AdminHarvest = () => {
                   <div className='relative'>
                     <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search requests...' value={search} onChange={e => setSearch(e.target.value)} />
                   </div>
+                  <button className='btn-primary whitespace-nowrap px-4 py-2 text-sm inline-flex items-center gap-2'>
+                    <Plus className='w-4 h-4' />
+                    Add Agronomist
+                  </button>
                 </div>
               </div>
               <div className='max-h-[400px] overflow-y-auto'>

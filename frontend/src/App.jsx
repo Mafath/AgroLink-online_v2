@@ -9,6 +9,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import DriverDashboard from './pages/DriverDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminDrivers from './pages/AdminDrivers';
+import AdminConsultants from './pages/AdminConsultants';
 import AdminLogistics from './pages/AdminLogistics';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
@@ -84,6 +85,7 @@ const App = () => {
           <Route path="/admin/harvest" element={authUser && authUser.role === 'ADMIN' ? <AdminHarvest /> : <Navigate to="/" />} />
           <Route path="/admin/rentals" element={authUser && authUser.role === 'ADMIN' ? <AdminRentals /> : <Navigate to="/" />} />
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
+          <Route path="/admin/consultants" element={authUser && authUser.role === 'ADMIN' ? <AdminConsultants /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />

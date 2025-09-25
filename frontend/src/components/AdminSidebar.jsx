@@ -9,6 +9,7 @@ const AdminSidebar = ({ activePage = 'dashboard' }) => {
     { key: 'listings', label: 'Listings', href: '/admin/listings' },
     { key: 'harvest', label: 'Harvest Management', href: '/admin/harvest' },
     { key: 'drivers', label: 'Driver Management', href: '/admin/drivers' },
+    { key: 'consultants', label: 'Consultants Management', href: '/admin/consultants' },
     { key: 'logistics', label: 'Logistics', href: '/admin/logistics' },
     { key: 'orders', label: 'Orders', href: '/admin/orders' },
   ]
