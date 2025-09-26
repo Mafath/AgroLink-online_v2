@@ -301,20 +301,8 @@ const AdminHarvest = () => {
                         </td>
                         <td className='py-2 px-3 flex items-center justify-center gap-3 align-middle'>
                           <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => { setSelected(r); setShowRequestInfo(true); }} title='View Details'>
-
                             <Info className='w-3 h-3' />
                             <span className='text-xs'>Info</span>
-                          </button>
-                          <button 
-                            className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs hover:bg-green-200 transition-colors' 
-                            onClick={() => {
-                              // TODO: Implement assign agronomist functionality
-                              toast.success('Assign Agronomist feature coming soon!');
-                            }} 
-                            title='Assign Agronomist'
-                          >
-                            <Users className='w-3 h-3' />
-                            <span className='text-xs'>Assign</span>
                           </button>
                           {r.status === 'REQUEST_PENDING' && (
                             <button className='icon-btn bg-blue-100 text-blue-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => openAssignModal(r)} title='Assign Agronomist'>
@@ -634,6 +622,7 @@ const AdminHarvest = () => {
                 )}
               </div>
             </Card>
+          </div>
         </div>
       </div>
 
@@ -884,9 +873,8 @@ const AdminHarvest = () => {
               </button>
               <button
                 onClick={() => {
-                  // TODO: Implement assign agronomist functionality
-                  toast.success('Assign Agronomist feature coming soon!');
                   setShowRequestInfo(false);
+                  openAssignModal(selected);
                 }}
                 className='btn-primary px-4 py-2 rounded-md text-sm font-medium'
               >
