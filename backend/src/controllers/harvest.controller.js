@@ -259,7 +259,8 @@ export const agronomistAcceptHarvest = async (req, res) => {
       harvest.tracking.push({ 
         progress: 'Assignment rejected by agronomist', 
         notes: notes || 'Agronomist rejected the assignment',
-        updatedBy: req.user._id 
+        updatedBy: req.user._id,
+        agronomistName: req.user.fullName || 'Unknown agronomist'
       });
     } else {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid action. Use accept or reject' } });
@@ -347,10 +348,14 @@ export const agronomistPortalAcceptHarvest = async (req, res) => {
       harvest.status = 'REQUEST_PENDING';
       harvest.expertId = null;
       harvest.expertName = '';
+      // Get agronomist name from the request body or fetch from database
+      const User = (await import('../models/user.model.js')).default;
+      const agronomist = await User.findById(agronomistId).select('fullName');
       harvest.tracking.push({ 
         progress: 'Assignment rejected by agronomist', 
         notes: notes || 'Agronomist rejected the assignment',
-        updatedBy: agronomistId 
+        updatedBy: agronomistId,
+        agronomistName: agronomist?.fullName || 'Unknown agronomist'
       });
     } else {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid action. Use accept or reject' } });

@@ -17,6 +17,8 @@ const trackingSchema = new mongoose.Schema(
     progress: { type: String, required: true, trim: true }, // e.g. "50% completed"
     updatedAt: { type: Date, default: Date.now },
     updatedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // who updated
+    notes: { type: String, trim: true, default: "" }, // optional notes
+    agronomistName: { type: String, trim: true, default: "" }, // agronomist name for rejections
   },
   { _id: false }
 );
