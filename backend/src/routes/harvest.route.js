@@ -54,12 +54,12 @@ router.get("/requests", requireAuth, requireRole("FARMER"), getMyHarvestRequests
 router.get("/admin/requests", requireAuth, requireRole("ADMIN"), adminListPendingRequests);
 router.post("/:id/admin/schedule", requireAuth, requireRole("ADMIN"), adminScheduleHarvest);
 router.get("/admin/agronomists", requireAuth, requireRole("ADMIN"), adminListAgronomists);
-router.get("/agronomist/assigned", requireAuth, requireRole("AGRONOMIST"), listAssignedToAgronomist);
-router.get("/agronomist/:agronomistId/assigned", getAgronomistAssignedHarvests);
 
 // Agronomist endpoints (authenticated)
-router.post("/:harvestId/agronomist/accept", requireAuth, requireRole("AGRONOMIST"), agronomistAcceptHarvest);
-router.post("/:harvestId/agronomist/notes", requireAuth, requireRole("AGRONOMIST"), agronomistAddNotes);
+router.get("/agronomist/assigned", requireAuth, requireRole("AGRONOMIST"), listAssignedToAgronomist);
+router.post("/:harvestId/accept", requireAuth, requireRole("AGRONOMIST"), agronomistAcceptHarvest);
+router.post("/:harvestId/notes", requireAuth, requireRole("AGRONOMIST"), agronomistAddNotes);
+router.get("/agronomist/:agronomistId/assigned", getAgronomistAssignedHarvests);
 
 // Agronomist portal endpoints (no auth required)
 router.post("/:harvestId/portal/accept", agronomistPortalAcceptHarvest);

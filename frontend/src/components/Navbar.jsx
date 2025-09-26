@@ -13,6 +13,7 @@ const Navbar = () => {
   const userRole = String(authUser?.role || '').toUpperCase();
   const isAdmin = userRole === 'ADMIN';
   const isDriver = userRole === 'DRIVER';
+  const isAgronomist = userRole === 'AGRONOMIST';
   const isFarmer = userRole === 'FARMER';
   const menuRef = useRef(null);
   const triggerRef = useRef(null);
@@ -84,7 +85,7 @@ const Navbar = () => {
 
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center space-x-8">
-            {authUser && !isAdmin && !isDriver && (
+            {authUser && !isAdmin && !isDriver && !isAgronomist && (
               <>
                 <Link
                   to="/"
@@ -109,6 +110,15 @@ const Navbar = () => {
                   </Link>
                 )}
 
+                {isFarmer && (
+                  <Link
+                    to="/harvest-dashboard"
+                    className={`${isActive('/harvest-dashboard') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
+                  >
+                    Schedules
+                  </Link>
+                )}
+
                 <Link
                   to="/my-orders"
                   className={`${isActive('/my-orders') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
@@ -125,7 +135,7 @@ const Navbar = () => {
           <div className="flex items-center space-x-4">
             {authUser ? (
               <div className="relative flex items-center gap-3">
-                {!isAdmin && !isDriver && (
+                {!isAdmin && !isDriver && !isAgronomist && (
                   <button
                     onClick={() => handleNavigation('/cart')}
                     className="p-2 rounded-md hover:bg-gray-100 relative"
@@ -185,7 +195,7 @@ const Navbar = () => {
             )}
 
             {/* Mobile menu button */}
-            {!isDriver && (
+            {!isDriver && !isAgronomist && (
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
                 className="md:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-primary-500"
@@ -202,7 +212,7 @@ const Navbar = () => {
       </div>
 
       {/* Mobile menu */}
-            {isMobileMenuOpen && !isDriver && (
+            {isMobileMenuOpen && !isDriver && !isAgronomist && (
         <div className="md:hidden">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white border-t border-gray-200">
                   {authUser ? (
@@ -213,6 +223,9 @@ const Navbar = () => {
                           <button onClick={() => handleNavigation('/marketplace')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Marketplace</button>
                           {isFarmer && (
                             <button onClick={() => handleNavigation('/my-listings')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">My Listings</button>
+                          )}
+                          {isFarmer && (
+                            <button onClick={() => handleNavigation('/harvest-dashboard')} className="block w-full text-left px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-500 hover:bg-gray-50 rounded-md transition-colors">Schedules</button>
                           )}
                           <button
                             onClick={() => handleNavigation('/my-orders')}

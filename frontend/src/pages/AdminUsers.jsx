@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
+import AdminSidebar from '../components/AdminSidebar'
 
-const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
+const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Agronomist']
 const statuses = ['Active', 'Suspended']
 // removed verification fields
 
@@ -38,11 +39,11 @@ const BarChart = () => (
   }} series={[{name:'Active', data:[14,22,18,26,20,30]},{name:'Suspended', data:[2,3,4,2,3,2]}]} />
 )
 
-const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver'], series = [5,45,40,10] }) => (
+const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver','Agronomist'], series = [5,45,40,10,5] }) => (
   <Chart key={Array.isArray(series) ? series.join(',') : 'static'} type='donut' height={220} options={{
     chart:{toolbar:{show:false}},
     labels,
-    colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b'],
+    colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444'],
     legend:{show:false},
     dataLabels:{enabled:false},
     plotOptions:{
@@ -150,7 +151,7 @@ const AdminUsers = () => {
   }, [items])
 
   const roleCounts = useMemo(() => {
-    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0 }
+    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0, AGRONOMIST: 0 }
     for (const u of (Array.isArray(items) ? items : [])) {
       const r = String(u.role || '').toUpperCase()
       if (counts[r] != null) counts[r] += 1
@@ -190,19 +191,8 @@ const AdminUsers = () => {
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
-          {/* Sidebar (match Dashboard) */}
-          <div className='bg-white rounded-xl border border-gray-200 p-2'>
-            <nav className='space-y-1 text-gray-700 text-sm'>
-              <a href='/admin' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Dashboards</a>
-              <a href='/admin/users' className='block px-3 py-2 rounded-lg bg-green-100 text-green-700'>Users & Roles</a>
-              <a href='/admin/inventory' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Inventory</a>
-              <a href='/admin/rentals' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Rentals</a>
-              <a href='/admin/listings' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Listings</a>
-              <a href='/admin/drivers' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Driver Management</a>
-              <a href='/admin/logistics' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Logistics</a>
-              <a href='/admin/orders' className='block px-3 py-2 rounded-lg hover:bg-gray-50'>Orders</a>
-            </nav>
-        </div>
+          {/* Sidebar */}
+          <AdminSidebar activePage="users" />
 
         {/* Main content */}
         <div className='space-y-6'>
@@ -271,8 +261,10 @@ const AdminUsers = () => {
                            <Sprout className='w-3.5 h-3.5 text-green-600' />
                          ) : u.role === 'BUYER' ? (
                            <ShoppingCart className='w-3.5 h-3.5 text-blue-600' />
-                         ) : (
+                         ) : u.role === 'DRIVER' ? (
                            <Truck className='w-3.5 h-3.5 text-amber-600' />
+                         ) : (
+                           <UserCheck className='w-3.5 h-3.5 text-red-600' />
                          )}
                          {capitalizeFirst(u.role)}
                        </span>
@@ -365,7 +357,7 @@ const AdminUsers = () => {
                     <div className='grid grid-cols-[1fr,240px] gap-4'>
                     <div className='grid place-items-center'>
                       <div className='rounded-lg border border-dashed w-full max-w-[220px] relative'>
-                        <DonutChart labels={['Admin','Farmer','Buyer','Driver']} series={[roleCounts.ADMIN, roleCounts.FARMER, roleCounts.BUYER, roleCounts.DRIVER]} />
+                        <DonutChart labels={['Admin','Farmer','Buyer','Driver','Agronomist']} series={[roleCounts.ADMIN, roleCounts.FARMER, roleCounts.BUYER, roleCounts.DRIVER, roleCounts.AGRONOMIST]} />
                         <div className='absolute inset-0 grid place-items-center pointer-events-none'>
                           <div className='text-center'>
                             <div className='text-xs text-gray-500'>Total users</div>
@@ -399,6 +391,10 @@ const AdminUsers = () => {
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#f59e0b'}}></span>Driver</div>
                           <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.DRIVER.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full' style={{backgroundColor:'#ef4444'}}></span>Agronomist</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>{roleCounts.AGRONOMIST.toLocaleString()}</div>
                         </div>
                       </div>
                     </div>

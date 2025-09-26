@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import AdminSidebar from '../components/AdminSidebar'
 
 const defaultMatrix = {
   ADMIN: { READ: true, WRITE: true, APPROVE: true, DELETE: true },
@@ -18,44 +19,51 @@ const AdminRoles = () => {
   }
 
   return (
-    <div className='p-4 max-w-7xl mx-auto flex gap-6'>
-      {/* Sidebar */}
-      <aside className='w-56 shrink-0 hidden md:block'>
-        <nav className='space-y-2 sticky top-20'>
-          <a href='/admin' className='block px-3 py-2 rounded-md hover:bg-gray-50'>Dashboard</a>
-          <a href='/admin/users' className='block px-3 py-2 rounded-md hover:bg-gray-50'>User & Role Management</a>
-          <a href='/admin/roles' className='block px-3 py-2 rounded-md bg-gray-100'>Roles & Permissions</a>
-        </nav>
-      </aside>
-
-      <div className='flex-1'>
-        <h1 className='text-2xl font-semibold mb-4'>Roles & Permissions</h1>
-        <div className='card overflow-x-auto'>
-          <table className='min-w-full text-sm'>
-            <thead>
-              <tr className='text-left text-gray-500'>
-                <th className='py-2 pr-4'>Role</th>
-                {perms.map(p => <th key={p} className='py-2 pr-4'>{p}</th>)}
-              </tr>
-            </thead>
-            <tbody>
-              {roles.map(role => (
-                <tr key={role} className='border-t'>
-                  <td className='py-2 pr-4 font-medium'>{role}</td>
-                  {perms.map(p => (
-                    <td key={p} className='py-2 pr-4'>
-                      <label className='inline-flex items-center gap-2'>
-                        <input type='checkbox' checked={!!matrix[role][p]} onChange={() => toggle(role, p)} />
-                      </label>
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-none mx-0 w-full px-8 py-6'>
+        {/* Top bar */}
+        <div className='flex items-center justify-between mb-6'>
+          <h1 className='text-3xl font-semibold ml-2'>Roles & Permissions</h1>
+          <div />
         </div>
-        <div className='mt-4'>
-          <button className='btn-primary'>Save Changes</button>
+
+        <div className='grid grid-cols-[240px,1fr] gap-6'>
+          {/* Sidebar */}
+          <AdminSidebar activePage="users" />
+
+          {/* Main content */}
+          <div className='space-y-6'>
+            <div className='bg-white rounded-xl shadow-sm border border-gray-200 p-4'>
+              <h1 className='text-2xl font-semibold mb-4'>Roles & Permissions</h1>
+              <div className='card overflow-x-auto'>
+                <table className='min-w-full text-sm'>
+                  <thead>
+                    <tr className='text-left text-gray-500'>
+                      <th className='py-2 pr-4'>Role</th>
+                      {perms.map(p => <th key={p} className='py-2 pr-4'>{p}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {roles.map(role => (
+                      <tr key={role} className='border-t'>
+                        <td className='py-2 pr-4 font-medium'>{role}</td>
+                        {perms.map(p => (
+                          <td key={p} className='py-2 pr-4'>
+                            <label className='inline-flex items-center gap-2'>
+                              <input type='checkbox' checked={!!matrix[role][p]} onChange={() => toggle(role, p)} />
+                            </label>
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className='mt-4'>
+                <button className='btn-primary'>Save Changes</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

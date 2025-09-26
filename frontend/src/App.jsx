@@ -7,8 +7,10 @@ import MyOrders from './pages/MyOrders';
 import AdminOrders from './pages/AdminOrders';
 import AdminDashboard from './pages/AdminDashboard';
 import DriverDashboard from './pages/DriverDashboard';
+import AgronomistDashboard from './pages/AgronomistDashboard';
 import AdminUsers from './pages/AdminUsers';
 import AdminDrivers from './pages/AdminDrivers';
+import AdminConsultants from './pages/AdminConsultants';
 import AdminLogistics from './pages/AdminLogistics';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
@@ -69,12 +71,13 @@ const App = () => {
          {/* ...existing code... */}
          <Route path="/my-orders" element={authUser ? <MyOrders /> : <Navigate to="/login" />} />
          <Route path="/admin/orders" element={authUser && authUser.role === 'ADMIN' ? <AdminOrders /> : <Navigate to="/" />} />
-          <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : <HomePage />) : <HomePage />} />
+          <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : authUser.role === 'AGRONOMIST' ? <AgronomistDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
           <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
           <Route path="/email-verification-status" element={<EmailVerificationStatusPage />} />
           <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />
+          <Route path="/agronomist" element={authUser && authUser.role === 'AGRONOMIST' ? <AgronomistDashboard /> : <Navigate to="/" />} />
           <Route path="/settings" element={authUser ? <SettingsPage /> : <Navigate to="/login" />} />
           <Route path="/admin" element={authUser && authUser.role === 'ADMIN' ? <AdminDashboard /> : <Navigate to="/" />} />
           <Route path="/admin/users" element={authUser && authUser.role === 'ADMIN' ? <AdminUsers /> : <Navigate to="/" />} />
@@ -84,6 +87,7 @@ const App = () => {
           <Route path="/admin/harvest" element={authUser && authUser.role === 'ADMIN' ? <AdminHarvest /> : <Navigate to="/" />} />
           <Route path="/admin/rentals" element={authUser && authUser.role === 'ADMIN' ? <AdminRentals /> : <Navigate to="/" />} />
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
+          <Route path="/admin/consultants" element={authUser && authUser.role === 'ADMIN' ? <AdminConsultants /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />

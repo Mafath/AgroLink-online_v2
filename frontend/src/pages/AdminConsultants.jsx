@@ -6,7 +6,7 @@ import DefaultAvatar from '../assets/User Avatar.jpg'
 import toast from 'react-hot-toast'
 import AdminSidebar from '../components/AdminSidebar'
 
-const roles = ['Admin', 'Farmer', 'Buyer', 'Driver']
+const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Agronomist']
 const statuses = ['Active', 'Suspended']
 
 const Card = ({ children, className = '' }) => (
@@ -27,11 +27,11 @@ const LineChart = ({ categories = ['Jan','Feb','Mar','Apr','May','Jun'], series 
   }} series={series} />
 )
 
-const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver'], series = [5,45,40,10] }) => (
+const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver','Agronomist'], series = [5,45,40,10,5] }) => (
   <Chart key={Array.isArray(series) ? series.join(',') : 'static'} type='donut' height={220} options={{
     chart:{toolbar:{show:false}},
     labels,
-    colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b'],
+    colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444'],
     legend:{show:false},
     dataLabels:{enabled:false},
     plotOptions:{
@@ -72,16 +72,16 @@ const BarChart = ({ categories = [], series = [] }) => (
   }} series={series} />
 )
 
-const AdminDrivers = () => {
-  const [query, setQuery] = useState({ role: 'Driver', status: '' , availability: '', service_area: ''})
+const AdminConsultants = () => {
+  const [query, setQuery] = useState({ role: 'AGRONOMIST', status: '' , availability: '', expertise: ''})
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
   const [creating, setCreating] = useState(false)
-  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', service_area: '' })
+  const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', expertise: '' })
   const [showPassword, setShowPassword] = useState(false)
-  const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', service_area: '' })
-  const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, service_area: false })
+  const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', expertise: '' })
+  const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, expertise: false })
 
   // Validation functions
   const validateFullName = (name) => {
@@ -110,8 +110,8 @@ const AdminDrivers = () => {
     return ''
   }
 
-  const validateServiceArea = (area) => {
-    if (!area || !area.trim()) return 'Service area is required'
+  const validateExpertise = (expertise) => {
+    if (!expertise || !expertise.trim()) return 'Expertise is required'
     return ''
   }
 
@@ -119,7 +119,7 @@ const AdminDrivers = () => {
     fullName: validateFullName(form.fullName),
     email: validateEmail(form.email),
     password: validatePassword(form.password),
-    service_area: validateServiceArea(form.service_area)
+    expertise: validateExpertise(form.expertise)
   })
 
   const isFormValid = () => {
@@ -142,8 +142,8 @@ const AdminDrivers = () => {
       case 'password':
         error = validatePassword(value)
         break
-      case 'service_area':
-        error = validateServiceArea(value)
+      case 'expertise':
+        error = validateExpertise(value)
         break
     }
     
@@ -155,13 +155,13 @@ const AdminDrivers = () => {
   }
 
   const resetForm = () => {
-    setCreateForm({ fullName: '', email: '', password: '', service_area: '' })
-    setFormErrors({ fullName: '', email: '', password: '', service_area: '' })
-    setFormTouched({ fullName: false, email: false, password: false, service_area: false })
+    setCreateForm({ fullName: '', email: '', password: '', expertise: '' })
+    setFormErrors({ fullName: '', email: '', password: '', expertise: '' })
+    setFormTouched({ fullName: false, email: false, password: false, expertise: false })
     setShowPassword(false)
   }
 
-  const fetchDrivers = async () => {
+  const fetchConsultants = async () => {
     setLoading(true)
     try {
       const params = { ...query }
@@ -175,7 +175,7 @@ const AdminDrivers = () => {
     }
   }
 
-  useEffect(() => { fetchDrivers() }, [query.role, query.status, query.availability, query.service_area])
+  useEffect(() => { fetchConsultants() }, [query.role, query.status, query.availability, query.expertise])
 
   const items = resp.data
   const filteredItems = useMemo(() => {
@@ -203,10 +203,10 @@ const AdminDrivers = () => {
   const suspendedUsersCount = useMemo(() => {
     return (Array.isArray(items) ? items : []).filter(u => String(u.status).toUpperCase() === 'SUSPENDED').length
   }, [items])
-  const availableDriversCount = useMemo(() => {
+  const availableConsultantsCount = useMemo(() => {
     return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE').length
   }, [items])
-  const unavailableDriversCount = useMemo(() => {
+  const unavailableConsultantsCount = useMemo(() => {
     return (Array.isArray(items) ? items : []).filter(u => String(u.availability || 'UNAVAILABLE').toUpperCase() !== 'AVAILABLE').length
   }, [items])
   const userGrowth = useMemo(() => {
@@ -231,7 +231,7 @@ const AdminDrivers = () => {
   }, [items])
 
   const roleCounts = useMemo(() => {
-    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0 }
+    const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0, AGRONOMIST: 0 }
     for (const u of (Array.isArray(items) ? items : [])) {
       const r = String(u.role || '').toUpperCase()
       if (counts[r] != null) counts[r] += 1
@@ -239,21 +239,21 @@ const AdminDrivers = () => {
     return counts
   }, [items])
 
-  const serviceAreaData = useMemo(() => {
-    const provinces = ['Northern','North Central','North Western','Western','Central','Sabaragamuwa','Eastern','Uva','Southern']
-    const available = Object.fromEntries(provinces.map(p => [p, 0]))
-    const unavailable = Object.fromEntries(provinces.map(p => [p, 0]))
+  const expertiseData = useMemo(() => {
+    const cropTypes = ['Tomatoes', 'Wheat', 'Corn', 'Rice', 'Potatoes', 'Onions', 'Carrots', 'Lettuce']
+    const available = Object.fromEntries(cropTypes.map(c => [c, 0]))
+    const unavailable = Object.fromEntries(cropTypes.map(c => [c, 0]))
     for (const u of (Array.isArray(items) ? items : [])) {
-      if (String(u.role || '').toUpperCase() !== 'DRIVER') continue
-      const p = typeof u.service_area === 'string' && u.service_area.trim() ? u.service_area.trim() : null
-      if (!p || available[p] == null) continue
+      if (String(u.role || '').toUpperCase() !== 'AGRONOMIST') continue
+      const c = typeof u.expertise === 'string' && u.expertise.trim() ? u.expertise.trim() : null
+      if (!c || available[c] == null) continue
       const isAvail = String(u.availability || 'UNAVAILABLE').toUpperCase() === 'AVAILABLE'
-      if (isAvail) available[p] += 1; else unavailable[p] += 1
+      if (isAvail) available[c] += 1; else unavailable[c] += 1
     }
-    const categories = provinces
+    const categories = cropTypes
     const series = [
-      { name: 'Available', data: categories.map(p => available[p]) },
-      { name: 'Unavailable', data: categories.map(p => unavailable[p]) },
+      { name: 'Available', data: categories.map(c => available[c]) },
+      { name: 'Unavailable', data: categories.map(c => unavailable[c]) },
     ]
     return { categories, series }
   }, [items])
@@ -280,13 +280,13 @@ const AdminDrivers = () => {
       <div className='max-w-none mx-0 w-full px-8 py-6'>
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
-          <h1 className='text-3xl font-semibold ml-2'>Driver Management</h1>
+          <h1 className='text-3xl font-semibold ml-2'>Agronomist Management</h1>
           <div />
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
           {/* Sidebar */}
-          <AdminSidebar activePage="drivers" />
+          <AdminSidebar activePage="consultants" />
 
         {/* Main content */}
         <div className='space-y-6'>
@@ -295,7 +295,7 @@ const AdminDrivers = () => {
             <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-4'>
             <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
               <div>
-                <div className='text-md font-medium text-gray-700'>Drivers</div>
+                <div className='text-md font-medium text-gray-700'>Agronomists</div>
               </div>
               <div className='flex justify-center'>
                 <div />
@@ -312,17 +312,16 @@ const AdminDrivers = () => {
                     return (<option key={val} value={val}>{label}</option>)
                   })}
                 </select>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.service_area || ''} onChange={e => setQuery(q => ({ ...q, service_area: e.target.value }))}>
-                  <option value=''>Any Service Area</option>
-                  <option value='Northern'>Northern</option>
-                  <option value='North Central'>North Central</option>
-                  <option value='North Western'>North Western</option>
-                  <option value='Western'>Western</option>
-                  <option value='Central'>Central</option>
-                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
-                  <option value='Eastern'>Eastern</option>
-                  <option value='Uva'>Uva</option>
-                  <option value='Southern'>Southern</option>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.expertise || ''} onChange={e => setQuery(q => ({ ...q, expertise: e.target.value }))}>
+                  <option value=''>Any Expertise</option>
+                  <option value='Tomatoes'>Tomatoes</option>
+                  <option value='Wheat'>Wheat</option>
+                  <option value='Corn'>Corn</option>
+                  <option value='Rice'>Rice</option>
+                  <option value='Potatoes'>Potatoes</option>
+                  <option value='Onions'>Onions</option>
+                  <option value='Carrots'>Carrots</option>
+                  <option value='Lettuce'>Lettuce</option>
                 </select>
                 <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-56' value={query.availability || ''} onChange={e => setQuery(q => ({ ...q, availability: e.target.value }))}>
                   <option value=''>Any Availability</option>
@@ -334,7 +333,7 @@ const AdminDrivers = () => {
                   onClick={() => setCreating(true)}
                 >
                   <Plus className='w-3.5 h-3.5' />
-                  Add Driver
+                  Add Agronomist
                 </button>
               </div>
             </div>
@@ -345,7 +344,7 @@ const AdminDrivers = () => {
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
                     <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
                     <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
-                    <th className='py-3 px-3 text-center align-middle'>Service Area</th>
+                    <th className='py-3 px-3 text-center align-middle'>Expertise</th>
                     <th className='py-3 px-3 text-center align-middle'>Availability</th>
                     <th className='py-3 px-3 text-center align-middle'>Status</th>
                     <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
@@ -357,7 +356,7 @@ const AdminDrivers = () => {
                       <td className='py-6 text-center text-gray-500' colSpan={6}>Loading…</td>
                     </tr>
                       ) : filteredItems.length === 0 ? (
-                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No drivers</td></tr>
+                        <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No agronomists</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
                     <td className='py-2 px-3 text-left align-middle'>
@@ -376,7 +375,9 @@ const AdminDrivers = () => {
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
                     <td className='py-2 px-3 text-center align-middle'>
-                      {u.service_area || '—'}
+                      <div className='text-xs text-gray-600 max-w-32 truncate' title={u.expertise || '—'}>
+                        {u.expertise || '—'}
+                      </div>
                     </td>
                     <td className='py-2 px-3 text-center align-middle'>
                       <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
@@ -394,7 +395,7 @@ const AdminDrivers = () => {
                           <Pencil className='w-3 h-3' />
                           <span className='text-xs'>Edit</span>
                         </button>
-                        <button className='icon-btn bg-red-100 text-red-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={async () => { if (confirm('Delete driver?')) { await axiosInstance.delete(`auth/admin/users/${u._id}`); fetchDrivers(); }}} title='Delete'>
+                        <button className='icon-btn bg-red-100 text-red-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={async () => { if (confirm('Delete agronomist?')) { await axiosInstance.delete(`auth/admin/users/${u._id}`); fetchConsultants(); }}} title='Delete'>
                           <Trash2 className='w-3 h-3' />
                           <span className='text-xs'>Delete</span>
                         </button>
@@ -413,19 +414,19 @@ const AdminDrivers = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>Drivers Availability</div>
-                    <div className='text-2xl font-semibold mt-1'>{availableDriversCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>available</span></div>
-                    <div className='mt-2 text-sm text-gray-700'>Unavailable: <span className='font-semibold'>{unavailableDriversCount.toLocaleString()}</span></div>
+                    <div className='text-sm text-gray-600'>Agronomists Availability</div>
+                    <div className='text-2xl font-semibold mt-1'>{availableConsultantsCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>available</span></div>
+                    <div className='mt-2 text-sm text-gray-700'>Unavailable: <span className='font-semibold'>{unavailableConsultantsCount.toLocaleString()}</span></div>
                   </div>
                   <div className='w-24 h-24 bg-green-100 rounded-lg grid place-items-center'>
-                    <Truck className='w-12 h-12 text-green-600' />
+                    <Users className='w-12 h-12 text-green-600' />
                   </div>
                 </div>
               </Card>
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                   <div>
-                    <div className='text-sm text-gray-600'>Total Active Drivers</div>
+                    <div className='text-sm text-gray-600'>Total Active Agronomists</div>
                     <div className='text-2xl font-semibold mt-1'>{activeUsersCount.toLocaleString()} <span className='text-green-600 text-xs align-middle'>total</span></div>
                     <div className='mt-3 text-xs text-gray-600'>Current status</div>
                   </div>
@@ -437,7 +438,7 @@ const AdminDrivers = () => {
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
-                    <div className='text-sm text-gray-600'>Suspended Drivers</div>
+                    <div className='text-sm text-gray-600'>Suspended Agronomists</div>
                     <div className='text-2xl font-semibold mt-1'>{suspendedUsersCount.toLocaleString()} <span className='text-rose-600 text-xs align-middle'>total</span></div>
                     <div className='mt-3'>
                       <span className='text-xs bg-rose-100 text-rose-700 px-2 py-1 rounded-full'>Current</span>
@@ -452,13 +453,13 @@ const AdminDrivers = () => {
 
             
 
-            {/* Drivers by Service Area */}
+            {/* Consultants by Expertise Crop */}
             <div className='grid grid-cols-4 gap-6'>
               <Card className='col-span-4'>
                 <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Drivers by Service Area</div>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Agronomists by Crop Type</div>
                   <div className='rounded-lg border border-dashed'>
-                    <BarChart categories={serviceAreaData.categories} series={serviceAreaData.series} />
+                    <BarChart categories={expertiseData.categories} series={expertiseData.series} />
                   </div>
                 </div>
               </Card>
@@ -469,12 +470,12 @@ const AdminDrivers = () => {
 
       </div>
 
-      {/* Create Driver modal */}
+      {/* Create Consultant modal */}
       {creating && (
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-md p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Add Driver</h2>
+              <h2 className='text-lg font-semibold'>Add Agronomist</h2>
               <button onClick={() => setCreating(false)} className='text-gray-500'>Close</button>
             </div>
             <div className='space-y-3'>
@@ -499,7 +500,7 @@ const AdminDrivers = () => {
                   value={createForm.email} 
                   onChange={e => handleFormFieldChange('email', e.target.value)}
                   onBlur={() => handleFormFieldBlur('email')}
-                  placeholder='driver@example.com' 
+                  placeholder='agronomist@example.com' 
                 />
                 {formTouched.email && formErrors.email && (
                   <p className='mt-1 text-xs text-red-600'>{formErrors.email}</p>
@@ -533,26 +534,25 @@ const AdminDrivers = () => {
                 )}
               </div>
               <div>
-                <label className='text-xs text-gray-500'>Service Area *</label>
+                <label className='text-xs text-gray-500'>Expertise *</label>
                 <select 
-                  className={`input-field mt-1 w-full ${formTouched.service_area && formErrors.service_area ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
-                  value={createForm.service_area} 
-                  onChange={e => handleFormFieldChange('service_area', e.target.value)}
-                  onBlur={() => handleFormFieldBlur('service_area')}
+                  className={`input-field mt-1 w-full ${formTouched.expertise && formErrors.expertise ? 'border-red-300 focus:border-red-500 focus:ring-red-500' : ''}`}
+                  value={createForm.expertise} 
+                  onChange={e => handleFormFieldChange('expertise', e.target.value)}
+                  onBlur={() => handleFormFieldBlur('expertise')}
                 >
-                  <option value=''>Select a province</option>
-                  <option value='Northern'>Northern</option>
-                  <option value='North Central'>North Central</option>
-                  <option value='North Western'>North Western</option>
-                  <option value='Western'>Western</option>
-                  <option value='Central'>Central</option>
-                  <option value='Sabaragamuwa'>Sabaragamuwa</option>
-                  <option value='Eastern'>Eastern</option>
-                  <option value='Uva'>Uva</option>
-                  <option value='Southern'>Southern</option>
+                  <option value=''>Select expertise area</option>
+                  <option value='Tomatoes'>Tomatoes</option>
+                  <option value='Wheat'>Wheat</option>
+                  <option value='Corn'>Corn</option>
+                  <option value='Rice'>Rice</option>
+                  <option value='Potatoes'>Potatoes</option>
+                  <option value='Onions'>Onions</option>
+                  <option value='Carrots'>Carrots</option>
+                  <option value='Lettuce'>Lettuce</option>
                 </select>
-                {formTouched.service_area && formErrors.service_area && (
-                  <p className='mt-1 text-xs text-red-600'>{formErrors.service_area}</p>
+                {formTouched.expertise && formErrors.expertise && (
+                  <p className='mt-1 text-xs text-red-600'>{formErrors.expertise}</p>
                 )}
               </div>
               <div className='flex items-center justify-end gap-2 pt-2'>
@@ -576,7 +576,7 @@ const AdminDrivers = () => {
                   disabled={!isFormValid()}
                   onClick={async () => {
                     // Mark all fields as touched to show any remaining errors
-                    setFormTouched({ fullName: true, email: true, password: true, service_area: true })
+                    setFormTouched({ fullName: true, email: true, password: true, expertise: true })
                     
                     if (!isFormValid()) {
                       return
@@ -585,7 +585,7 @@ const AdminDrivers = () => {
                     try {
                       const payload = { 
                         ...createForm, 
-                        role: 'DRIVER', 
+                        role: 'AGRONOMIST', 
                         availability: 'UNAVAILABLE',
                         fullName: createForm.fullName.trim(),
                         email: createForm.email.trim().toLowerCase()
@@ -593,16 +593,16 @@ const AdminDrivers = () => {
                       const response = await axiosInstance.post('auth/admin/users', payload);
                       setCreating(false);
                       resetForm();
-                      fetchDrivers();
-                      toast.success('Driver account added successfully');
+                      fetchConsultants();
+                      toast.success('Agronomist account added successfully');
                     } catch (error) {
-                      const errorMessage = error?.response?.data?.error?.message || 'Failed to create driver account. Please try again.';
+                      const errorMessage = error?.response?.data?.error?.message || 'Failed to create agronomist account. Please try again.';
                       toast.error(errorMessage);
-                      console.error('Error creating driver:', error);
+                      console.error('Error creating agronomist:', error);
                     }
                   }}
                 >
-                  Create Driver
+                  Create Agronomist
                 </button>
               </div>
             </div>
@@ -615,7 +615,7 @@ const AdminDrivers = () => {
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-3xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Driver Details</h2>
+              <h2 className='text-lg font-semibold'>Agronomist Details</h2>
               <button onClick={() => setSelected(null)} className='text-gray-500'>Close</button>
             </div>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -640,36 +640,35 @@ const AdminDrivers = () => {
               {/* Right: actions */}
               <div className='space-y-3'>
                 <div>
-                  <label className='text-xs text-gray-500'>Service Area</label>
+                  <label className='text-xs text-gray-500'>Expertise</label>
                   <select
                     className='input-field mt-1'
-                    value={selected.service_area || ''}
+                    value={selected.expertise || ''}
                     onChange={async (e) => {
-                      const service_area = e.target.value
+                      const expertise = e.target.value
                       try {
-                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { service_area })
-                        fetchDrivers()
-                        setSelected(s => ({ ...s, service_area }))
+                        await axiosInstance.put(`auth/admin/users/${selected._id}`, { expertise })
+                        fetchConsultants()
+                        setSelected(s => ({ ...s, expertise }))
                       } catch (_) { /* silent */ }
                     }}
                   >
-                    <option value=''>Select a province</option>
-                    <option value='Northern'>Northern</option>
-                    <option value='North Central'>North Central</option>
-                    <option value='North Western'>North Western</option>
-                    <option value='Western'>Western</option>
-                    <option value='Central'>Central</option>
-                    <option value='Sabaragamuwa'>Sabaragamuwa</option>
-                    <option value='Eastern'>Eastern</option>
-                    <option value='Uva'>Uva</option>
-                    <option value='Southern'>Southern</option>
+                    <option value=''>Select expertise area</option>
+                    <option value='Tomatoes'>Tomatoes</option>
+                    <option value='Wheat'>Wheat</option>
+                    <option value='Corn'>Corn</option>
+                    <option value='Rice'>Rice</option>
+                    <option value='Potatoes'>Potatoes</option>
+                    <option value='Onions'>Onions</option>
+                    <option value='Carrots'>Carrots</option>
+                    <option value='Lettuce'>Lettuce</option>
                   </select>
                 </div>
                 <div className='grid grid-cols-2 gap-2'>
                   {selected.status === 'ACTIVE' ? (
-                    <button className='border px-3 py-2 rounded-md' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'SUSPENDED' }); fetchDrivers(); setSelected(s => ({ ...s, status: 'SUSPENDED' })); }}>Suspend</button>
+                    <button className='border px-3 py-2 rounded-md' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'SUSPENDED' }); fetchConsultants(); setSelected(s => ({ ...s, status: 'SUSPENDED' })); }}>Suspend</button>
                   ) : (
-                    <button className='btn-primary' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'ACTIVE' }); fetchDrivers(); setSelected(s => ({ ...s, status: 'ACTIVE' })); }}>Activate</button>
+                    <button className='btn-primary' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'ACTIVE' }); fetchConsultants(); setSelected(s => ({ ...s, status: 'ACTIVE' })); }}>Activate</button>
                   )}
                 </div>
               </div>
@@ -681,4 +680,4 @@ const AdminDrivers = () => {
   )
 }
 
-export default AdminDrivers
+export default AdminConsultants
