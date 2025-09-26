@@ -33,6 +33,7 @@ import HarvestRequest from './pages/HarvestRequest';
 import HarvestSchedule from './pages/HarvestSchedule';
 import HarvestTrack from './pages/HarvestTrack';
 import HarvestReport from './pages/HarvestReport';
+import CreateHarvestSchedule from './pages/CreateHarvestSchedule';
 
 
 import EmailVerificationPage from './pages/EmailVerificationPage';
@@ -103,6 +104,7 @@ const App = () => {
           <Route path="/harvest-schedule" element={authUser ? <HarvestSchedule /> : <Navigate to="/login" />} />
           <Route path="/harvest-track" element={authUser ? <HarvestTrack /> : <Navigate to="/login" />} />
           <Route path="/harvest-report" element={authUser ? <HarvestReport /> : <Navigate to="/login" />} />
+          <Route path="/create-schedule/:harvestId" element={authUser && authUser.role === 'AGRONOMIST' ? <CreateHarvestSchedule /> : <Navigate to="/" />} />
 
         </Routes>
       </main>

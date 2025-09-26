@@ -28,6 +28,8 @@ const AdminHarvest = () => {
     try {
       const { data } = await axiosInstance.get('/harvest/admin/requests')
       const requests = data?.requests || []
+      
+      
       setRequests(requests)
       
       // Check for recent rejections to show notifications
@@ -39,31 +41,43 @@ const AdminHarvest = () => {
   }
 
   const checkForRejections = (requests) => {
-    const recentRejections = requests.filter(r => {
-      if (r.status !== 'REQUEST_PENDING') return false
+    // Clear any existing notification first
+    setRejectionNotification(null)
+    
+    // Look through all requests
+    for (const request of requests) {
+      // Only check REQUEST_PENDING requests
+      if (request.status !== 'REQUEST_PENDING') {
+        continue
+      }
       
-      // Check if there's a recent rejection in tracking
-      const recentRejection = r.tracking?.find(track => 
-        track.progress?.includes('rejected') && 
-        new Date(track.updatedAt) > new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
-      )
-      
-      return recentRejection
-    })
-
-    if (recentRejections.length > 0) {
-      const rejection = recentRejections[0]
-      const rejectionTrack = rejection.tracking?.find(track => 
-        track.progress?.includes('rejected')
-      )
-      
-      setRejectionNotification({
-        requestId: rejection._id,
-        farmerName: rejection.farmerName,
-        crop: rejection.crop,
-        reason: rejectionTrack?.notes || 'No reason provided',
-        agronomistName: rejectionTrack?.agronomistName || 'Unknown agronomist'
-      })
+      // Look through all tracking entries
+      if (request.tracking && request.tracking.length > 0) {
+        for (const track of request.tracking) {
+          // Check if this is a rejection
+          if (track.progress && track.progress.includes('rejected')) {
+            // Check if it's recent (within last 5 minutes)
+            const now = new Date()
+            const trackTime = new Date(track.updatedAt)
+            const timeDiff = now - trackTime
+            const isRecent = timeDiff < (5 * 60 * 1000) // 5 minutes in milliseconds
+            
+            if (isRecent) {
+              const notificationData = {
+                requestId: request._id,
+                farmerName: request.farmerName,
+                crop: request.crop,
+                reason: track.notes || 'No reason provided',
+                agronomistName: track.agronomistName || 'Unknown agronomist',
+                isOldData: !track.agronomistName || !track.notes
+              }
+              
+              setRejectionNotification(notificationData)
+              return // Exit after finding the first recent rejection
+            }
+          }
+        }
+      }
     }
   }
 
@@ -115,7 +129,9 @@ const AdminHarvest = () => {
     fetchAvailableAgronomists() // Fetch agronomists when modal opens
   }
 
-  useEffect(() => { fetchPending() }, [])
+  useEffect(() => { 
+    fetchPending() 
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -208,9 +224,14 @@ const AdminHarvest = () => {
                     <strong>{rejectionNotification.agronomistName}</strong> rejected the assignment for{' '}
                     <strong>{rejectionNotification.farmerName}</strong>'s {rejectionNotification.crop} harvest.
                   </p>
-                  {rejectionNotification.reason && (
+                  {rejectionNotification.reason && rejectionNotification.reason !== 'No reason provided' && (
                     <p className='text-sm text-red-600 mt-2'>
                       <strong>Reason:</strong> {rejectionNotification.reason}
+                    </p>
+                  )}
+                  {rejectionNotification.isOldData && (
+                    <p className='text-xs text-orange-600 mt-2'>
+                      <strong>Note:</strong> This is old rejection data. New rejections will show agronomist name and reason.
                     </p>
                   )}
                 </div>
@@ -557,15 +578,16 @@ const AdminHarvest = () => {
                       {/* Y-axis */}
                       <div className='flex flex-col justify-between h-64 pr-2'>
                         {(() => {
-                          const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                          const values = Object.values(stats.monthlyStats)
+                          const maxCount = values.length > 0 ? Math.max(...values) : 0
                           const ticks = []
                           const numTicks = 5
                           for (let i = 0; i <= numTicks; i++) {
-                            const value = Math.round((maxCount / numTicks) * i)
+                            const value = maxCount > 0 ? Math.round((maxCount / numTicks) * i) : 0
                             ticks.push(value)
                           }
                           return ticks.reverse().map((tick, index) => (
-                            <div key={tick} className='flex items-center justify-end h-0'>
+                            <div key={`y-tick-${index}`} className='flex items-center justify-end h-0'>
                               <div className='text-xs text-gray-500 font-medium'>{tick}</div>
                               <div className='w-2 h-px bg-gray-300 ml-1'></div>
                             </div>
@@ -577,16 +599,17 @@ const AdminHarvest = () => {
                       <div className='flex-1 px-4 border-b border-gray-200 relative h-64'>
                         {/* Y-axis grid lines */}
                         {(() => {
-                          const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                          const values = Object.values(stats.monthlyStats)
+                          const maxCount = values.length > 0 ? Math.max(...values) : 0
                           const numTicks = 5
                           const ticks = []
                           for (let i = 0; i <= numTicks; i++) {
-                            const value = Math.round((maxCount / numTicks) * i)
+                            const value = maxCount > 0 ? Math.round((maxCount / numTicks) * i) : 0
                             ticks.push(value)
                           }
                           return ticks.map((tick, index) => (
-                            <div 
-                              key={tick}
+                            <div
+                              key={`grid-line-${index}`}
                               className='absolute w-full h-px bg-gray-100'
                               style={{ bottom: `${(index / numTicks) * 100}%` }}
                             ></div>
@@ -599,9 +622,11 @@ const AdminHarvest = () => {
                           <path
                             d={(() => {
                               const entries = Object.entries(stats.monthlyStats)
-                              const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                              const values = Object.values(stats.monthlyStats)
+                              const maxCount = values.length > 0 ? Math.max(...values) : 0
+                              if (entries.length === 0 || maxCount === 0) return 'M 0,100'
                               const points = entries.map(([month, count], index) => {
-                                const x = (index / (entries.length - 1)) * 100
+                                const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                                 const y = 100 - (count / maxCount) * 100
                                 return `${x},${y}`
                               }).join(' L ')
@@ -617,9 +642,11 @@ const AdminHarvest = () => {
                           <path
                             d={(() => {
                               const entries = Object.entries(stats.monthlyStats)
-                              const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                              const values = Object.values(stats.monthlyStats)
+                              const maxCount = values.length > 0 ? Math.max(...values) : 0
+                              if (entries.length === 0 || maxCount === 0) return 'M 0,100 L 100,100 Z'
                               const points = entries.map(([month, count], index) => {
-                                const x = (index / (entries.length - 1)) * 100
+                                const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                                 const y = 100 - (count / maxCount) * 100
                                 return `${x},${y}`
                               }).join(' L ')
@@ -639,8 +666,11 @@ const AdminHarvest = () => {
                           
                           {/* Data points */}
                           {Object.entries(stats.monthlyStats).map(([month, count], index) => {
-                            const maxCount = Math.max(...Object.values(stats.monthlyStats))
-                            const x = (index / (Object.entries(stats.monthlyStats).length - 1)) * 100
+                            const values = Object.values(stats.monthlyStats)
+                            const maxCount = values.length > 0 ? Math.max(...values) : 0
+                            if (maxCount === 0) return null
+                            const entries = Object.entries(stats.monthlyStats)
+                            const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                             const y = 100 - (count / maxCount) * 100
                             return (
                               <g key={month}>
@@ -685,7 +715,7 @@ const AdminHarvest = () => {
                       </div>
                       <div className='text-right'>
                         <div>Total: {stats.total} requests</div>
-                        <div>Peak: {Math.max(...Object.values(stats.monthlyStats))} requests</div>
+                        <div>Peak: {Object.values(stats.monthlyStats).length > 0 ? Math.max(...Object.values(stats.monthlyStats)) : 0} requests</div>
                       </div>
                     </div>
                   </>
