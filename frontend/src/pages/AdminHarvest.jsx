@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Info, Calendar, User, ClipboardList, CheckCircle, Pencil, Trash2, Users, Plus, Eye, EyeOff, UserCheck } from 'lucide-react'
+import { Info, Calendar, User, ClipboardList, CheckCircle, Pencil, Trash2, Users, Plus, Eye, EyeOff, UserCheck, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
@@ -20,27 +20,62 @@ const AdminHarvest = () => {
   const [showRequestInfo, setShowRequestInfo] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [availableAgronomists, setAvailableAgronomists] = useState([])
-  const [assignForm, setAssignForm] = useState({ expertId: '', expertName: '', adminAdvice: '', scheduledDate: '' })
+  const [assignForm, setAssignForm] = useState({ expertId: '', expertName: '', adminAdvice: '' })
+  const [rejectionNotification, setRejectionNotification] = useState(null)
 
   const fetchPending = async () => {
     setLoading(true) 
     try {
       const { data } = await axiosInstance.get('/harvest/admin/requests')
-      setRequests(data?.requests || [])
+      const requests = data?.requests || []
+      setRequests(requests)
+      
+      // Check for recent rejections to show notifications
+      checkForRejections(requests)
     } catch (e) {
       toast.error('Failed to load pending harvest requests')
       setRequests([])
     } finally { setLoading(false) }
   }
 
+  const checkForRejections = (requests) => {
+    const recentRejections = requests.filter(r => {
+      if (r.status !== 'REQUEST_PENDING') return false
+      
+      // Check if there's a recent rejection in tracking
+      const recentRejection = r.tracking?.find(track => 
+        track.progress?.includes('rejected') && 
+        new Date(track.updatedAt) > new Date(Date.now() - 5 * 60 * 1000) // Last 5 minutes
+      )
+      
+      return recentRejection
+    })
+
+    if (recentRejections.length > 0) {
+      const rejection = recentRejections[0]
+      const rejectionTrack = rejection.tracking?.find(track => 
+        track.progress?.includes('rejected')
+      )
+      
+      setRejectionNotification({
+        requestId: rejection._id,
+        farmerName: rejection.farmerName,
+        crop: rejection.crop,
+        reason: rejectionTrack?.notes || 'No reason provided',
+        agronomistName: rejectionTrack?.agronomistName || 'Unknown agronomist'
+      })
+    }
+  }
+
   const fetchAvailableAgronomists = async () => {
     try {
-      const { data } = await axiosInstance.get('/auth/admin/users', {
-        params: { role: 'AGRONOMIST', availability: 'AVAILABLE', status: 'ACTIVE' }
+      const { data } = await axiosInstance.get('/harvest/admin/agronomists', {
+        params: { onlyAvailable: true }
       })
-      setAvailableAgronomists(data?.data || [])
+      setAvailableAgronomists(data?.agronomists || [])
     } catch (e) {
       console.error('Failed to fetch agronomists:', e)
+      toast.error('Failed to load available agronomists')
       setAvailableAgronomists([])
     }
   }
@@ -55,13 +90,12 @@ const AdminHarvest = () => {
       await axiosInstance.post(`/harvest/${selected._id}/admin/schedule`, {
         expertId: assignForm.expertId,
         expertName: assignForm.expertName,
-        adminAdvice: assignForm.adminAdvice,
-        scheduledDate: assignForm.scheduledDate || selected.harvestDate
+        adminAdvice: assignForm.adminAdvice
       })
       
       toast.success('Agronomist assigned successfully!')
       setShowAssignModal(false)
-      setAssignForm({ expertId: '', expertName: '', adminAdvice: '', scheduledDate: '' })
+      setAssignForm({ expertId: '', expertName: '', adminAdvice: '' })
       fetchPending()
     } catch (error) {
       console.error('Failed to assign agronomist:', error)
@@ -75,11 +109,10 @@ const AdminHarvest = () => {
     setAssignForm({
       expertId: '',
       expertName: '',
-      adminAdvice: '',
-      scheduledDate: request.harvestDate || ''
+      adminAdvice: ''
     })
     setShowAssignModal(true)
-    fetchAvailableAgronomists()
+    fetchAvailableAgronomists() // Fetch agronomists when modal opens
   }
 
   useEffect(() => { fetchPending() }, [])
@@ -160,6 +193,39 @@ const AdminHarvest = () => {
           </div>
           <div />
         </div>
+
+        {/* Rejection Notification */}
+        {rejectionNotification && (
+          <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg'>
+            <div className='flex items-start justify-between'>
+              <div className='flex items-start gap-3'>
+                <div className='p-2 bg-red-100 rounded-full'>
+                  <AlertCircle className='w-5 h-5 text-red-600' />
+                </div>
+                <div>
+                  <h3 className='text-sm font-semibold text-red-800'>Assignment Rejected</h3>
+                  <p className='text-sm text-red-700 mt-1'>
+                    <strong>{rejectionNotification.agronomistName}</strong> rejected the assignment for{' '}
+                    <strong>{rejectionNotification.farmerName}</strong>'s {rejectionNotification.crop} harvest.
+                  </p>
+                  {rejectionNotification.reason && (
+                    <p className='text-sm text-red-600 mt-2'>
+                      <strong>Reason:</strong> {rejectionNotification.reason}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setRejectionNotification(null)}
+                className='text-red-400 hover:text-red-600'
+              >
+                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
           {/* Sidebar */}
@@ -308,6 +374,18 @@ const AdminHarvest = () => {
                             <button className='icon-btn bg-blue-100 text-blue-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => openAssignModal(r)} title='Assign Agronomist'>
                               <UserCheck className='w-3 h-3' />
                               <span className='text-xs'>Assign</span>
+                            </button>
+                          )}
+                          {r.status === 'ASSIGNED' && (
+                            <button className='icon-btn bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' disabled title='Assignment Pending'>
+                              <UserCheck className='w-3 h-3' />
+                              <span className='text-xs'>Assign Pending</span>
+                            </button>
+                          )}
+                          {r.status === 'ACCEPTED' && (
+                            <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' disabled title='Assignment Accepted'>
+                              <CheckCircle className='w-3 h-3' />
+                              <span className='text-xs'>Accepted</span>
                             </button>
                           )}
                         </td>
@@ -957,16 +1035,6 @@ const AdminHarvest = () => {
                 />
               </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Scheduled Date</label>
-                <input
-                  type='date'
-                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  value={assignForm.scheduledDate}
-                  onChange={(e) => setAssignForm({ ...assignForm, scheduledDate: e.target.value })}
-                />
-                <p className='text-xs text-gray-500 mt-1'>Leave empty to use the farmer's preferred harvest date</p>
-              </div>
             </div>
 
             {/* Action Buttons */}
