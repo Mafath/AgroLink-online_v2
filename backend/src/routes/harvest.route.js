@@ -16,6 +16,11 @@ import {
   agronomistAddNotes,
   agronomistPortalAcceptHarvest,
   agronomistPortalAddNotes,
+  createHarvestSchedule,
+  updateHarvestScheduleStatus,
+  getFarmerHarvestSchedules,
+  abandonHarvest,
+  hideHarvestFromAgronomist,
 } from "../controllers/harvest.controller.js";
 
 import { requireAuth, requireRole } from "../middleware/auth.middleware.js";
@@ -64,5 +69,12 @@ router.get("/agronomist/:agronomistId/assigned", getAgronomistAssignedHarvests);
 // Agronomist portal endpoints (no auth required)
 router.post("/:harvestId/portal/accept", agronomistPortalAcceptHarvest);
 router.post("/:harvestId/portal/notes", agronomistPortalAddNotes);
+
+// Harvest Schedule endpoints
+router.post("/:harvestId/schedule", requireAuth, requireRole("AGRONOMIST"), createHarvestSchedule);
+router.put("/:harvestId/schedule/status", requireAuth, requireRole("FARMER"), updateHarvestScheduleStatus);
+router.get("/schedules", requireAuth, requireRole("FARMER"), getFarmerHarvestSchedules);
+router.delete("/:harvestId/abandon", requireAuth, requireRole("FARMER"), abandonHarvest);
+router.delete("/:harvestId/hide", requireAuth, requireRole("AGRONOMIST"), hideHarvestFromAgronomist);
 
 export default router;

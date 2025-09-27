@@ -45,8 +45,83 @@ const harvestSchema = new mongoose.Schema(
     // Personalized data from comprehensive harvest request form
     personalizedData: { type: mongoose.Schema.Types.Mixed, default: {} },
 
+    // Harvest Schedule (created by agronomist after accepting)
+    harvestSchedule: {
+      // Basic Info
+      cropVariety: { type: String, trim: true, default: "" },
+      farmLocation: {
+        address: { type: String, trim: true, default: "" },
+        coordinates: {
+          lat: { type: Number },
+          lng: { type: Number }
+        },
+        soilType: { type: String, trim: true, default: "" }
+      },
+      farmSize: {
+        area: { type: Number, min: 0 },
+        unit: { type: String, enum: ["acres", "hectares"], default: "acres" }
+      },
+      
+      // Harvest Planning
+      expectedHarvestDate: { type: Date },
+      harvestDuration: { type: Number, min: 1, default: 1 }, // days
+      harvestMethod: { type: String, enum: ["Manual", "Mechanical", "Hybrid"], default: "Manual" },
+      expectedYield: {
+        quantity: { type: Number, min: 0 },
+        unit: { type: String, enum: ["kg", "tons", "lbs"], default: "kg" }
+      },
+      
+      // Resources
+      laborRequired: {
+        workers: { type: Number, min: 0, default: 0 },
+        skills: [{ type: String, trim: true }]
+      },
+      equipment: [{ type: String, trim: true }],
+      transportation: [{ type: String, trim: true }],
+      storage: {
+        type: { type: String, trim: true, default: "" },
+        capacity: { type: String, trim: true, default: "" },
+        duration: { type: String, trim: true, default: "" }
+      },
+      
+      // Timeline & Milestones
+      timeline: [{
+        phase: { type: String, trim: true, required: true },
+        activities: [{ type: String, trim: true }],
+        startDate: { type: Date },
+        duration: { type: Number, min: 0 }, // days
+        status: { type: String, enum: ["Pending", "In Progress", "Completed", "Delayed"], default: "Pending" },
+        completedAt: { type: Date },
+        notes: { type: String, trim: true, default: "" }
+      }],
+      
+      // Quality Standards
+      qualityStandards: {
+        size: { type: String, trim: true, default: "" },
+        color: { type: String, trim: true, default: "" },
+        ripeness: { type: String, trim: true, default: "" },
+        packaging: { type: String, trim: true, default: "" }
+      },
+      
+      // Risk Management
+      risks: [{
+        type: { type: String, trim: true },
+        description: { type: String, trim: true },
+        mitigation: { type: String, trim: true }
+      }],
+      
+      // Schedule Status
+      scheduleStatus: { type: String, enum: ["Draft", "Published", "In Progress", "Completed", "Cancelled"], default: "Draft" },
+      createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      createdAt: { type: Date, default: Date.now },
+      updatedAt: { type: Date, default: Date.now }
+    },
+
     // Tracking progress
     tracking: { type: [trackingSchema], default: [] },
+
+    // Hide from agronomist dashboard (but keep visible to farmer)
+    hiddenFromAgronomist: { type: Boolean, default: false },
 
     // Current unified status (defaults chosen by controller per flow)
     status: { type: String, enum: STATUS, default: "IN_PROGRESS", index: true },

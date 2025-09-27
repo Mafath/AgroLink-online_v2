@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { axiosInstance } from '../lib/axios'
-import { Clock, User, CheckCircle, AlertCircle, Calendar, FileText, MapPin, Sprout } from 'lucide-react'
+import { Clock, User, CheckCircle, AlertCircle, Calendar, FileText, MapPin, Sprout, RefreshCw, MessageSquare } from 'lucide-react'
 import { toast } from 'react-hot-toast'
 
 const AgronomistDashboard = () => {
+  const navigate = useNavigate();
   const { authUser } = useAuthStore();
   const [assignedHarvests, setAssignedHarvests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,6 +14,9 @@ const AgronomistDashboard = () => {
 
   useEffect(() => {
     fetchAssignedHarvests();
+    // Set up auto-refresh every 30 seconds to see farmer updates
+    const interval = setInterval(fetchAssignedHarvests, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchAssignedHarvests = async () => {
@@ -48,6 +53,17 @@ const AgronomistDashboard = () => {
     } catch (error) {
       console.error('Failed to add notes:', error);
       toast.error('Failed to add notes');
+    }
+  };
+
+  const handleHideHarvest = async (harvestId) => {
+    try {
+      await axiosInstance.delete(`/harvest/${harvestId}/hide`);
+      toast.success('Harvest hidden from dashboard successfully');
+      fetchAssignedHarvests();
+    } catch (error) {
+      console.error('Failed to hide harvest:', error);
+      toast.error('Failed to hide harvest');
     }
   };
 
@@ -138,7 +154,14 @@ const AgronomistDashboard = () => {
             <h1 className="text-3xl font-semibold">Agronomist Dashboard</h1>
             <p className="text-gray-600">Welcome back, {authUser?.fullName || 'Agronomist'}</p>
           </div>
-          <div></div>
+          <button
+            onClick={fetchAssignedHarvests}
+            disabled={loading}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
         </div>
 
         {/* Availability toggle */}
@@ -235,11 +258,12 @@ const AgronomistDashboard = () => {
             </div>
           ) : (
             filteredHarvests.map((harvest) => (
-              <HarvestCard 
-                key={harvest._id} 
+              <HarvestCard
+                key={harvest._id}
                 harvest={harvest}
                 onAccept={handleAcceptHarvest}
                 onAddNotes={handleAddNotes}
+                onHide={handleHideHarvest}
                 getStatusIcon={getStatusIcon}
                 getStatusText={getStatusText}
                 getStatusColor={getStatusColor}
@@ -253,7 +277,8 @@ const AgronomistDashboard = () => {
   )
 }
 
-const HarvestCard = ({ harvest, onAccept, onAddNotes, getStatusIcon, getStatusText, getStatusColor }) => {
+const HarvestCard = ({ harvest, onAccept, onAddNotes, onHide, getStatusIcon, getStatusText, getStatusColor }) => {
+  const navigate = useNavigate();
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [notes, setNotes] = useState('');
   const [actionType, setActionType] = useState('');
@@ -287,9 +312,20 @@ const HarvestCard = ({ harvest, onAccept, onAddNotes, getStatusIcon, getStatusTe
               Created: {new Date(harvest.createdAt).toLocaleDateString()}
             </p>
           </div>
-          <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(harvest.status)}`}>
-            {getStatusText(harvest.status)}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(harvest.status)}`}>
+              {getStatusText(harvest.status)}
+            </span>
+            {(harvest.status === 'CANCELLED' || harvest.status === 'COMPLETED') && (
+              <button
+                onClick={() => onHide(harvest._id)}
+                className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200 transition-colors"
+                title={`Hide ${harvest.status === 'CANCELLED' ? 'cancelled' : 'completed'} harvest from dashboard`}
+              >
+                Hide
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -331,12 +367,22 @@ const HarvestCard = ({ harvest, onAccept, onAddNotes, getStatusIcon, getStatusTe
           </div>
         )}
 
-        {/* Tracking History */}
+        {/* Tracking History - Only show updates before harvest schedule creation */}
         {harvest.tracking && harvest.tracking.length > 0 && (
           <div className="mt-4">
             <h4 className="font-medium text-gray-900 mb-2 text-sm">Progress History</h4>
             <div className="space-y-1.5">
               {harvest.tracking
+                .filter(track => {
+                  // If harvest schedule exists, only show updates before it was created
+                  if (harvest.harvestSchedule && harvest.harvestSchedule.createdAt) {
+                    const scheduleCreatedAt = new Date(harvest.harvestSchedule.createdAt);
+                    const trackUpdatedAt = new Date(track.updatedAt);
+                    return trackUpdatedAt < scheduleCreatedAt;
+                  }
+                  // If no harvest schedule, show all updates
+                  return true;
+                })
                 .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
                 .map((track, index) => (
                   <div key={index} className="flex items-center space-x-3 text-xs">
@@ -345,6 +391,118 @@ const HarvestCard = ({ harvest, onAccept, onAddNotes, getStatusIcon, getStatusTe
                     <span className="text-gray-400">
                       {new Date(track.updatedAt).toLocaleString()}
                     </span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Updates (same as HarvestTrack) */}
+        {harvest.tracking && harvest.tracking.length > 0 && (
+          <div className="mt-4">
+            <h4 className="text-lg font-semibold text-gray-900 mb-3">Recent Updates</h4>
+            <div className="space-y-3 max-h-48 overflow-y-auto">
+              {harvest.tracking.slice(-5).reverse().map((update, index) => (
+                <div key={index} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                    <MessageSquare className="w-4 h-4 text-blue-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">{update.progress}</p>
+                    {update.notes && (
+                      <p className="text-sm text-gray-600 mt-1">{update.notes}</p>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(update.updatedAt).toLocaleString()}
+                      {update.agronomistName && ` • by ${update.agronomistName}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Harvest Schedule Timeline (for accepted harvests) */}
+        {harvest.status === 'ACCEPTED' && harvest.harvestSchedule?.timeline && harvest.harvestSchedule.timeline.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+              <Calendar className="w-4 h-4 mr-2" />
+              Harvest Timeline Progress
+            </h4>
+            <div className="space-y-2">
+              {harvest.harvestSchedule.timeline.map((phase, index) => (
+                <div key={index} className={`flex items-center gap-3 p-2 rounded-lg text-xs ${
+                  phase.status === 'Completed' ? 'bg-green-50 border border-green-200' :
+                  phase.status === 'In Progress' ? 'bg-blue-50 border border-blue-200' :
+                  'bg-gray-50 border border-gray-200'
+                }`}>
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                    phase.status === 'Completed' ? 'bg-green-500 text-white' :
+                    phase.status === 'In Progress' ? 'bg-blue-500 text-white' :
+                    'bg-gray-300 text-gray-600'
+                  }`}>
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`font-medium ${
+                        phase.status === 'Completed' ? 'text-green-800 line-through' : 'text-gray-900'
+                      }`}>
+                        {phase.phase}
+                      </span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        phase.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                        phase.status === 'In Progress' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-700'
+                      }`}>
+                        {phase.status}
+                      </span>
+                    </div>
+                    <p className={`text-gray-600 ${
+                      phase.status === 'Completed' ? 'line-through' : ''
+                    }`}>
+                      {phase.activities?.join(', ') || 'No activities specified'}
+                      {phase.completedAt && ` • Completed: ${new Date(phase.completedAt).toLocaleDateString()}`}
+                    </p>
+                    {phase.notes && (
+                      <p className={`text-gray-500 mt-1 italic ${
+                        phase.status === 'Completed' ? 'line-through' : ''
+                      }`}>
+                        Notes: {phase.notes}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Farmer Updates (for accepted harvests) */}
+        {harvest.status === 'ACCEPTED' && harvest.tracking && harvest.tracking.length > 0 && (
+          <div className="mt-4">
+            <h4 className="font-medium text-gray-900 mb-2 text-sm flex items-center">
+              <User className="w-4 h-4 mr-2" />
+              Recent Farmer Updates
+            </h4>
+            <div className="space-y-1.5 max-h-32 overflow-y-auto">
+              {harvest.tracking
+                .filter(track => track.updatedBy && track.updatedBy.toString() !== harvest.expertId?.toString())
+                .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                .slice(0, 3)
+                .map((track, index) => (
+                  <div key={index} className="flex items-start space-x-3 text-xs p-2 bg-blue-50 rounded">
+                    <User className="w-3 h-3 mt-0.5 text-blue-600" />
+                    <div className="flex-1">
+                      <span className="text-blue-800 font-medium">{track.progress}</span>
+                      {track.notes && (
+                        <p className="text-blue-600 mt-1 italic">Note: {track.notes}</p>
+                      )}
+                      <span className="text-blue-500 text-xs">
+                        {new Date(track.updatedAt).toLocaleString()}
+                      </span>
+                    </div>
                   </div>
                 ))}
             </div>
@@ -374,6 +532,15 @@ const HarvestCard = ({ harvest, onAccept, onAddNotes, getStatusIcon, getStatusTe
                 Reject Assignment
               </button>
             </>
+          )}
+          {/* Create Schedule button - only show for accepted assignments */}
+          {harvest.status === 'ACCEPTED' && (
+            <button
+              onClick={() => navigate(`/create-schedule/${harvest._id}`)}
+              className="bg-green-100 text-green-700 px-4 py-2 rounded-lg hover:bg-green-200"
+            >
+              Create Schedule
+            </button>
           )}
           {['ACCEPTED', 'SCHEDULED', 'IN_PROGRESS'].includes(harvest.status) && (
             <button
@@ -516,6 +683,7 @@ const AvailabilityPrompt = () => {
           </button>
         </div>
       </div>
+
     </div>
   );
 };
