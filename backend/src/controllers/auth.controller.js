@@ -4,7 +4,7 @@ import Listing from "../models/listing.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
-import { sendVerificationEmail, generateVerificationToken } from "../lib/emailService.js";
+import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken } from "../lib/emailService.js";
 
 export const signup = async (req, res) => {
   try {
@@ -496,22 +496,21 @@ export const changeEmail = async (req, res) => {
       });
     }
 
-    // Generate email verification token
-    const verificationToken = generateVerificationToken();
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Generate email change token
+    const emailChangeToken = generateVerificationToken();
+    const emailChangeExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    // Update user with new email and verification token
-    user.email = newEmail.toLowerCase().trim();
-    user.isEmailVerified = false;
-    user.emailVerificationToken = verificationToken;
-    user.emailVerificationExpires = verificationExpires;
+    // Store pending email change (DO NOT update actual email yet)
+    user.pendingEmail = newEmail.toLowerCase().trim();
+    user.emailChangeToken = emailChangeToken;
+    user.emailChangeExpires = emailChangeExpires;
     await user.save();
 
-    // Send verification email to new address
-    const emailResult = await sendVerificationEmail(
-      user.email,
+    // Send email change verification email to NEW address
+    const emailResult = await sendEmailChangeVerification(
+      newEmail.toLowerCase().trim(),
       user.fullName,
-      verificationToken
+      emailChangeToken
     );
 
     if (!emailResult.success) {
@@ -522,13 +521,77 @@ export const changeEmail = async (req, res) => {
     }
 
     return res.json({ 
-      message: 'Email change initiated. Please check your new email for verification instructions.',
-      email: user.email 
+      message: 'Email change initiated. Please check your new email for verification instructions. Your current email remains active until verification is complete.',
+      currentEmail: user.email,
+      pendingEmail: user.pendingEmail
     });
   } catch (error) {
     console.error('Error in changeEmail:', error);
     return res.status(500).json({ 
       error: { code: 'SERVER_ERROR', message: 'Failed to change email' } 
+    });
+  }
+};
+
+// Verify email change
+export const verifyEmailChange = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Verification token is required' } 
+      });
+    }
+
+    // Find user with matching email change token
+    const user = await User.findOne({ 
+      emailChangeToken: token,
+      emailChangeExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ 
+        error: { code: 'INVALID_TOKEN', message: 'Invalid or expired verification token' } 
+      });
+    }
+
+    if (!user.pendingEmail) {
+      return res.status(400).json({ 
+        error: { code: 'NO_PENDING_EMAIL', message: 'No pending email change found' } 
+      });
+    }
+
+    // Check if the new email is already in use by another user
+    const existingUser = await User.findOne({ 
+      email: user.pendingEmail,
+      _id: { $ne: user._id }
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ 
+        error: { code: 'EMAIL_IN_USE', message: 'Email is already in use by another account' } 
+      });
+    }
+
+    // Update email and clear pending change
+    const oldEmail = user.email;
+    user.email = user.pendingEmail;
+    user.isEmailVerified = true;
+    user.pendingEmail = null;
+    user.emailChangeToken = null;
+    user.emailChangeExpires = null;
+    await user.save();
+
+    return res.json({ 
+      message: 'Email successfully changed and verified',
+      oldEmail: oldEmail,
+      newEmail: user.email
+    });
+  } catch (error) {
+    console.error('Error in verifyEmailChange:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to verify email change' } 
     });
   }
 };

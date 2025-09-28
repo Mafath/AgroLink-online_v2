@@ -72,25 +72,27 @@ const AccountDeletionPage = () => {
   ]
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-red-50 via-rose-50 to-pink-50 py-8'>
-      <div className='max-w-2xl mx-auto px-4'>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 py-8'>
+      <div className='max-w-4xl mx-auto px-4'>
         {/* Header */}
-        <div className='text-center mb-8'>
+        <div className='mb-8'>
           <button
-            onClick={() => navigate('/profile')}
-            className='inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
+            onClick={() => navigate('/profile?tab=security')}
+            className='inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors group'
           >
-            <ArrowLeft className='w-4 h-4' />
-            Back to Profile
+            <ArrowLeft className='w-4 h-4 group-hover:-translate-x-1 transition-transform' />
+            Back to Security Center
           </button>
           
-          <div className='inline-flex items-center gap-3 mb-4'>
-            <div className='p-3 bg-gradient-to-br from-red-100 to-rose-100 rounded-2xl'>
-              <AlertTriangle className='w-8 h-8 text-red-600' />
-            </div>
-            <div>
-              <h1 className='text-3xl font-bold text-gray-900'>Account Deletion</h1>
-              <p className='text-gray-600'>Permanently delete your account and all data</p>
+          <div className='bg-white rounded-3xl shadow-xl border border-gray-100 p-8'>
+            <div className='flex items-center gap-4 mb-6'>
+              <div className='p-4 bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl shadow-lg'>
+                <AlertTriangle className='w-8 h-8 text-white' />
+              </div>
+              <div>
+                <h1 className='text-3xl font-bold text-gray-900'>Account Deletion</h1>
+                <p className='text-gray-600 mt-1'>Permanently delete your account and all associated data</p>
+              </div>
             </div>
           </div>
         </div>

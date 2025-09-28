@@ -17,6 +17,163 @@ export const generateVerificationToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
+// Send email change verification email
+export const sendEmailChangeVerification = async (email, fullName, verificationToken) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Create verification URL for email change
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email-change/${verificationToken}`;
+    
+    // Email template for email change verification
+    const htmlTemplate = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Verify Your Email Change - AgroLink</title>
+          <style>
+            * {
+              margin: 0;
+              padding: 0;
+              box-sizing: border-box;
+            }
+            body {
+              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+              line-height: 1.6;
+              color: #2d3748;
+              background-color: #f7fafc;
+              padding: 20px;
+            }
+            .email-container {
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #ffffff;
+              border-radius: 12px;
+              box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+              overflow: hidden;
+            }
+            .header {
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 30px;
+              text-align: center;
+            }
+            .header h1 {
+              font-size: 28px;
+              margin-bottom: 10px;
+            }
+            .content {
+              padding: 40px 30px;
+            }
+            .content h2 {
+              color: #2d3748;
+              margin-bottom: 20px;
+              font-size: 24px;
+            }
+            .content p {
+              margin-bottom: 20px;
+              color: #4a5568;
+              font-size: 16px;
+            }
+            .verify-button {
+              display: inline-block;
+              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+              color: white;
+              padding: 15px 30px;
+              text-decoration: none;
+              border-radius: 8px;
+              font-weight: bold;
+              font-size: 16px;
+              margin: 20px 0;
+              transition: transform 0.2s;
+            }
+            .verify-button:hover {
+              transform: translateY(-2px);
+            }
+            .security-note {
+              background-color: #f7fafc;
+              border-left: 4px solid #667eea;
+              padding: 20px;
+              margin: 20px 0;
+              border-radius: 0 8px 8px 0;
+            }
+            .footer {
+              background-color: #f7fafc;
+              padding: 20px 30px;
+              text-align: center;
+              color: #718096;
+              font-size: 14px;
+            }
+            .footer p {
+              margin-bottom: 10px;
+            }
+            .token-info {
+              background-color: #edf2f7;
+              padding: 15px;
+              border-radius: 8px;
+              margin: 20px 0;
+              font-family: monospace;
+              word-break: break-all;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="email-container">
+            <div class="header">
+              <h1>🔐 Email Change Verification</h1>
+              <p>AgroLink Security Center</p>
+            </div>
+            
+            <div class="content">
+              <h2>Hello ${fullName}!</h2>
+              
+              <p>You have requested to change your email address on AgroLink. To complete this change, please verify your new email address by clicking the button below:</p>
+              
+              <div style="text-align: center;">
+                <a href="${verificationUrl}" class="verify-button">Verify Email Change</a>
+              </div>
+              
+              <div class="security-note">
+                <h3 style="color: #2d3748; margin-bottom: 10px;">🛡️ Security Information</h3>
+                <p style="margin-bottom: 10px;"><strong>Important:</strong> This verification link will expire in 24 hours for your security.</p>
+                <p style="margin-bottom: 10px;">Your current email address will remain active until you complete this verification.</p>
+                <p>If you did not request this email change, please ignore this email and your account will remain secure.</p>
+              </div>
+              
+              <p>If the button above doesn't work, you can copy and paste this link into your browser:</p>
+              <div class="token-info">${verificationUrl}</div>
+              
+              <p>This verification link is valid for 24 hours. After that, you'll need to request a new email change.</p>
+            </div>
+            
+            <div class="footer">
+              <p><strong>AgroLink Team</strong></p>
+              <p>This is an automated message. Please do not reply to this email.</p>
+              <p>If you have any questions, please contact our support team.</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"AgroLink Security" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '🔐 Verify Your Email Change - AgroLink',
+      html: htmlTemplate,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Email change verification email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending email change verification email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Send verification email
 export const sendVerificationEmail = async (email, fullName, verificationToken) => {
   try {

@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft, ArrowRight, Lock, Eye, EyeOff, AlertTriangle, Trash2, CheckCircle, XCircle, Clock, Monitor, Smartphone, Globe, Key, MailCheck } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import toast from 'react-hot-toast'
 
 const ProfilePage = () => {
+  const location = useLocation()
   const [me, setMe] = useState(null)
   const [error, setError] = useState(null)
   const [fullName, setFullName] = useState('')
@@ -104,6 +105,15 @@ const ProfilePage = () => {
       loadActivities()
     }
   }, [me?.role])
+
+  // Handle URL parameters for tab switching
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search)
+    const tab = urlParams.get('tab')
+    if (tab && ['overview', 'activity', 'security'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [location.search])
 
   // Load activities when switching to activity tab
   useEffect(() => {
@@ -472,7 +482,10 @@ const ProfilePage = () => {
                       setPhone(me.phone || ''); 
                       setAddress(me.address || ''); 
                       setBio(me.bio || '');
-                      setProfilePic('') 
+                      setProfilePic('');
+                      setIsEditing(false);
+                      setTouched({ fullName: false, phone: false, address: false, bio: false });
+                      setErrors({ fullName: '', phone: '', address: '', bio: '' });
                     }}
                   >
                     Cancel

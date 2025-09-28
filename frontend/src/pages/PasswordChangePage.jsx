@@ -97,46 +97,91 @@ const PasswordChangePage = () => {
   }
 
   return (
-    <div className='min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 py-8'>
-      <div className='max-w-2xl mx-auto px-4'>
+    <div className='min-h-screen bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 py-8'>
+      <div className='max-w-4xl mx-auto px-4'>
         {/* Header */}
-        <div className='text-center mb-8'>
+        <div className='mb-8'>
           <button
-            onClick={() => navigate('/profile')}
-            className='inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors'
+            onClick={() => navigate('/profile?tab=security')}
+            className='inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors group'
           >
-            <ArrowLeft className='w-4 h-4' />
-            Back to Profile
+            <ArrowLeft className='w-4 h-4 group-hover:-translate-x-1 transition-transform' />
+            Back to Security Center
           </button>
           
-          <div className='inline-flex items-center gap-3 mb-4'>
-            <div className='p-3 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl'>
-              <Lock className='w-8 h-8 text-green-600' />
-            </div>
-            <div>
-              <h1 className='text-3xl font-bold text-gray-900'>Password Security</h1>
-              <p className='text-gray-600'>Update your password for better security</p>
+          <div className='bg-white rounded-3xl shadow-xl border border-gray-100 p-8'>
+            <div className='flex items-center gap-4 mb-6'>
+              <div className='p-4 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-lg'>
+                <Lock className='w-8 h-8 text-white' />
+              </div>
+              <div>
+                <h1 className='text-3xl font-bold text-gray-900'>Password Security</h1>
+                <p className='text-gray-600 mt-1'>Update your password and security settings</p>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Main Card */}
-        <div className='bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden'>
-          {/* Security Info */}
-          <div className='bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-green-100'>
-            <div className='flex items-center gap-3'>
-              <div className='p-2 bg-green-100 rounded-lg'>
-                <ShieldCheck className='w-5 h-5 text-green-600' />
+        {/* Main Content */}
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-8'>
+          {/* Password Tips Sidebar */}
+          <div className='lg:col-span-1'>
+            <div className='bg-white rounded-2xl shadow-lg border border-gray-200 p-6 sticky top-8'>
+              <div className='flex items-center gap-3 mb-4'>
+                <div className='p-3 bg-green-100 rounded-xl'>
+                  <ShieldCheck className='w-6 h-6 text-green-600' />
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>Password Tips</h3>
               </div>
-              <div>
-                <h3 className='font-semibold text-gray-900'>Password Requirements</h3>
-                <p className='text-sm text-gray-600'>Choose a strong, unique password</p>
+              <div className='space-y-4'>
+                <div className='space-y-3'>
+                  <div className='flex items-start gap-3'>
+                    <div className='w-2 h-2 bg-green-500 rounded-full mt-2'></div>
+                    <div>
+                      <p className='text-sm font-medium text-gray-800'>Use at least 8 characters</p>
+                      <p className='text-xs text-gray-600'>12+ characters recommended</p>
+                    </div>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <div className='w-2 h-2 bg-green-500 rounded-full mt-2'></div>
+                    <div>
+                      <p className='text-sm font-medium text-gray-800'>Mix uppercase & lowercase</p>
+                      <p className='text-xs text-gray-600'>Include both letter cases</p>
+                    </div>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <div className='w-2 h-2 bg-green-500 rounded-full mt-2'></div>
+                    <div>
+                      <p className='text-sm font-medium text-gray-800'>Add numbers & symbols</p>
+                      <p className='text-xs text-gray-600'>Special characters increase security</p>
+                    </div>
+                  </div>
+                  <div className='flex items-start gap-3'>
+                    <div className='w-2 h-2 bg-orange-500 rounded-full mt-2'></div>
+                    <div>
+                      <p className='text-sm font-medium text-gray-800'>Avoid common words</p>
+                      <p className='text-xs text-gray-600'>Don't use personal information</p>
+                    </div>
+                  </div>
+                </div>
+                <div className='bg-green-50 border border-green-200 rounded-lg p-3'>
+                  <p className='text-xs text-green-800 font-medium mb-1'>Security Note</p>
+                  <p className='text-xs text-green-700'>After changing your password, you'll be logged out of all devices and need to log in again.</p>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className='p-6 space-y-6'>
+          {/* Password Change Form */}
+          <div className='lg:col-span-2'>
+            <div className='bg-white rounded-2xl shadow-lg border border-gray-200 p-8'>
+
+              <div className='mb-6'>
+                <h3 className='text-xl font-semibold text-gray-900 mb-2'>Change Password</h3>
+                <p className='text-gray-600'>Enter your current password and choose a new secure password.</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className='space-y-6'>
             {/* Current Password */}
             <div>
               <label className='block text-sm font-medium text-gray-700 mb-2'>
@@ -290,11 +335,18 @@ const PasswordChangePage = () => {
               {loading ? 'Updating Password...' : 'Update Password'}
             </button>
           </form>
+            </div>
+          </div>
         </div>
 
         {/* Security Notice */}
-        <div className='mt-8 bg-white rounded-xl p-6 border border-gray-200'>
-          <h3 className='font-semibold text-gray-900 mb-3'>Security Notice</h3>
+        <div className='mt-8 bg-white rounded-2xl shadow-lg border border-gray-200 p-6'>
+          <div className='flex items-center gap-3 mb-4'>
+            <div className='p-2 bg-yellow-100 rounded-lg'>
+              <ShieldCheck className='w-5 h-5 text-yellow-600' />
+            </div>
+            <h3 className='text-lg font-semibold text-gray-900'>Security Notice</h3>
+          </div>
           <div className='space-y-2 text-sm text-gray-600'>
             <p>• After changing your password, you'll be logged out of all devices</p>
             <p>• You'll need to log in again with your new password</p>
