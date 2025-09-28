@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut, MessageSquare } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import logoImg from '../assets/AgroLink logo3.png'
 import { getUserCartCount } from '../lib/cartUtils'
@@ -173,6 +173,15 @@ const Navbar = () => {
                       <SettingsIcon className="w-4 h-4 mr-2" />
                       Settings
                     </button>
+                    {!isAdmin && !isDriver && !isAgronomist && (
+                      <button
+                        onClick={() => handleNavigation('/my-delivery-reviews')}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        My Reviews
+                      </button>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"

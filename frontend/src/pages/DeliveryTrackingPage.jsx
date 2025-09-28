@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { Truck, Package, MapPin, Clock, CheckCircle, AlertCircle, Mail } from 'lucide-react';
+import { Truck, Package, MapPin, Clock, CheckCircle, AlertCircle, Mail, Star, MessageSquare } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
+import DeliveryReviewForm from '../components/DeliveryReviewForm';
 
 const DeliveryTrackingPage = () => {
   const { authUser } = useAuthStore();
   const [deliveries, setDeliveries] = useState([]);
   const { orderId } = useParams();
   const [loading, setLoading] = useState(true);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [selectedDelivery, setSelectedDelivery] = useState(null);
 
   useEffect(() => {
     fetchDeliveries();
@@ -122,6 +125,22 @@ const DeliveryTrackingPage = () => {
     window.open(gmailUrl, '_blank');
   };
 
+  const handleReviewClick = (delivery) => {
+    setSelectedDelivery(delivery);
+    setShowReviewForm(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    setShowReviewForm(false);
+    setSelectedDelivery(null);
+    fetchDeliveries(); // Refresh deliveries to show updated review status
+  };
+
+  const handleReviewCancel = () => {
+    setShowReviewForm(false);
+    setSelectedDelivery(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -228,6 +247,51 @@ const DeliveryTrackingPage = () => {
                     </div>
                   )}
 
+                  {/* Review Button for Completed Deliveries */}
+                  {delivery.status === 'COMPLETED' && !delivery.review && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 mr-3 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-green-800 mb-2">
+                              Delivery Completed!
+                            </h4>
+                            <p className="text-sm text-green-700 mb-3">
+                              Your delivery has been completed successfully. We'd love to hear about your experience!
+                            </p>
+                            <button
+                              onClick={() => handleReviewClick(delivery)}
+                              className="inline-flex items-center px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              <Star className="w-4 h-4 mr-2" />
+                              Leave a Review
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Review Submitted Message */}
+                  {delivery.status === 'COMPLETED' && delivery.review && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-start">
+                          <MessageSquare className="w-5 h-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+                          <div className="flex-1">
+                            <h4 className="text-sm font-medium text-blue-800 mb-2">
+                              Review Submitted
+                            </h4>
+                            <p className="text-sm text-blue-700">
+                              Thank you for your feedback! Your review has been submitted and our team will review it.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Contact Support Button for Cancelled Deliveries */}
                   {delivery.status === 'CANCELLED' && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
@@ -259,6 +323,15 @@ const DeliveryTrackingPage = () => {
           </div>
         )}
       </div>
+
+      {/* Review Form Modal */}
+      {showReviewForm && selectedDelivery && (
+        <DeliveryReviewForm
+          delivery={selectedDelivery}
+          onReviewSubmitted={handleReviewSubmitted}
+          onCancel={handleReviewCancel}
+        />
+      )}
     </div>
   );
 };
