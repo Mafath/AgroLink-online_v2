@@ -3,8 +3,13 @@ import { useAuthStore } from '../store/useAuthStore';
 import { axiosInstance } from '../lib/axios';
 import { Package, Truck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
 
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    {children}
+  </div>
+);
 
 const MyOrders = () => {
   const { authUser } = useAuthStore();
@@ -30,51 +35,63 @@ const MyOrders = () => {
   if (!authUser) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
+        <Card className="p-8 text-center max-w-md">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Please login to view your orders</h1>
           <button
             onClick={() => navigate('/login')}
-            className="btn-primary"
+            className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white hover:bg-green-700"
           >
             Login
           </button>
-        </div>
+        </Card>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
         </div>
 
         {loading ? (
-          <div className="bg-white rounded-lg shadow-sm border p-8 text-center text-gray-500">Loading…</div>
+          <Card className="p-8 text-center text-gray-500">
+            Loading…
+          </Card>
         ) : orders.length === 0 ? (
-          <div className="text-center py-12">
+          <Card className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
             <p className="text-gray-600 mb-6">You haven't placed any orders. Browse our marketplace to start shopping!</p>
             <button
               onClick={() => navigate('/marketplace')}
-              className="btn-primary"
+              className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white hover:bg-green-700"
             >
               Browse Marketplace
             </button>
-          </div>
+          </Card>
         ) : (
           <div className="space-y-6">
             {orders.map(order => (
-              <div key={order._id} className="bg-white rounded-xl shadow-sm border p-6">
-                <div className="flex items-start justify-between mb-2">
+              <Card key={order._id} className="p-6">
+                <div className="flex items-start justify-between mb-4">
                   <div>
                     <span className="text-xs text-gray-500">Order ID</span>
                     <span className="ml-2 font-semibold text-gray-900">{order.orderNumber || order._id}</span>
                   </div>
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${
+                    order.status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                    order.status === 'PROCESSING' ? 'bg-blue-100 text-blue-700' :
+                    order.status === 'SHIPPED' ? 'bg-violet-100 text-violet-700' :
+                    order.status === 'DELIVERED' ? 'bg-green-100 text-green-700' :
+                    order.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase()}
+                  </span>
                 </div>
-                <div className="flex flex-wrap gap-4 mb-4 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                   <div>
                     <span className="text-xs text-gray-500">Date</span>
                     <div className="font-medium text-gray-700">{new Date(order.createdAt).toLocaleDateString()}</div>
@@ -87,26 +104,17 @@ const MyOrders = () => {
                     <span className="text-xs text-gray-500">Total</span>
                     <div className="font-semibold text-green-700">LKR {order.total?.toFixed(2)}</div>
                   </div>
-                  {order.deliveryType === 'DELIVERY' && (
-                    <button
-                      onClick={() => navigate(`/delivery-tracking/${order._id}`)}
-                      disabled={order.status === 'CANCELLED'}
-                      className={`ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 ${
-                        order.status === 'CANCELLED'
-                          ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                          : 'bg-black text-white hover:bg-gray-800'
-                      }`}
-                    >
-                      <Truck className="w-4 h-4" /> Track delivery
-                    </button>
-                  )}
                 </div>
                 <div className="border-t pt-4 mt-4">
                   <div className="text-sm font-semibold text-gray-800 mb-2">Order Items</div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {order.items?.map((item, idx) => (
                       <div key={idx} className="flex items-center gap-4 bg-gray-50 rounded-lg p-3">
-                        <img src={item.image || (item.listing?.images?.[0] || '/placeholder-image.jpg')} alt={item.title || item.listing?.title} className="w-16 h-16 object-cover rounded-lg border" />
+                        <img
+                          src={item.image || (item.listing?.images?.[0] || '/placeholder-image.jpg')}
+                          alt={item.title || item.listing?.title}
+                          className="w-16 h-16 object-cover rounded-lg border"
+                        />
                         <div className="flex-1">
                           <div className="font-medium text-gray-900">{item.title || item.listing?.title}</div>
                           <div className="text-xs text-gray-500">Quantity: {item.quantity}</div>
@@ -115,6 +123,7 @@ const MyOrders = () => {
                       </div>
                     ))}
                   </div>
+                  <div className="flex items-center justify-between mt-4">
                     {order.status !== 'DELIVERED' && (() => {
                       const orderDate = new Date(order.createdAt);
                       const now = new Date();
@@ -123,9 +132,9 @@ const MyOrders = () => {
                       const isCancelled = order.status === 'CANCELLED';
                       const isDeliveryCompleted = order.delivery?.status === 'COMPLETED';
                       const isTimeExpired = !canCancel && !isCancelled && !isDeliveryCompleted;
-                      
+
                       return (
-                        <div>
+                        <div className="flex flex-col">
                           <button
                             onClick={async () => {
                               if (isCancelled || isDeliveryCompleted) return;
@@ -141,14 +150,14 @@ const MyOrders = () => {
                               }
                             }}
                             disabled={isCancelled || isDeliveryCompleted || !canCancel}
-                            className={`mt-2 px-3 py-1 rounded-lg text-xs font-semibold ${
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold ${
                               isCancelled
-                                ? 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                                ? 'bg-red-100 text-red-700 cursor-not-allowed opacity-60'
                                 : isDeliveryCompleted
-                                  ? 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                                  ? 'bg-red-100 text-red-700 cursor-not-allowed opacity-60'
                                   : canCancel 
                                     ? 'bg-red-600 text-white hover:bg-red-700' 
-                                    : 'bg-red-300 text-red-700 cursor-not-allowed opacity-60'
+                                    : 'bg-red-100 text-red-700 cursor-not-allowed opacity-60'
                             }`}
                           >
                             {isCancelled ? 'Cancelled' : 'Cancel Order'}
@@ -171,8 +180,22 @@ const MyOrders = () => {
                         </div>
                       );
                     })()}
+                    {order.deliveryType === 'DELIVERY' && (
+                      <button
+                        onClick={() => navigate(`/delivery-tracking/${order._id}`)}
+                        disabled={order.status === 'CANCELLED'}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold inline-flex items-center gap-2 ${
+                          order.status === 'CANCELLED'
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                            : 'bg-black text-white hover:bg-gray-800'
+                        }`}
+                      >
+                        <Truck className="w-4 h-4" /> Track delivery
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         )}

@@ -1,80 +1,316 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import Chart from 'react-apexcharts'
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { FileDown } from "lucide-react";
+import { FileDown, TrendingUp, Package, DollarSign, XCircle } from "lucide-react";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable"; // Correct import for table
+import autoTable from "jspdf-autotable";
 import AdminSidebar from "../components/AdminSidebar";
 
+const statuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    {children}
+  </div>
+)
+
+const LineChart = ({ categories = ['Jan','Feb','Mar','Apr','May','Jun'], series = [{ name: 'Signups', data: [20,28,22,30,26,40] }], color = '#22c55e' }) => (
+  <Chart type='line' height={180} options={{
+    chart:{toolbar:{show:false}},
+    stroke:{width:3, curve:'smooth'},
+    colors:[color],
+    grid:{borderColor:'#eee'},
+    xaxis:{categories, labels:{style:{colors:'#9ca3af'}}},
+    yaxis:{labels:{style:{colors:'#9ca3af'}}},
+    legend:{show:false}
+  }} series={series} />
+)
+
+const DonutChart = ({ labels = ['Admin','Farmer','Buyer','Driver','Agronomist'], series = [5,45,40,10,5], colors = ['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444'] }) => (
+  <Chart key={Array.isArray(series) ? series.join(',') : 'static'} type='donut' height={220} options={{
+    chart:{toolbar:{show:false}},
+    labels,
+    colors,
+    legend:{show:false},
+    dataLabels:{enabled:false},
+    plotOptions:{
+      pie:{
+        donut:{
+          size:'70%',
+          labels:{
+            show:true,
+            name:{ show:false },
+            value:{ show:false },
+            total:{
+              show:true,
+              label:'Total',
+              formatter: function(w){
+                try {
+                  const totals = w?.globals?.seriesTotals || []
+                  const total = totals.reduce((a,b)=>a + Number(b||0), 0)
+                  return total.toLocaleString()
+                } catch (_) { return '' }
+              }
+            }
+          }
+        }
+      }
+    }
+  }} series={series} />
+)
+
+function capitalizeFirst(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+}
+
 const AdminOrders = () => {
+  const [query, setQuery] = useState({ search: '', status: '' })
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.get("/orders");
+      setOrders(res.data);
+    } catch (error) {
+      console.error("Failed to fetch orders:", error);
+      toast.error("Failed to load orders");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  const fetchOrders = async () => {
-  try {
-    const res = await axiosInstance.get("/orders");
-    const activeOrders = res.data.filter(order => order.status !== 'CANCELLED'); // <-- filter out cancelled
-    setOrders(activeOrders);
-  } catch (error) {
-    console.error("Failed to fetch orders:", error);
-    toast.error("Failed to load orders");
-  } finally {
-    setLoading(false);
-  }
-};
+  const filteredOrders = useMemo(() => {
+    let list = orders;
+    if (query.status) {
+      list = list.filter(o => String(o.status).toUpperCase() === query.status.toUpperCase());
+    }
+    const search = (query.search || '').trim().toLowerCase();
+    if (search) {
+      list = list.filter(o => (o.orderNumber || o._id || '').toLowerCase().includes(search));
+    }
+    return list;
+  }, [orders, query]);
 
+  const totalRevenue = useMemo(() => {
+    return filteredOrders
+      .filter(order => String(order.status).toUpperCase() !== 'CANCELLED')
+      .reduce((sum, order) => sum + (order.total || 0), 0);
+  }, [filteredOrders]);
 
-  const totalRevenue = orders.reduce((sum, order) => sum + (order.total || 0), 0);
+  const recentOrdersCount = useMemo(() => {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+    return filteredOrders.filter(o => new Date(o.createdAt).getTime() >= cutoff).length;
+  }, [filteredOrders]);
+
+  const totalOrdersCount = filteredOrders.length;
+
+  const cancelledOrdersCount = useMemo(() => {
+    return filteredOrders.filter(o => String(o.status).toUpperCase() === 'CANCELLED').length;
+  }, [filteredOrders]);
+
+  const orderGrowth = useMemo(() => {
+    const now = new Date();
+    const buckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      buckets.push({
+        key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`,
+        label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        count: 0
+      });
+    }
+    for (const o of filteredOrders) {
+      const t = new Date(o.createdAt);
+      if (!isNaN(t.getTime())) {
+        const key = `${t.getFullYear()}-${t.getMonth()}-${t.getDate()}`;
+        const bucket = buckets.find(b => b.key === key);
+        if (bucket) bucket.count += 1;
+      }
+    }
+    return {
+      categories: buckets.map(b => b.label),
+      data: buckets.map(b => b.count),
+    };
+  }, [filteredOrders]);
+
+  const revenueGrowth = useMemo(() => {
+    const now = new Date();
+    const buckets = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      buckets.push({
+        key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`,
+        label: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        sum: 0
+      });
+    }
+    for (const o of filteredOrders) {
+      if (String(o.status).toUpperCase() === 'CANCELLED') continue;
+      const t = new Date(o.createdAt);
+      if (!isNaN(t.getTime())) {
+        const key = `${t.getFullYear()}-${t.getMonth()}-${t.getDate()}`;
+        const bucket = buckets.find(b => b.key === key);
+        if (bucket) bucket.sum += o.total || 0;
+      }
+    }
+    return {
+      categories: buckets.map(b => b.label),
+      data: buckets.map(b => b.sum),
+    };
+  }, [filteredOrders]);
+
+  const statusCounts = useMemo(() => {
+    const counts = { PENDING: 0, PROCESSING: 0, SHIPPED: 0, DELIVERED: 0, CANCELLED: 0 };
+    for (const o of filteredOrders) {
+      const s = String(o.status || '').toUpperCase();
+      if (counts[s] != null) counts[s] += 1;
+    }
+    return counts;
+  }, [filteredOrders]);
+
+  const statusList = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+  const colorMap = {
+    PENDING: '#f59e0b',
+    PROCESSING: '#3b82f6',
+    SHIPPED: '#8b5cf6',
+    DELIVERED: '#22c55e',
+    CANCELLED: '#ef4444'
+  };
+
+  const getStatusColor = (status) => {
+    switch (String(status).toUpperCase()) {
+      case 'PENDING': return 'bg-amber-100 text-amber-700';
+      case 'PROCESSING': return 'bg-blue-100 text-blue-700';
+      case 'SHIPPED': return 'bg-violet-100 text-violet-700';
+      case 'DELIVERED': return 'bg-green-100 text-green-700';
+      case 'CANCELLED': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
 
   const downloadPDF = () => {
     const doc = new jsPDF();
 
-    doc.setFontSize(16);
-    doc.text("Orders Report", 14, 20);
+    // Set document properties
+    doc.setProperties({
+      title: 'Orders Report',
+      author: 'Admin',
+      creator: 'Marketplace Admin Panel'
+    });
 
-    // Table headers
-    const tableColumn = ["Order ID", "Date", "Time", "Total (LKR)"];
+    // Header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(20);
+    doc.setTextColor(33, 150, 83); // Primary green color
+    doc.text('AgroLink Orders Report', 20, 20);
+    
+    // Report Date
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, 30);
+    
+    // Summary Section
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Summary', 20, 45);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(`Total Orders: ${filteredOrders.length.toLocaleString()}`, 20, 55);
+    doc.text(`Active Orders Revenue: LKR ${totalRevenue.toFixed(2)}`, 20, 62);
+    doc.text(`Cancelled Orders: ${cancelledOrdersCount.toLocaleString()}`, 20, 69);
+    
+    // Line separator
+    doc.setDrawColor(200);
+    doc.line(20, 75, 190, 75);
 
-    // Table rows
-    const tableRows = orders.map(order => {
+    // Table styling
+    const tableColumn = ["Order ID", "Date", "Time", "Total (LKR)", "Status"];
+    const tableRows = filteredOrders.map(order => {
       const date = new Date(order.createdAt);
       return [
         order.orderNumber || order._id,
         date.toLocaleDateString(),
         date.toLocaleTimeString(),
         order.total?.toFixed(2) || "0.00",
+        capitalizeFirst(order.status)
       ];
     });
 
-    // Create table
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
-      startY: 30,
+      startY: 80,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [33, 150, 83], // Primary green
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold'
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [50, 50, 50]
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 245]
+      },
+      columnStyles: {
+        0: { cellWidth: 40 }, // Order ID
+        1: { cellWidth: 30 }, // Date
+        2: { cellWidth: 30 }, // Time
+        3: { cellWidth: 30 }, // Total
+        4: { cellWidth: 40 }  // Status
+      },
+      margin: { left: 20, right: 20 }
     });
 
-    // Grand total
-    doc.text(`Grand Total: LKR ${totalRevenue.toFixed(2)}`, 14, doc.lastAutoTable.finalY + 10);
+    // Footer with totals
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text('Order Totals', 20, finalY);
+    
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const activeTotal = filteredOrders
+      .filter(o => String(o.status).toUpperCase() !== 'CANCELLED')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    doc.text(`Active Orders Total: LKR ${activeTotal.toFixed(2)}`, 20, finalY + 10);
+    
+    const cancelledTotal = filteredOrders
+      .filter(o => String(o.status).toUpperCase() === 'CANCELLED')
+      .reduce((sum, o) => sum + (o.total || 0), 0);
+    doc.text(`Cancelled Orders Total: LKR ${cancelledTotal.toFixed(2)}`, 20, finalY + 17);
+    
+    // Page footer
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.text(`Page ${i} of ${pageCount}`, 190, 290, { align: 'right' });
+    }
 
     doc.save("orders_report.pdf");
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Loading orders...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-none mx-0 w-full px-8 py-6">
-        {/* Top bar */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-semibold ml-2">Orders Management</h1>
           <button
@@ -86,38 +322,192 @@ const AdminOrders = () => {
         </div>
 
         <div className="grid grid-cols-[240px,1fr] gap-6">
-          {/* Sidebar */}
           <AdminSidebar activePage="orders" />
 
-          {/* Main content */}
-          <div className="bg-white rounded-lg shadow-sm border p-4">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left font-medium text-gray-600">ORDER ID</th>
-                    <th className="px-6 py-3 text-left font-medium text-gray-600">DATE</th>
-                    <th className="px-6 py-3 text-left font-medium text-gray-600">TIME</th>
-                    <th className="px-6 py-3 text-left font-medium text-gray-600">TOTAL</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {orders.map((order) => (
-                    <tr key={order._id}>
-                      <td className="px-6 py-4">{order.orderNumber || order._id}</td>
-                      <td className="px-6 py-4">{new Date(order.createdAt).toLocaleDateString()}</td>
-                      <td className="px-6 py-4">{new Date(order.createdAt).toLocaleTimeString()}</td>
-                      <td className="px-6 py-4">LKR {order.total?.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-gray-50 font-semibold">
-                    <td className="px-6 py-3 text-right" colSpan="3">NET TOTAL :</td>
-                    <td className="px-6 py-3">LKR {totalRevenue.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-6">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 col-span-4">
+                <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3">
+                  <div>
+                    <div className="text-md font-medium text-gray-700">Orders</div>
+                  </div>
+                  <div className="flex justify-center">
+                    <div className="relative hidden sm:block">
+                      <input
+                        className="bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none"
+                        placeholder="Search"
+                        value={query.search || ''}
+                        onChange={e => setQuery(q => ({ ...q, search: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-end gap-3">
+                    <select
+                      className="input-field h-9 py-1 text-sm hidden sm:block rounded-full w-36"
+                      value={query.status}
+                      onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}
+                    >
+                      <option value="">All Statuses</option>
+                      {statuses.map(s => <option key={s} value={s}>{capitalizeFirst(s)}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="max-h-[240px] overflow-y-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="sticky top-0 bg-gray-100 z-10 rounded-t-lg">
+                      <tr className="text-center text-gray-500 border-b align-middle h-12">
+                        <th className="py-3 px-3 rounded-tl-lg pl-3 text-center align-middle">Order ID</th>
+                        <th className="py-3 px-3 text-center align-middle">Date</th>
+                        <th className="py-3 px-3 text-center align-middle">Time</th>
+                        <th className="py-3 px-3 text-center align-middle">Total</th>
+                        <th className="py-3 px-3 rounded-tr-xl text-center align-middle">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loading ? (
+                        <tr>
+                          <td className="py-6 text-center text-gray-500" colSpan={5}>Loading…</td>
+                        </tr>
+                      ) : filteredOrders.length === 0 ? (
+                        <tr>
+                          <td className="py-6 text-center text-gray-500" colSpan={5}>No orders</td>
+                        </tr>
+                      ) : filteredOrders.map((order) => (
+                        <tr key={order._id} className="border-t align-middle">
+                          <td className="py-2 px-3 text-center align-middle">{order.orderNumber || order._id}</td>
+                          <td className="py-2 px-3 text-center align-middle">{new Date(order.createdAt).toLocaleDateString()}</td>
+                          <td className="py-2 px-3 text-center align-middle">{new Date(order.createdAt).toLocaleTimeString()}</td>
+                          <td className="py-2 px-3 text-center align-middle">LKR {order.total?.toFixed(2)}</td>
+                          <td className="py-2 px-3 text-center align-middle">
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(order.status)}`}>
+                              {capitalizeFirst(order.status)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-6">
+              <Card className="col-span-1">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-600">New Orders</div>
+                    <div className="text-2xl font-semibold mt-1">{recentOrdersCount.toLocaleString()} <span className="text-green-600 text-xs align-middle">last 24h</span></div>
+                    <div className="mt-3">
+                      <span className="text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full">Rolling 24 hours</span>
+                    </div>
+                  </div>
+                  <div className="w-24 h-24 bg-violet-100 rounded-lg grid place-items-center">
+                    <TrendingUp className="w-12 h-12 text-violet-600" />
+                  </div>
+                </div>
+              </Card>
+              <Card className="col-span-1">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-600">Total Orders</div>
+                    <div className="text-2xl font-semibold mt-1">{totalOrdersCount.toLocaleString()} <span className="text-green-600 text-xs align-middle">total</span></div>
+                    <div className="mt-3 text-xs text-gray-600">All orders</div>
+                  </div>
+                  <div className="w-24 h-24 bg-blue-100 rounded-lg grid place-items-center">
+                    <Package className="w-12 h-12 text-blue-600" />
+                  </div>
+                </div>
+              </Card>
+              <Card className="col-span-1">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-600">Cancelled Orders</div>
+                    <div className="text-2xl font-semibold mt-1">{cancelledOrdersCount.toLocaleString()}</div>
+                    <div className="mt-3 text-xs text-gray-600">Total cancelled</div>
+                  </div>
+                  <div className="w-24 h-24 bg-red-100 rounded-lg grid place-items-center">
+                    <XCircle className="w-12 h-12 text-red-600" />
+                  </div>
+                </div>
+              </Card>
+              <Card className="col-span-1">
+                <div className="p-4 flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-gray-600">Total Revenue</div>
+                    <div className="text-2xl font-semibold mt-1">LKR {totalRevenue.toFixed(2)}</div>
+                    <div className="mt-3 text-xs text-gray-600">From active orders</div>
+                  </div>
+                  <div className="w-24 h-24 bg-green-100 rounded-lg grid place-items-center">
+                    <DollarSign className="w-12 h-12 text-green-600" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-4 gap-6">
+              <Card className="col-span-2">
+                <div className="p-4">
+                  <div className="text-sm text-gray-700 font-medium mb-2">Order Growth</div>
+                  <div className="rounded-lg border border-dashed">
+                    <LineChart categories={orderGrowth.categories} series={[{ name: 'Orders', data: orderGrowth.data }]} color="#3b82f6" />
+                  </div>
+                </div>
+              </Card>
+              <Card className="col-span-2">
+                <div className="p-4">
+                  <div className="text-sm text-gray-700 font-medium mb-2">Revenue Growth</div>
+                  <div className="rounded-lg border border-dashed">
+                    <LineChart categories={revenueGrowth.categories} series={[{ name: 'Revenue', data: revenueGrowth.data }]} color="#22c55e" />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-4 gap-6">
+              <Card className="col-span-2">
+                <div className="p-4">
+                  <div className="text-sm text-gray-700 font-medium mb-2">Status Distribution</div>
+                  <div className="grid grid-cols-[1fr,240px] gap-4">
+                    <div className="grid place-items-center">
+                      <div className="rounded-lg border border-dashed w-full max-w-[220px] relative">
+                        <DonutChart
+                          labels={statusList}
+                          series={statusList.map(s => statusCounts[s])}
+                          colors={statusList.map(s => colorMap[s])}
+                        />
+                        <div className="absolute inset-0 grid place-items-center pointer-events-none">
+                          <div className="text-center">
+                            <div className="text-xs text-gray-500">Total orders</div>
+                            <div className="text-lg font-semibold">{filteredOrders.length.toLocaleString()}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm">
+                      <div className="flex items-center gap-3 mb-3">
+                        <span className="w-9 h-9 rounded-lg bg-violet-100 grid place-items-center text-violet-600">📦</span>
+                        <div>
+                          <div className="text-xs text-gray-500">Total Orders</div>
+                          <div className="font-semibold text-base">{filteredOrders.length}</div>
+                        </div>
+                      </div>
+                      <div className="border-t border-gray-200 my-3"></div>
+                      <div className="grid grid-cols-2 gap-x-8 gap-y-4">
+                        {statusList.map((s, idx) => (
+                          <div key={idx}>
+                            <div className="flex items-center gap-2 text-gray-700">
+                              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colorMap[s] }}></span>
+                              {capitalizeFirst(s)}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-0.5">{statusCounts[s].toLocaleString()}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </div>
           </div>
         </div>
