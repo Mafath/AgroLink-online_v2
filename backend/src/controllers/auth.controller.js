@@ -226,7 +226,7 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified, availability, service_area } = req.user;
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified, availability, service_area, pendingEmail, emailChangeExpires } = req.user;
     return res.status(200).json({ 
       id: _id, 
       email, 
@@ -240,7 +240,9 @@ export const getCurrentUser = (req, res) => {
       lastLogin,
       isEmailVerified,
       availability,
-      service_area
+      service_area,
+      pendingEmail,
+      emailChangeExpires
     });
   } catch (error) {
     console.error("Error in getCurrentUser controller: ", error.message);
@@ -500,11 +502,22 @@ export const changeEmail = async (req, res) => {
     const emailChangeToken = generateVerificationToken();
     const emailChangeExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+    console.log('Generated email change token:', emailChangeToken);
+    console.log('Token expires at:', emailChangeExpires);
+
     // Store pending email change (DO NOT update actual email yet)
     user.pendingEmail = newEmail.toLowerCase().trim();
     user.emailChangeToken = emailChangeToken;
     user.emailChangeExpires = emailChangeExpires;
     await user.save();
+
+    console.log('User updated with pending email change:', {
+      userId: user._id,
+      currentEmail: user.email,
+      pendingEmail: user.pendingEmail,
+      token: user.emailChangeToken,
+      expires: user.emailChangeExpires
+    });
 
     // Send email change verification email to NEW address
     const emailResult = await sendEmailChangeVerification(
@@ -538,10 +551,29 @@ export const verifyEmailChange = async (req, res) => {
   try {
     const { token } = req.params;
 
+    console.log('Email change verification attempt with token:', token);
+    console.log('Token length:', token?.length);
+    console.log('Token type:', typeof token);
+    console.log('Token characters:', token?.split('').map(c => c.charCodeAt(0)));
+    console.log('Token encoded:', encodeURIComponent(token));
+
     if (!token) {
       return res.status(400).json({ 
         error: { code: 'VALIDATION_ERROR', message: 'Verification token is required' } 
       });
+    }
+
+    // Debug: Check all users with pending email changes
+    const allPendingUsers = await User.find({ 
+      emailChangeToken: { $exists: true, $ne: null }
+    }).select('_id email pendingEmail emailChangeToken emailChangeExpires');
+    console.log('All users with pending email changes:', allPendingUsers);
+    
+    // Debug: Check if token matches any stored token
+    const tokenMatches = allPendingUsers.filter(user => user.emailChangeToken === token);
+    console.log('Token matches found:', tokenMatches.length);
+    if (tokenMatches.length > 0) {
+      console.log('Matching user details:', tokenMatches[0]);
     }
 
     // Find user with matching email change token
@@ -550,9 +582,29 @@ export const verifyEmailChange = async (req, res) => {
       emailChangeExpires: { $gt: new Date() }
     });
 
+    console.log('User found for token:', user ? 'Yes' : 'No');
+    if (user) {
+      console.log('User details:', {
+        id: user._id,
+        email: user.email,
+        pendingEmail: user.pendingEmail,
+        tokenExpires: user.emailChangeExpires,
+        currentTime: new Date()
+      });
+    }
+
     if (!user) {
+      // Check if token exists but is expired
+      const expiredUser = await User.findOne({ emailChangeToken: token });
+      if (expiredUser) {
+        console.log('Token found but expired. Expires:', expiredUser.emailChangeExpires, 'Current:', new Date());
+        return res.status(400).json({ 
+          error: { code: 'EXPIRED_TOKEN', message: 'Verification token has expired. Please request a new email change.' } 
+        });
+      }
+      
       return res.status(400).json({ 
-        error: { code: 'INVALID_TOKEN', message: 'Invalid or expired verification token' } 
+        error: { code: 'INVALID_TOKEN', message: 'Invalid verification token' } 
       });
     }
 
@@ -582,6 +634,12 @@ export const verifyEmailChange = async (req, res) => {
     user.emailChangeToken = null;
     user.emailChangeExpires = null;
     await user.save();
+
+    console.log('Email change completed successfully:', {
+      userId: user._id,
+      oldEmail: oldEmail,
+      newEmail: user.email
+    });
 
     return res.json({ 
       message: 'Email successfully changed and verified',

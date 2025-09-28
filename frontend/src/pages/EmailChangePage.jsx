@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { axiosInstance } from '../lib/axios'
 import { Mail, MailCheck, Eye, EyeOff, ArrowLeft, CheckCircle, XCircle, ShieldCheck, HelpCircle } from 'lucide-react'
@@ -13,6 +13,26 @@ const EmailChangePage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
+  const [currentUser, setCurrentUser] = useState(null)
+  const [userLoading, setUserLoading] = useState(true)
+
+  // Fetch current user data
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await axiosInstance.get('/auth/me')
+        console.log('Current user data:', response.data) // Debug log
+        setCurrentUser(response.data)
+      } catch (error) {
+        console.error('Error fetching user data:', error)
+        toast.error('Failed to load user data')
+      } finally {
+        setUserLoading(false)
+      }
+    }
+
+    fetchCurrentUser()
+  }, [])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -27,7 +47,6 @@ const EmailChangePage = () => {
       
       toast.success('Verification email sent to your new address. Your current email remains active until verification.')
       setFormData({ newEmail: '', currentPassword: '' })
-      navigate('/profile?tab=security')
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to change email'
       setErrors({ general: message })
@@ -86,17 +105,58 @@ const EmailChangePage = () => {
               <div className='space-y-3'>
                 <div className='p-3 bg-gray-50 rounded-lg'>
                   <p className='text-sm text-gray-600 mb-1'>Email Address</p>
-                  <p className='font-medium text-gray-900'>user@example.com</p>
+                  {userLoading ? (
+                    <div className='flex items-center gap-2'>
+                      <div className='w-4 h-4 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin'></div>
+                      <span className='text-gray-500'>Loading...</span>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className='font-medium text-gray-900'>{currentUser?.email || 'Not available'}</p>
+                      {currentUser?.pendingEmail && (
+                        <div className='mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg'>
+                          <p className='text-xs text-yellow-800 font-medium'>Pending Change:</p>
+                          <p className='text-sm text-yellow-700'>{currentUser.pendingEmail}</p>
+                          <p className='text-xs text-yellow-600 mt-1'>
+                            Check your new email for verification instructions
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className='flex items-center gap-2'>
-                  <span className='inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium'>
-                    <CheckCircle className='w-4 h-4' />
-                    Verified
-                  </span>
+                  {userLoading ? (
+                    <div className='w-20 h-6 bg-gray-200 rounded-full animate-pulse'></div>
+                  ) : (
+                    <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
+                      currentUser?.isEmailVerified 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {currentUser?.isEmailVerified ? (
+                        <>
+                          <CheckCircle className='w-4 h-4' />
+                          Verified
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className='w-4 h-4' />
+                          Unverified
+                        </>
+                      )}
+                    </span>
+                  )}
                 </div>
                 <div className='text-xs text-gray-500 bg-blue-50 p-3 rounded-lg'>
                   <p className='font-medium text-blue-800 mb-1'>Security Note</p>
-                  <p>Your email is verified and secure. Changing it will require verification at the new address.</p>
+                  <p>
+                    {userLoading ? 'Loading...' : 
+                     currentUser?.isEmailVerified 
+                       ? 'Your email is verified and secure. Changing it will require verification at the new address.'
+                       : 'Your email is not yet verified. You can still change it, but verification will be required at the new address.'
+                    }
+                  </p>
                 </div>
               </div>
             </div>

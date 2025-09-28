@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { axiosInstance } from '../lib/axios'
 import { CheckCircle, XCircle, Mail, ArrowLeft, Clock } from 'lucide-react'
@@ -11,26 +11,66 @@ const EmailChangeVerificationPage = () => {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
+  const [hasAttempted, setHasAttempted] = useState(false)
+  const verificationAttempted = useRef(false)
 
   useEffect(() => {
-    if (token) {
+    console.log('EmailChangeVerificationPage mounted with token:', token)
+    console.log('Token from URL params:', token)
+    console.log('Current URL:', window.location.href)
+    console.log('Has attempted (state):', hasAttempted)
+    console.log('Has attempted (ref):', verificationAttempted.current)
+    
+    if (token && !verificationAttempted.current) {
+      console.log('Starting verification process...')
       verifyEmailChange()
-    } else {
+    } else if (!token) {
       setError('Invalid verification link')
       setLoading(false)
+    } else if (verificationAttempted.current) {
+      console.log('Verification already attempted, skipping...')
     }
   }, [token])
 
   const verifyEmailChange = async () => {
+    if (verificationAttempted.current) {
+      console.log('Verification already attempted, skipping duplicate call')
+      return
+    }
+    
+    console.log('Setting verification attempted to true to prevent duplicate calls')
+    verificationAttempted.current = true
+    setHasAttempted(true)
+    
     try {
-      const response = await axiosInstance.get(`/auth/verify-email-change/${token}`)
+      console.log('Attempting to verify email change with token:', token)
+      const apiUrl = `/auth/verify-email-change/${token}`
+      console.log('API URL being called:', apiUrl)
+      console.log('Full URL:', `${axiosInstance.defaults.baseURL}${apiUrl}`)
+      const response = await axiosInstance.get(apiUrl)
+      console.log('Verification response status:', response.status)
+      console.log('Verification response data:', response.data)
+      console.log('Verification response headers:', response.headers)
       setSuccess(true)
       setResult(response.data)
       toast.success('Email successfully changed and verified!')
     } catch (error) {
-      const message = error.response?.data?.error?.message || 'Failed to verify email change'
-      setError(message)
-      toast.error(message)
+      console.error('Email verification error:', error)
+      console.error('Error status:', error.response?.status)
+      console.error('Error response:', error.response?.data)
+      console.error('Error headers:', error.response?.headers)
+      
+      // Check if it's actually a success response being treated as error
+      if (error.response?.status === 200 && error.response?.data?.message) {
+        console.log('This appears to be a successful response being treated as error')
+        setSuccess(true)
+        setResult(error.response.data)
+        toast.success('Email successfully changed and verified!')
+      } else {
+        const message = error.response?.data?.error?.message || 'Failed to verify email change'
+        setError(message)
+        toast.error(message)
+      }
     } finally {
       setLoading(false)
     }
