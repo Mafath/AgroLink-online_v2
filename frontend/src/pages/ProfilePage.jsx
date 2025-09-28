@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft } from 'lucide-react'
+import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft, ArrowRight, Lock, Eye, EyeOff, AlertTriangle, Trash2, CheckCircle, XCircle, Clock, Monitor, Smartphone, Globe, Key, MailCheck } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
@@ -17,7 +17,7 @@ const ProfilePage = () => {
   const [bio, setBio] = useState('')
   const [touched, setTouched] = useState({ fullName: false, phone: false, address: false, bio: false })
   const [errors, setErrors] = useState({ fullName: '', phone: '', address: '', bio: '' })
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity' | 'security'
   const [isEditing, setIsEditing] = useState(false)
   const [activities, setActivities] = useState([])
   const [activitiesLoading, setActivitiesLoading] = useState(false)
@@ -290,26 +290,45 @@ const ProfilePage = () => {
 
       {/* Top Tabs Navigation */}
       <div className='mt-6 flex justify-center'>
-        <div className='flex bg-gray-100 rounded-lg p-1'>
+        <div className='flex bg-gray-100 rounded-lg p-1 shadow-sm'>
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
               activeTab === 'overview'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            Overview
+            <div className='flex items-center gap-2'>
+              <User className='w-4 h-4' />
+              Overview
+            </div>
           </button>
           <button
             onClick={() => setActiveTab('activity')}
-            className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
               activeTab === 'activity'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            Activity
+            <div className='flex items-center gap-2'>
+              <CalendarDays className='w-4 h-4' />
+              Activity
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'security'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <div className='flex items-center gap-2'>
+              <ShieldCheck className='w-4 h-4' />
+              Security
+            </div>
           </button>
         </div>
       </div>
@@ -438,6 +457,14 @@ const ProfilePage = () => {
         />
       )}
 
+      {/* Security Content */}
+      {activeTab === 'security' && (
+        <SecuritySection 
+          user={me}
+          onUserUpdate={setMe}
+        />
+      )}
+
       {/* Footer Section */}
       <div className='mt-10 flex items-center justify-between text-sm'>
         <Link to='/settings' className='flex items-center gap-1 text-primary-700'>
@@ -506,6 +533,151 @@ const formatTimeOnly = (dateString) => {
     minute: '2-digit',
     hour12: true 
   })
+}
+
+// Security Section Component
+const SecuritySection = ({ user, onUserUpdate }) => {
+  const navigate = useNavigate()
+
+  const securityOptions = [
+    {
+      id: 'email',
+      title: 'Email Management',
+      description: 'Change your email address and manage verification',
+      icon: Mail,
+      color: 'blue',
+      gradient: 'from-blue-50 to-indigo-50',
+      borderColor: 'border-blue-100',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      buttonGradient: 'from-blue-600 to-indigo-600',
+      buttonHover: 'hover:from-blue-700 hover:to-indigo-700',
+      path: '/security/email'
+    },
+    {
+      id: 'password',
+      title: 'Password Security',
+      description: 'Update your password and security settings',
+      icon: Lock,
+      color: 'green',
+      gradient: 'from-green-50 to-emerald-50',
+      borderColor: 'border-green-100',
+      iconBg: 'bg-green-100',
+      iconColor: 'text-green-600',
+      buttonGradient: 'from-green-600 to-emerald-600',
+      buttonHover: 'hover:from-green-700 hover:to-emerald-700',
+      path: '/security/password'
+    },
+    {
+      id: 'history',
+      title: 'Login History',
+      description: 'View recent login attempts and active sessions',
+      icon: Clock,
+      color: 'purple',
+      gradient: 'from-purple-50 to-violet-50',
+      borderColor: 'border-purple-100',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+      buttonGradient: 'from-purple-600 to-violet-600',
+      buttonHover: 'hover:from-purple-700 hover:to-violet-700',
+      path: '/security/history'
+    },
+    {
+      id: 'deletion',
+      title: 'Account Deletion',
+      description: 'Permanently delete your account and all data',
+      icon: AlertTriangle,
+      color: 'red',
+      gradient: 'from-red-50 to-rose-50',
+      borderColor: 'border-red-100',
+      iconBg: 'bg-red-100',
+      iconColor: 'text-red-600',
+      buttonGradient: 'from-red-600 to-rose-600',
+      buttonHover: 'hover:from-red-700 hover:to-rose-700',
+      path: '/security/deletion'
+    }
+  ]
+
+  return (
+    <div className='max-w-6xl mx-auto mt-6'>
+      {/* Security Header */}
+      <div className='text-center mb-8'>
+        <div className='inline-flex items-center gap-3 mb-4'>
+          <div className='p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl'>
+            <ShieldCheck className='w-8 h-8 text-indigo-600' />
+          </div>
+          <div>
+            <h2 className='text-2xl font-bold text-gray-900'>Security Center</h2>
+            <p className='text-gray-600'>Manage your account security and privacy settings</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Security Options Grid */}
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {securityOptions.map((option) => {
+          const IconComponent = option.icon
+          return (
+            <div
+              key={option.id}
+              className={`bg-gradient-to-br ${option.gradient} rounded-2xl p-6 border ${option.borderColor} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer group`}
+              onClick={() => navigate(option.path)}
+            >
+              <div className='flex items-start gap-4'>
+                <div className={`p-3 ${option.iconBg} rounded-xl group-hover:scale-110 transition-transform duration-300`}>
+                  <IconComponent className={`w-6 h-6 ${option.iconColor}`} />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors'>
+                    {option.title}
+                  </h3>
+                  <p className='text-sm text-gray-600 mb-4 leading-relaxed'>
+                    {option.description}
+                  </p>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 bg-white/70 rounded-lg text-sm font-medium text-gray-700 group-hover:bg-white group-hover:shadow-md transition-all duration-200`}>
+                    <span>Manage</span>
+                    <svg className='w-4 h-4 group-hover:translate-x-1 transition-transform duration-200' fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Security Tips */}
+      <div className='mt-8 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200'>
+        <div className='flex items-start gap-4'>
+          <div className='p-2 bg-blue-100 rounded-lg'>
+            <Key className='w-5 h-5 text-blue-600' />
+          </div>
+          <div>
+            <h3 className='text-lg font-semibold text-gray-900 mb-2'>Security Tips</h3>
+            <ul className='text-sm text-gray-600 space-y-2'>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Use a strong, unique password for your account
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Keep your email address up to date for security notifications
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Regularly review your login history for suspicious activity
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Log out from devices you no longer use
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Activity Section Component
