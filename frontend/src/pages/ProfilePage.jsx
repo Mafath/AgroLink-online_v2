@@ -293,151 +293,199 @@ const ProfilePage = () => {
         <div className='flex bg-gray-100 rounded-lg p-1 shadow-sm'>
           <button
             onClick={() => setActiveTab('overview')}
-            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
               activeTab === 'overview'
                 ? 'bg-white text-gray-900 shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            <div className='flex items-center gap-2'>
-              <User className='w-4 h-4' />
+            <div className='flex items-center gap-1.5'>
+              <User className='w-3.5 h-3.5' />
               Overview
             </div>
           </button>
           <button
             onClick={() => setActiveTab('activity')}
-            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
               activeTab === 'activity'
                 ? 'bg-white text-gray-900 shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            <div className='flex items-center gap-2'>
-              <CalendarDays className='w-4 h-4' />
+            <div className='flex items-center gap-1.5'>
+              <CalendarDays className='w-3.5 h-3.5' />
               Activity
             </div>
           </button>
           <button
             onClick={() => setActiveTab('security')}
-            className={`px-6 py-3 rounded-md text-sm font-medium transition-all duration-200 ${
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
               activeTab === 'security'
                 ? 'bg-white text-gray-900 shadow-md transform scale-105'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
             }`}
           >
-            <div className='flex items-center gap-2'>
-              <ShieldCheck className='w-4 h-4' />
+            <div className='flex items-center gap-1.5'>
+              <ShieldCheck className='w-3.5 h-3.5' />
               Security
             </div>
           </button>
         </div>
       </div>
 
-      {/* Profile Info Card (Overview) */}
+      {/* Profile Overview - Enhanced UI */}
       {(activeTab === 'overview') && (
-        <div className='card max-w-4xl mx-auto mt-6'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <div>
-              <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
-              <input
-                className='input-field'
-                value={fullName}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setFullName(val)
-                  if (touched.fullName) setErrors((er) => ({ ...er, fullName: validateFullName(val) }))
-                }}
-                onBlur={() => { setTouched((t) => ({ ...t, fullName: true })); setErrors((er) => ({ ...er, fullName: validateFullName(fullName) })) }}
-                disabled={!isEditing}
-              />
-              {touched.fullName && errors.fullName && (
-                <p className='mt-1 text-xs text-red-600'>{errors.fullName}</p>
-              )}
+        <div className='max-w-6xl mx-auto mt-6 space-y-6'>
+          
+
+          {/* Profile Information Grid */}
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            {/* Personal Information */}
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center gap-3 mb-6'>
+                <div className='p-2 bg-blue-100 rounded-lg'>
+                  <User className='w-5 h-5 text-blue-600' />
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>Personal Information</h3>
+              </div>
+              
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Full Name</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    value={fullName}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setFullName(val)
+                      if (touched.fullName) setErrors((er) => ({ ...er, fullName: validateFullName(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, fullName: true })); setErrors((er) => ({ ...er, fullName: validateFullName(fullName) })) }}
+                    disabled={!isEditing}
+                  />
+                  {touched.fullName && errors.fullName && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.fullName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Phone Number</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    value={phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setPhone(val)
+                      if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
+                    placeholder='0712345678'
+                    inputMode='numeric'
+                    pattern='^0\d{9}$'
+                    maxLength={10}
+                    disabled={!isEditing}
+                  />
+                  {touched.phone && errors.phone && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Email Address</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600'
+                    value={me.email}
+                    disabled
+                  />
+                  <p className='mt-1 text-xs text-gray-500'>Email cannot be changed here. Use Security tab to change email.</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className='form-label'><Phone className='inline mr-2 w-4 h-4 text-gray-400' />Phone Number</label>
-              <input
-                className='input-field'
-                value={phone}
-                onChange={(e) => {
-                  // allow only digits, limit to 10
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  setPhone(val)
-                  if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
-                }}
-                onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
-                placeholder='0712345678'
-                inputMode='numeric'
-                pattern='^0\d{9}$'
-                maxLength={10}
-                disabled={!isEditing}
-              />
-              {touched.phone && errors.phone && (
-                <p className='mt-1 text-xs text-red-600'>{errors.phone}</p>
-              )}
+
+            {/* Location & Bio */}
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center gap-3 mb-6'>
+                <div className='p-2 bg-green-100 rounded-lg'>
+                  <MapPin className='w-5 h-5 text-green-600' />
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>Location & Bio</h3>
+              </div>
+              
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Address</label>
+                  <textarea
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200'
+                    rows={3}
+                    value={address}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setAddress(val)
+                      if (touched.address) setErrors((er) => ({ ...er, address: validateAddress(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, address: true })); setErrors((er) => ({ ...er, address: validateAddress(address) })) }}
+                    placeholder='Street, City, State, ZIP'
+                    disabled={!isEditing}
+                  />
+                  {touched.address && errors.address && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.address}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Bio / About</label>
+                  <textarea
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200'
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setBio(val)
+                      if (touched.bio) setErrors((er) => ({ ...er, bio: validateBio(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, bio: true })); setErrors((er) => ({ ...er, bio: validateBio(bio) })) }}
+                    placeholder='Tell others about you...'
+                    disabled={!isEditing}
+                  />
+                  {touched.bio && errors.bio && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.bio}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <div className='mt-4'>
-            <label className='form-label'><Mail className='inline mr-2 w-4 h-4 text-gray-400' />Email</label>
-            <input className='input-field' value={me.email} disabled />
-          </div>
-          <div className='mt-4'>
-            <label className='form-label'><MapPin className='inline mr-2 w-4 h-4 text-gray-400' />Address</label>
-            <textarea
-              className='input-field'
-              rows={3}
-              value={address}
-              onChange={(e) => {
-                const val = e.target.value
-                setAddress(val)
-                if (touched.address) setErrors((er) => ({ ...er, address: validateAddress(val) }))
-              }}
-              onBlur={() => { setTouched((t) => ({ ...t, address: true })); setErrors((er) => ({ ...er, address: validateAddress(address) })) }}
-              placeholder='Street, City, State, ZIP'
-              disabled={!isEditing}
-            />
-            {touched.address && errors.address && (
-              <p className='mt-1 text-xs text-red-600'>{errors.address}</p>
-            )}
-          </div>
-          <div className='mt-4'>
-            <label className='form-label'>Bio / About</label>
-            <textarea
-              className='input-field'
-              rows={3}
-              value={bio}
-              onChange={(e) => {
-                const val = e.target.value
-                setBio(val)
-                if (touched.bio) setErrors((er) => ({ ...er, bio: validateBio(val) }))
-              }}
-              onBlur={() => { setTouched((t) => ({ ...t, bio: true })); setErrors((er) => ({ ...er, bio: validateBio(bio) })) }}
-              placeholder='Tell others about you'
-              disabled={!isEditing}
-            />
-            {touched.bio && errors.bio && (
-              <p className='mt-1 text-xs text-red-600'>{errors.bio}</p>
-            )}
-          </div>
-          {me.verified && (
-            <div className='mt-4'>
-              <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-200'>
-                <ShieldCheck className='w-3 h-3' /> Verified
-              </span>
-            </div>
-          )}
+
+          {/* Action Buttons */}
           {isEditing && (
-            <div className='mt-6 flex gap-3 justify-end'>
-              <button
-                type='button'
-                className='border px-4 py-2 rounded-lg'
-                onClick={() => { setFullName(me.fullName || ''); setPhone(me.phone || ''); setAddress(me.address || ''); setProfilePic('') }}
-              >
-                Cancel
-              </button>
-              <button disabled={saving || !isChanged || !isFormValid} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center justify-between'>
+                <div className='text-sm text-gray-600'>
+                  <p className='font-medium'>Ready to save your changes?</p>
+                  <p>Make sure all information is correct before saving.</p>
+                </div>
+                <div className='flex gap-3'>
+                  <button
+                    type='button'
+                    className='px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors'
+                    onClick={() => { 
+                      setFullName(me.fullName || ''); 
+                      setPhone(me.phone || ''); 
+                      setAddress(me.address || ''); 
+                      setBio(me.bio || '');
+                      setProfilePic('') 
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={saving || !isChanged || !isFormValid} 
+                    onClick={handleSave} 
+                    className='px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none'
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -602,9 +650,9 @@ const SecuritySection = ({ user, onUserUpdate }) => {
     <div className='max-w-6xl mx-auto mt-6'>
       {/* Security Header */}
       <div className='text-center mb-8'>
-        <div className='inline-flex items-center gap-3 mb-4'>
+        <div className='inline-flex items-center gap-3 mb-4 -ml-14'>
           <div className='p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl'>
-            <ShieldCheck className='w-8 h-8 text-indigo-600' />
+            <ShieldCheck className='w-6 h-6 text-indigo-600' />
           </div>
           <div>
             <h2 className='text-2xl font-bold text-gray-900'>Security Center</h2>
@@ -620,23 +668,23 @@ const SecuritySection = ({ user, onUserUpdate }) => {
           return (
             <div
               key={option.id}
-              className={`bg-gradient-to-br ${option.gradient} rounded-2xl p-6 border ${option.borderColor} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer group`}
+              className={`bg-gradient-to-br ${option.gradient} rounded-2xl p-6 border ${option.borderColor} shadow-lg hover:shadow-md transition-all duration-200 cursor-pointer group`}
               onClick={() => navigate(option.path)}
             >
               <div className='flex items-start gap-4'>
-                <div className={`p-3 ${option.iconBg} rounded-xl group-hover:scale-110 transition-transform duration-300`}>
+                <div className={`p-3 ${option.iconBg} rounded-xl transition-transform duration-200`}>
                   <IconComponent className={`w-6 h-6 ${option.iconColor}`} />
                 </div>
                 <div className='flex-1'>
-                  <h3 className='text-lg font-semibold text-gray-900 mb-2 group-hover:text-gray-700 transition-colors'>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-2 transition-colors duration-200'>
                     {option.title}
                   </h3>
                   <p className='text-sm text-gray-600 mb-4 leading-relaxed'>
                     {option.description}
                   </p>
-                  <div className={`inline-flex items-center gap-2 px-4 py-2 bg-white/70 rounded-lg text-sm font-medium text-gray-700 group-hover:bg-white group-hover:shadow-md transition-all duration-200`}>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 bg-white/70 rounded-lg text-sm font-medium text-gray-700 transition-all duration-200`}>
                     <span>Manage</span>
-                    <svg className='w-4 h-4 group-hover:translate-x-1 transition-transform duration-200' fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className='w-4 h-4' fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
