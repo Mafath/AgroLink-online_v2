@@ -1,6 +1,9 @@
 import { signAccessToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import Listing from "../models/listing.model.js";
+import Order from "../models/order.model.js";
+import Cart from "../models/cart.model.js";
+import Activity from "../models/activity.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
@@ -738,7 +741,15 @@ export const getLoginHistory = async (req, res) => {
 
 export const deleteAccount = async (req, res) => {
   try {
+    const { currentPassword } = req.body;
     const userId = req.user._id;
+
+    // Validate required fields
+    if (!currentPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Current password is required' } 
+      });
+    }
 
     // Find user and related data
     const user = await User.findById(userId);
@@ -748,19 +759,39 @@ export const deleteAccount = async (req, res) => {
       });
     }
 
+    // Debug: Log user data to see what's available
+    console.log('User found for deletion:', {
+      id: user._id,
+      email: user.email,
+      hasPassword: !!user.passwordHash,
+      passwordLength: user.passwordHash ? user.passwordHash.length : 0
+    });
+
+    // Check if user has a password (for users who might have signed up with OAuth)
+    if (!user.passwordHash) {
+      return res.status(400).json({ 
+        error: { code: 'NO_PASSWORD', message: 'This account does not have a password set. Please contact support.' } 
+      });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_PASSWORD', message: 'Current password is incorrect' } 
+      });
+    }
+
     // Delete user's listings
     await Listing.deleteMany({ farmer: userId });
 
     // Delete user's orders (as customer)
-    const Order = mongoose.model('Order');
     await Order.deleteMany({ customer: userId });
 
     // Delete user's cart
-    const Cart = mongoose.model('Cart');
     await Cart.deleteOne({ user: userId });
 
     // Delete user's activities
-    const Activity = mongoose.model('Activity');
     await Activity.deleteMany({ farmer: userId });
 
     // Finally, delete the user
