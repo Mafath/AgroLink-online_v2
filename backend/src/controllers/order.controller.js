@@ -5,9 +5,10 @@ import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
 import mongoose from 'mongoose';
 import { sendOrderPlacedEmail, sendOrderCancellationEmail } from '../lib/emailService.js';
+import { logItemSold, getFarmerActivities } from '../lib/activityService.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
-const updateStockQuantities = async (items, isCancellation = false) => {
+const updateStockQuantities = async (items, isCancellation = false, order = null) => {
   const multiplier = isCancellation ? 1 : -1; // Add back stock for cancellations, subtract for orders
   
   for (const item of items) {
@@ -46,6 +47,12 @@ const updateStockQuantities = async (items, isCancellation = false) => {
         
         await listing.save();
         console.log(`Updated listing ${listing.cropName}: capacity ${listing.capacityKg}kg, status ${listing.status}`);
+        
+        // Log activity for listing sales (only for orders, not cancellations)
+        // Check both itemType field and if it's a listing item by checking if listingId exists
+        if (!isCancellation && order && (item.itemType === 'listing' || item.listingId)) {
+          await logItemSold(order, listing, item.quantity);
+        }
       }
     }
   }
@@ -55,9 +62,6 @@ export const createOrder = async (req, res) => {
   try {
     const { items, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
     
-    console.log('=== ORDER CREATION DEBUG ===');
-    console.log('Request body items:', JSON.stringify(items, null, 2));
-    console.log('User:', req.user);
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Items are required' } });
@@ -80,14 +84,11 @@ export const createOrder = async (req, res) => {
     const validatedItems = [];
 
     for (const item of items) {
-      console.log('Processing item:', item);
       // Check if this is an inventory item or listing item
       if (item.inventoryId) {
-        console.log('Processing as inventory item:', item.inventoryId);
         // Handle inventory items
         const inventoryItem = await InventoryProduct.findById(item.inventoryId);
         if (!inventoryItem) {
-          console.log('Inventory item not found:', item.inventoryId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Inventory item ${item.inventoryId} not found` } });
         }
 
@@ -111,11 +112,9 @@ export const createOrder = async (req, res) => {
           image: inventoryItem.images?.[0] || '',
         });
       } else if (item.listingId) {
-        console.log('Processing as listing item:', item.listingId);
         // Handle listing items
         const listing = await Listing.findById(item.listingId);
         if (!listing) {
-          console.log('Listing not found:', item.listingId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${item.listingId} not found` } });
         }
 
@@ -165,10 +164,8 @@ export const createOrder = async (req, res) => {
     await order.save();
 
     // Update stock quantities after successful order creation
-    console.log('=== UPDATING STOCK QUANTITIES ===');
     try {
-      await updateStockQuantities(items, false); // false = not a cancellation
-      console.log('Stock quantities updated successfully');
+      await updateStockQuantities(items, false, order); // false = not a cancellation
     } catch (stockUpdateError) {
       console.error('Error updating stock quantities:', stockUpdateError);
       // Note: We don't rollback the order here as the payment was successful
@@ -268,7 +265,6 @@ export const updateOrderStatus = async (req, res) => {
 
     // If order is being cancelled, restore stock quantities
     if (status === 'CANCELLED' && previousStatus !== 'CANCELLED') {
-      console.log('=== RESTORING STOCK QUANTITIES DUE TO CANCELLATION ===');
       try {
         // Convert order items back to the format expected by updateStockQuantities
         const itemsToRestore = order.items.map(item => ({
@@ -278,7 +274,6 @@ export const updateOrderStatus = async (req, res) => {
         }));
         
         await updateStockQuantities(itemsToRestore, true); // true = cancellation
-        console.log('Stock quantities restored successfully');
       } catch (stockRestoreError) {
         console.error('Error restoring stock quantities:', stockRestoreError);
         // Log the error but don't fail the status update
@@ -296,9 +291,6 @@ export const createOrderFromCart = async (req, res) => {
   try {
     const { selectedItems, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
     
-    console.log('=== CART ORDER CREATION DEBUG ===');
-    console.log('Selected items:', JSON.stringify(selectedItems, null, 2));
-    console.log('User:', req.user);
     
     if (!selectedItems || !Array.isArray(selectedItems) || selectedItems.length === 0) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Selected items are required' } });
@@ -424,10 +416,8 @@ export const createOrderFromCart = async (req, res) => {
     await order.save();
 
     // Update stock quantities after successful order creation
-    console.log('=== UPDATING STOCK QUANTITIES ===');
     try {
-      await updateStockQuantities(itemsToRemove, false);
-      console.log('Stock quantities updated successfully');
+      await updateStockQuantities(itemsToRemove, false, order);
     } catch (stockUpdateError) {
       console.error('Error updating stock quantities:', stockUpdateError);
     }
@@ -517,7 +507,6 @@ export const cancelOrder = async (req, res) => {
         if (delivery && delivery.status !== 'COMPLETED' && delivery.status !== 'CANCELLED') {
           delivery.addStatus('CANCELLED', req.user._id);
           await delivery.save();
-          console.log(`Delivery ${delivery._id} cancelled due to order cancellation`);
         }
       } catch (deliveryError) {
         console.error('Error cancelling associated delivery:', deliveryError);
@@ -557,7 +546,7 @@ export const cancelOrder = async (req, res) => {
   }
 };
 
-// Farmer sales stats: available listings, current month revenue, last month's delivered orders
+// Farmer sales stats: available listings, last 30 days revenue, last 30 days delivered orders
 export const getFarmerStats = async (req, res) => {
   try {
     if (req.user.role !== 'FARMER') {
@@ -569,19 +558,21 @@ export const getFarmerStats = async (req, res) => {
     // Available listings count
     const availableListingsCountPromise = Listing.countDocuments({ farmer: farmerId, status: 'AVAILABLE' });
 
-    // Date ranges
+    // Date ranges - Last 30 days
     const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const nextMonthStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
 
-    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    // This month's revenue: sum(price * quantity) for items belonging to farmer's listings, within current month, delivered or paid/processing? We'll include PAID, SHIPPED, DELIVERED
-    const allowedStatuses = ['PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED'];
+    // Last 30 days revenue: sum(price * quantity) for items belonging to farmer's listings
+    // Include ALL orders except CANCELLED to capture all sales (COD, PAID, etc.)
+    const excludedStatuses = ['CANCELLED'];
 
     const monthRevenueAggPromise = Order.aggregate([
-      { $match: { createdAt: { $gte: monthStart, $lt: nextMonthStart }, status: { $in: allowedStatuses } } },
+      { 
+        $match: { 
+          createdAt: { $gte: thirtyDaysAgo },
+          status: { $nin: excludedStatuses } 
+        } 
+      },
       { $unwind: '$items' },
       { $match: { 'items.itemType': 'listing' } },
       { $lookup: { from: 'listings', localField: 'items.listing', foreignField: '_id', as: 'listingDoc' } },
@@ -590,9 +581,18 @@ export const getFarmerStats = async (req, res) => {
       { $group: { _id: null, revenue: { $sum: { $multiply: ['$items.price', '$items.quantity'] } } } },
     ]).then(rows => (rows[0]?.revenue || 0));
 
-    // Last month delivered orders count for this farmer (distinct orders containing at least one of farmer's listings)
+    // Last 30 days delivered orders count for this farmer (distinct orders containing at least one of farmer's listings)
+    // We check both createdAt and updatedAt to catch orders that were delivered recently
     const lastMonthDeliveredOrdersPromise = Order.aggregate([
-      { $match: { createdAt: { $gte: lastMonthStart, $lt: lastMonthEnd }, status: 'DELIVERED' } },
+      { 
+        $match: { 
+          $or: [
+            { createdAt: { $gte: thirtyDaysAgo } },
+            { updatedAt: { $gte: thirtyDaysAgo } }
+          ],
+          status: 'DELIVERED' 
+        } 
+      },
       { $unwind: '$items' },
       { $match: { 'items.itemType': 'listing' } },
       { $lookup: { from: 'listings', localField: 'items.listing', foreignField: '_id', as: 'listingDoc' } },
@@ -602,15 +602,61 @@ export const getFarmerStats = async (req, res) => {
       { $count: 'count' },
     ]).then(rows => (rows[0]?.count || 0));
 
-    const [availableListings, monthRevenue, lastMonthDeliveredOrders] = await Promise.all([
+    // Total sales count (all orders except cancelled)
+    const totalSalesCountPromise = Order.aggregate([
+      { 
+        $match: { 
+          createdAt: { $gte: thirtyDaysAgo },
+          status: { $nin: ['CANCELLED'] } 
+        } 
+      },
+      { $unwind: '$items' },
+      { $match: { 'items.itemType': 'listing' } },
+      { $lookup: { from: 'listings', localField: 'items.listing', foreignField: '_id', as: 'listingDoc' } },
+      { $unwind: '$listingDoc' },
+      { $match: { 'listingDoc.farmer': new mongoose.Types.ObjectId(farmerId) } },
+      { $group: { _id: '$_id' } },
+      { $count: 'count' },
+    ]).then(rows => (rows[0]?.count || 0));
+
+    const [availableListings, monthRevenue, lastMonthDeliveredOrders, totalSalesCount] = await Promise.all([
       availableListingsCountPromise,
       monthRevenueAggPromise,
       lastMonthDeliveredOrdersPromise,
+      totalSalesCountPromise,
     ]);
 
-    return res.json({ availableListings, monthRevenue, lastMonthDeliveredOrders });
+    return res.json({ 
+      availableListings, 
+      monthRevenue, 
+      lastMonthDeliveredOrders,
+      totalSalesCount,
+      dateRange: {
+        from: thirtyDaysAgo.toISOString(),
+        to: now.toISOString()
+      }
+    });
   } catch (error) {
     console.error('getFarmerStats error:', error);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch farmer stats' } });
+  }
+};
+
+// Get farmer activities
+export const getFarmerActivitiesEndpoint = async (req, res) => {
+  try {
+    if (req.user.role !== 'FARMER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only FARMER can access this endpoint' } });
+    }
+
+    const farmerId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+    
+    const activities = await getFarmerActivities(farmerId, limit);
+    
+    return res.json(activities);
+  } catch (error) {
+    console.error('getFarmerActivitiesEndpoint error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch farmer activities' } });
   }
 };

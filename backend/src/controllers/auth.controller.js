@@ -458,3 +458,198 @@ export const adminCreateUser = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
+
+// Security endpoints
+export const changeEmail = async (req, res) => {
+  try {
+    const { newEmail, currentPassword } = req.body;
+    const userId = req.user._id;
+
+    if (!newEmail || !currentPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'New email and current password are required' } 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } 
+      });
+    }
+
+    // Check if new email is already in use
+    const existingUser = await User.findOne({ email: newEmail.toLowerCase().trim() });
+    if (existingUser && existingUser._id.toString() !== userId.toString()) {
+      return res.status(409).json({ 
+        error: { code: 'EMAIL_IN_USE', message: 'Email already in use by another account' } 
+      });
+    }
+
+    // Verify current password
+    const user = await User.findById(userId);
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' } 
+      });
+    }
+
+    // Generate email verification token
+    const verificationToken = generateVerificationToken();
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Update user with new email and verification token
+    user.email = newEmail.toLowerCase().trim();
+    user.isEmailVerified = false;
+    user.emailVerificationToken = verificationToken;
+    user.emailVerificationExpires = verificationExpires;
+    await user.save();
+
+    // Send verification email to new address
+    const emailResult = await sendVerificationEmail(
+      user.email,
+      user.fullName,
+      verificationToken
+    );
+
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      return res.status(500).json({ 
+        error: { code: 'EMAIL_SEND_FAILED', message: 'Failed to send verification email' } 
+      });
+    }
+
+    return res.json({ 
+      message: 'Email change initiated. Please check your new email for verification instructions.',
+      email: user.email 
+    });
+  } catch (error) {
+    console.error('Error in changeEmail:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to change email' } 
+    });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Current password and new password are required' } 
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'New password must be at least 8 characters' } 
+      });
+    }
+
+    // Verify current password
+    const user = await User.findById(userId);
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' } 
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error in changePassword:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to change password' } 
+    });
+  }
+};
+
+export const getLoginHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+
+    // For now, return mock data. In a real implementation, you'd query a login history collection
+    const mockLoginHistory = [
+      {
+        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        deviceName: 'Chrome on Windows',
+        deviceType: 'desktop',
+        location: 'Colombo, Sri Lanka',
+        success: true
+      },
+      {
+        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+        deviceName: 'Safari on iPhone',
+        deviceType: 'mobile',
+        location: 'Kandy, Sri Lanka',
+        success: true
+      },
+      {
+        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
+        deviceName: 'Firefox on Mac',
+        deviceType: 'desktop',
+        location: 'Galle, Sri Lanka',
+        success: false
+      }
+    ];
+
+    return res.json(mockLoginHistory.slice(0, limit));
+  } catch (error) {
+    console.error('Error in getLoginHistory:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to fetch login history' } 
+    });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find user and related data
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' } 
+      });
+    }
+
+    // Delete user's listings
+    await Listing.deleteMany({ farmer: userId });
+
+    // Delete user's orders (as customer)
+    const Order = mongoose.model('Order');
+    await Order.deleteMany({ customer: userId });
+
+    // Delete user's cart
+    const Cart = mongoose.model('Cart');
+    await Cart.deleteOne({ user: userId });
+
+    // Delete user's activities
+    const Activity = mongoose.model('Activity');
+    await Activity.deleteMany({ farmer: userId });
+
+    // Finally, delete the user
+    await User.findByIdAndDelete(userId);
+
+    return res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteAccount:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to delete account' } 
+    });
+  }
+};

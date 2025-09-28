@@ -7,6 +7,9 @@ const router = express.Router()
 // List all rental items (admin view)
 router.get('/', requireAuth, requireRole('ADMIN'), listRentalItems)
 
+// List all rental items (public view for farmers)
+router.get('/public', listRentalItems)
+
 // Create rental item
 router.post('/', requireAuth, requireRole('ADMIN'), createRentalItem)
 

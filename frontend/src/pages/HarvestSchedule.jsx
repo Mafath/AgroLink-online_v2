@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../lib/axios";
+import { ArrowLeft } from "lucide-react";
 import { Calendar, MapPin, Users, Package, Clock, CheckCircle, AlertCircle, Play, Pause, RotateCcw, MessageSquare } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -79,12 +80,24 @@ const HarvestSchedule = () => {
   // Status modal functionality moved to HarvestTrack page
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Harvest Schedules</h1>
-          <p className="text-gray-600">View your harvest schedules created by agronomists. Use HarvestTrack page to update progress.</p>
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-none mx-0 w-full px-8 py-6'>
+        {/* Top bar */}
+        <div className='flex items-center justify-between mb-8'>
+          <div className='flex items-center gap-4'>
+            <button 
+              onClick={() => navigate('/harvest-dashboard')}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+            >
+              <ArrowLeft className='w-3.5 h-3.5' />
+              <span className='text-xs'>Back</span>
+            </button>
+            <div className='h-6 w-px bg-gray-300'></div>
+            <div className='text-center'>
+              <h1 className='text-4xl font-bold text-gray-900 mb-2'>🌾 My Harvest Schedules</h1>
+              <p className='text-gray-600'>View and manage your harvest schedules</p>
+            </div>
+          </div>
         </div>
 
         {/* Filters and Search */}

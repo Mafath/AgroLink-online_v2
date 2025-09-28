@@ -39,6 +39,12 @@ import CreateHarvestSchedule from './pages/CreateHarvestSchedule';
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
 
+// Security pages
+import EmailChangePage from './pages/EmailChangePage';
+import PasswordChangePage from './pages/PasswordChangePage';
+import LoginHistoryPage from './pages/LoginHistoryPage';
+import AccountDeletionPage from './pages/AccountDeletionPage';
+
 
 {/* Delete after testing */}
 import DeliveryPage from './pages/DeliveryPage';
@@ -105,6 +111,12 @@ const App = () => {
           <Route path="/harvest-track" element={authUser ? <HarvestTrack /> : <Navigate to="/login" />} />
           <Route path="/harvest-report" element={authUser ? <HarvestReport /> : <Navigate to="/login" />} />
           <Route path="/create-schedule/:harvestId" element={authUser && authUser.role === 'AGRONOMIST' ? <CreateHarvestSchedule /> : <Navigate to="/" />} />
+
+          {/* Security pages */}
+          <Route path="/security/email" element={authUser ? <EmailChangePage /> : <Navigate to="/login" />} />
+          <Route path="/security/password" element={authUser ? <PasswordChangePage /> : <Navigate to="/login" />} />
+          <Route path="/security/history" element={authUser ? <LoginHistoryPage /> : <Navigate to="/login" />} />
+          <Route path="/security/deletion" element={authUser ? <AccountDeletionPage /> : <Navigate to="/login" />} />
 
         </Routes>
       </main>

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../lib/axios";
 import { Calendar, MapPin, Users, Package, Clock, CheckCircle, AlertCircle, Play, Pause, RotateCcw, MessageSquare, Camera, FileText } from "lucide-react";
 import toast from "react-hot-toast";
+import { ArrowLeft } from "lucide-react";
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
@@ -184,12 +185,22 @@ const HarvestTrack = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Harvest Track</h1>
-          <p className="text-gray-600">Track progress and update status for your harvest schedules. Use HarvestSchedule page to view schedule details.</p>
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-none mx-0 w-full px-8 py-6'>
+        {/* Top bar */}
+        <div className='flex items-center justify-between mb-8'>
+          <button 
+            onClick={() => navigate('/harvest-dashboard')}
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+          >
+            <ArrowLeft className='w-3.5 h-3.5' />
+            <span className='text-xs'>Back</span>
+          </button>
+          <div className='text-center'>
+            <h1 className='text-4xl font-bold text-gray-900 mb-2'>📊 Track Harvest Progress</h1>
+            <p className='text-gray-600'>Monitor and update your ongoing harvest activities</p>
+          </div>
+          <div className='w-20'></div>
         </div>
 
         {/* Schedules List */}

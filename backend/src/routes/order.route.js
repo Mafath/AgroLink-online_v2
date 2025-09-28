@@ -9,6 +9,7 @@ import {
   adminListOrders,
   cancelOrder,
   getFarmerStats,
+  getFarmerActivitiesEndpoint,
 } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -21,6 +22,9 @@ router.get('/:id', requireAuth, getOrderById);
 
 // Farmer stats
 router.get('/stats/farmer', requireAuth, requireRole('FARMER'), getFarmerStats);
+
+// Farmer activities
+router.get('/activities/farmer', requireAuth, requireRole('FARMER'), getFarmerActivitiesEndpoint);
 
 // Admin routes
 router.get('/', requireAuth, requireRole('ADMIN'), adminListOrders);
