@@ -248,7 +248,7 @@ const Marketplace = () => {
             {sortedItems.map(it => (
             <div key={it._id} className='card p-4 flex flex-col text-sm min-h-[280px]'>
               {Array.isArray(it.images) && it.images.length > 0 ? (
-                <div className={`overflow-hidden rounded-lg -mt-1 -mx-1 ${isFarmer ? 'mb-2' : 'mb-1.5'}`}>
+                <div className={`overflow-hidden rounded-lg -mt-1 -mx-1 ${isFarmer ? 'mb  -2' : 'mb-1.5'}`}>
                   <img src={it.images[0]} alt={isFarmer ? it.name : it.cropName} className={`w-full ${isFarmer ? 'h-32' : 'h-36'} object-cover`} />
                 </div>
               ) : (
@@ -256,7 +256,7 @@ const Marketplace = () => {
                   No image
                 </div>
               )}
-              <div className={`${isFarmer ? 'text-sm' : 'text-xs'} font-semibold`}>{isFarmer ? it.name : it.cropName}</div>
+              <div className={`${isFarmer ? 'text-base' : 'text-sm'} font-semibold`}>{isFarmer ? it.name : it.cropName}</div>
               <div className={`mt-1 ${isFarmer ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-900`}>
                 LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}
               </div>
@@ -266,9 +266,12 @@ const Marketplace = () => {
                 </>
               ) : (
                 <>
-                  <div className='mt-1'>
+                  <div className='mt-1 flex items-center gap-2'>
                     <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-gray-100 text-gray-700 border'>
                       {it.capacityKg} kg available
+                    </span>
+                    <span className='text-[10px] text-gray-500'>
+                      by {it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Farmer')}
                     </span>
                   </div>
                   <div className={`${isFarmer ? 'mt-1' : 'mt-0.5'} text-[11px] text-gray-600 flex flex-col`}>
@@ -280,9 +283,6 @@ const Marketplace = () => {
                       d.setDate(d.getDate() + days)
                       return <span>Best before {d.toLocaleDateString()}</span>
                     })()}
-                  </div>
-                  <div className={`${isFarmer ? 'mt-1' : 'mt-0.5'} text-[11px] text-gray-500`}>
-                    by {it.farmer?.fullName || (it.farmer?.email ? it.farmer.email.split('@')[0] : 'Farmer')}
                   </div>
                 </>
               )}
