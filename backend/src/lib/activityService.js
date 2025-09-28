@@ -5,12 +5,6 @@ import Order from '../models/order.model.js';
 // Helper function to create activity entries
 export const logActivity = async (farmerId, type, title, description, listingId = null, orderId = null, metadata = {}) => {
   try {
-    console.log('=== CREATING ACTIVITY ===');
-    console.log('Farmer ID:', farmerId);
-    console.log('Type:', type);
-    console.log('Title:', title);
-    console.log('Description:', description);
-    
     const activity = new Activity({
       farmer: farmerId,
       type,
@@ -22,7 +16,6 @@ export const logActivity = async (farmerId, type, title, description, listingId 
     });
     
     await activity.save();
-    console.log(`Activity logged successfully: ${type} for farmer ${farmerId}`);
     return activity;
   } catch (error) {
     console.error('Error logging activity:', error);
@@ -47,12 +40,6 @@ export const logListingAdded = async (listing) => {
 
 // Log when an item is sold
 export const logItemSold = async (order, listing, quantitySold) => {
-  console.log('=== LOG ITEM SOLD ===');
-  console.log('Farmer ID:', listing.farmer);
-  console.log('Order ID:', order._id);
-  console.log('Listing ID:', listing._id);
-  console.log('Quantity:', quantitySold);
-  
   const title = "Item Sold";
   const description = `${quantitySold}kg of "${listing.cropName}" sold for LKR ${listing.pricePerKg * quantitySold}`;
   const metadata = {
@@ -63,9 +50,7 @@ export const logItemSold = async (order, listing, quantitySold) => {
     orderNumber: order.orderNumber,
   };
   
-  const result = await logActivity(listing.farmer, "ITEM_SOLD", title, description, listing._id, order._id, metadata);
-  console.log('Activity logged result:', result ? 'SUCCESS' : 'FAILED');
-  return result;
+  return await logActivity(listing.farmer, "ITEM_SOLD", title, description, listing._id, order._id, metadata);
 };
 
 // Log when an item expires

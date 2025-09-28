@@ -51,11 +51,6 @@ const updateStockQuantities = async (items, isCancellation = false, order = null
         // Log activity for listing sales (only for orders, not cancellations)
         // Check both itemType field and if it's a listing item by checking if listingId exists
         if (!isCancellation && order && (item.itemType === 'listing' || item.listingId)) {
-          console.log('=== LOGGING ITEM SOLD ACTIVITY ===');
-          console.log('Order:', order.orderNumber);
-          console.log('Listing:', listing.cropName);
-          console.log('Quantity:', item.quantity);
-          console.log('Farmer ID:', listing.farmer);
           await logItemSold(order, listing, item.quantity);
         }
       }
@@ -67,9 +62,6 @@ export const createOrder = async (req, res) => {
   try {
     const { items, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
     
-    console.log('=== ORDER CREATION DEBUG ===');
-    console.log('Request body items:', JSON.stringify(items, null, 2));
-    console.log('User:', req.user);
     
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Items are required' } });
@@ -92,14 +84,11 @@ export const createOrder = async (req, res) => {
     const validatedItems = [];
 
     for (const item of items) {
-      console.log('Processing item:', item);
       // Check if this is an inventory item or listing item
       if (item.inventoryId) {
-        console.log('Processing as inventory item:', item.inventoryId);
         // Handle inventory items
         const inventoryItem = await InventoryProduct.findById(item.inventoryId);
         if (!inventoryItem) {
-          console.log('Inventory item not found:', item.inventoryId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Inventory item ${item.inventoryId} not found` } });
         }
 
@@ -123,11 +112,9 @@ export const createOrder = async (req, res) => {
           image: inventoryItem.images?.[0] || '',
         });
       } else if (item.listingId) {
-        console.log('Processing as listing item:', item.listingId);
         // Handle listing items
         const listing = await Listing.findById(item.listingId);
         if (!listing) {
-          console.log('Listing not found:', item.listingId);
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Listing ${item.listingId} not found` } });
         }
 
@@ -177,10 +164,8 @@ export const createOrder = async (req, res) => {
     await order.save();
 
     // Update stock quantities after successful order creation
-    console.log('=== UPDATING STOCK QUANTITIES ===');
     try {
       await updateStockQuantities(items, false, order); // false = not a cancellation
-      console.log('Stock quantities updated successfully');
     } catch (stockUpdateError) {
       console.error('Error updating stock quantities:', stockUpdateError);
       // Note: We don't rollback the order here as the payment was successful
@@ -280,7 +265,6 @@ export const updateOrderStatus = async (req, res) => {
 
     // If order is being cancelled, restore stock quantities
     if (status === 'CANCELLED' && previousStatus !== 'CANCELLED') {
-      console.log('=== RESTORING STOCK QUANTITIES DUE TO CANCELLATION ===');
       try {
         // Convert order items back to the format expected by updateStockQuantities
         const itemsToRestore = order.items.map(item => ({
@@ -290,7 +274,6 @@ export const updateOrderStatus = async (req, res) => {
         }));
         
         await updateStockQuantities(itemsToRestore, true); // true = cancellation
-        console.log('Stock quantities restored successfully');
       } catch (stockRestoreError) {
         console.error('Error restoring stock quantities:', stockRestoreError);
         // Log the error but don't fail the status update
@@ -308,9 +291,6 @@ export const createOrderFromCart = async (req, res) => {
   try {
     const { selectedItems, deliveryType, deliveryAddress, contactName, contactPhone, contactEmail, notes, paymentMethod } = req.body;
     
-    console.log('=== CART ORDER CREATION DEBUG ===');
-    console.log('Selected items:', JSON.stringify(selectedItems, null, 2));
-    console.log('User:', req.user);
     
     if (!selectedItems || !Array.isArray(selectedItems) || selectedItems.length === 0) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Selected items are required' } });
@@ -436,10 +416,8 @@ export const createOrderFromCart = async (req, res) => {
     await order.save();
 
     // Update stock quantities after successful order creation
-    console.log('=== UPDATING STOCK QUANTITIES ===');
     try {
       await updateStockQuantities(itemsToRemove, false, order);
-      console.log('Stock quantities updated successfully');
     } catch (stockUpdateError) {
       console.error('Error updating stock quantities:', stockUpdateError);
     }
@@ -529,7 +507,6 @@ export const cancelOrder = async (req, res) => {
         if (delivery && delivery.status !== 'COMPLETED' && delivery.status !== 'CANCELLED') {
           delivery.addStatus('CANCELLED', req.user._id);
           await delivery.save();
-          console.log(`Delivery ${delivery._id} cancelled due to order cancellation`);
         }
       } catch (deliveryError) {
         console.error('Error cancelling associated delivery:', deliveryError);
@@ -649,7 +626,7 @@ export const getFarmerStats = async (req, res) => {
       totalSalesCountPromise,
     ]);
 
-    console.log('Farmer stats for', farmerId, ':', { 
+    return res.json({ 
       availableListings, 
       monthRevenue, 
       lastMonthDeliveredOrders,
@@ -658,13 +635,6 @@ export const getFarmerStats = async (req, res) => {
         from: thirtyDaysAgo.toISOString(),
         to: now.toISOString()
       }
-    });
-
-    return res.json({ 
-      availableListings, 
-      monthRevenue, 
-      lastMonthDeliveredOrders,
-      totalSalesCount
     });
   } catch (error) {
     console.error('getFarmerStats error:', error);
@@ -682,14 +652,7 @@ export const getFarmerActivitiesEndpoint = async (req, res) => {
     const farmerId = req.user._id;
     const limit = parseInt(req.query.limit) || 20;
     
-    console.log('=== FETCHING FARMER ACTIVITIES ===');
-    console.log('Farmer ID:', farmerId);
-    console.log('Limit:', limit);
-    
     const activities = await getFarmerActivities(farmerId, limit);
-    
-    console.log('Activities found:', activities.length);
-    console.log('Activities:', activities.map(a => ({ type: a.type, title: a.title, createdAt: a.createdAt })));
     
     return res.json(activities);
   } catch (error) {

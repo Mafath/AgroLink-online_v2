@@ -451,6 +451,63 @@ const ProfilePage = () => {
   )
 }
 
+// Helper functions for activity display
+const groupActivitiesByDate = (activities) => {
+  const groups = {}
+  
+  activities.forEach(activity => {
+    const date = new Date(activity.createdAt)
+    const dateKey = date.toDateString() // e.g., "Mon Dec 25 2023"
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date: date,
+        activities: []
+      }
+    }
+    
+    groups[dateKey].activities.push(activity)
+  })
+  
+  // Convert to array and sort by date (newest first)
+  return Object.values(groups).sort((a, b) => b.date - a.date)
+}
+
+const formatDateHeader = (date) => {
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  
+  const activityDate = new Date(date)
+  
+  // Reset time to compare only dates
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const yesterdayDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+  const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate())
+  
+  if (activityDateOnly.getTime() === todayDate.getTime()) {
+    return 'Today'
+  } else if (activityDateOnly.getTime() === yesterdayDate.getTime()) {
+    return 'Yesterday'
+  } else {
+    return activityDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+  }
+}
+
+const formatTimeOnly = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  })
+}
+
 // Activity Section Component
 const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRole }) => {
   if (userRole !== 'FARMER') {
@@ -488,27 +545,51 @@ const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRo
       ) : activities.length === 0 ? (
         <div className='text-center py-4 text-gray-500'>No recent activity to show</div>
       ) : (
-        <ul className='space-y-4'>
-          {activities.map((activity, index) => (
-            <li key={activity._id || index} className='flex items-start gap-3 p-3 bg-gray-50 rounded-lg'>
-              <div className={`mt-1 w-3 h-3 rounded-full ${
-                activity.type === 'LISTING_ADDED' ? 'bg-green-500' :
-                activity.type === 'ITEM_SOLD' ? 'bg-blue-500' :
-                activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
-                activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
-                activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
-                'bg-gray-500'
-              }`}></div>
-              <div className='flex-1'>
-                <div className='text-gray-800 font-medium'>{activity.title}</div>
-                <div className='text-sm text-gray-600 mt-1'>{activity.description}</div>
-                <div className='text-xs text-gray-500 mt-2'>
-                  {new Date(activity.createdAt).toLocaleString()}
-                </div>
+        <div className='space-y-6'>
+          {groupActivitiesByDate(activities).map((dayGroup, dayIndex) => (
+            <div key={dayIndex}>
+              {/* Date Header */}
+              <div className='sticky top-0 bg-white py-2 mb-3 border-b border-gray-200'>
+                <h3 className='text-sm font-semibold text-gray-700'>
+                  {formatDateHeader(dayGroup.date)}
+                </h3>
               </div>
-            </li>
+              
+              {/* Activities for this day */}
+              <div className='space-y-3'>
+                {dayGroup.activities.map((activity, index) => (
+                  <div 
+                    key={activity._id || index} 
+                    className={`flex items-start gap-3 p-4 rounded-lg ${
+                      activity.type === 'LISTING_ADDED' ? 'bg-green-50 border-l-4 border-green-400' :
+                      activity.type === 'ITEM_SOLD' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                      activity.type === 'ITEM_EXPIRED' ? 'bg-orange-50 border-l-4 border-orange-400' :
+                      activity.type === 'LISTING_UPDATED' ? 'bg-purple-50 border-l-4 border-purple-400' :
+                      activity.type === 'LISTING_REMOVED' ? 'bg-red-50 border-l-4 border-red-400' :
+                      'bg-gray-50 border-l-4 border-gray-400'
+                    }`}
+                  >
+                    <div className={`mt-1 w-3 h-3 rounded-full ${
+                      activity.type === 'LISTING_ADDED' ? 'bg-green-500' :
+                      activity.type === 'ITEM_SOLD' ? 'bg-blue-500' :
+                      activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
+                      activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
+                      activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
+                      'bg-gray-500'
+                    }`}></div>
+                    <div className='flex-1'>
+                      <div className='text-gray-800 font-medium'>{activity.title}</div>
+                      <div className='text-sm text-gray-600 mt-1'>{activity.description}</div>
+                      <div className='text-xs text-gray-500 mt-2'>
+                        {formatTimeOnly(activity.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   )
