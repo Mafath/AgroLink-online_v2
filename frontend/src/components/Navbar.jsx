@@ -72,7 +72,7 @@ const Navbar = () => {
   }, [isUserMenuOpen]);
 
   return (
-    <nav className="bg-white shadow-soft border-b border-gray-100 fixed w-full top-0 z-40">
+    <nav className="bg-white shadow-lg border-b border-gray-200 fixed w-full top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
@@ -115,7 +115,7 @@ const Navbar = () => {
                     to="/harvest-dashboard"
                     className={`${isActive('/harvest-dashboard') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
                   >
-                    Schedules
+                    Track Harvest
                   </Link>
                 )}
 

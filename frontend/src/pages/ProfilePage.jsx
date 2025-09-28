@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut } from 'lucide-react'
+import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
@@ -130,6 +130,17 @@ const ProfilePage = () => {
 
   return (
     <div className='p-4 mt-5 max-w-6xl mx-auto'>
+      {/* Back Button */}
+      <div className='flex items-center justify-start mb-6'>
+        <button 
+          onClick={() => navigate('/')}
+          className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+        >
+          <ArrowLeft className='w-3.5 h-3.5' />
+          <span className='text-xs'>Back</span>
+        </button>
+      </div>
+      
       {/* Header Section */}
       <div className='relative'>
         <div

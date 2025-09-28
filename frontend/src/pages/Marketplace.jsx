@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import toast from 'react-hot-toast'
-import { ChevronDown, X, ShoppingCart, Plus } from 'lucide-react'
+import { ChevronDown, X, ShoppingCart, Plus, ArrowLeft } from 'lucide-react'
 import { useAuthStore } from '../store/useAuthStore'
 import { addToUserCart } from '../lib/cartUtils'
+import { useNavigate } from 'react-router-dom'
 
 const Marketplace = () => {
   const { authUser } = useAuthStore()
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState(null)
@@ -178,8 +180,18 @@ const Marketplace = () => {
   };
 
   return (
-    <div className='p-4 mb-20 max-w-6xl mx-auto'>
-      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>Marketplace</h2>
+    <div className='px-28 py-4 mb-20 max-w-none mx-auto'>
+      <div className='flex items-center justify-between mb-6 mt-6'>
+        <button 
+          onClick={() => navigate('/')}
+          className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+        >
+          <ArrowLeft className='w-3.5 h-3.5' />
+          <span className='text-xs'>Back</span>
+        </button>
+        <h2 className='text-3xl md:text-4xl font-bold text-black'>Marketplace</h2>
+        <div className='w-32'></div>
+      </div>
       <div className='relative mb-6 flex items-center'>
         <div className='mx-auto max-w-md w-full'>
           <input
@@ -231,25 +243,25 @@ const Marketplace = () => {
       ) : sortedItems.length === 0 ? (
         <div className='text-gray-500 text-sm'>No matching products.</div>
       ) : (
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3'>
-          {sortedItems.map(it => (
-            <div key={it._id} className='card p-2.5 flex flex-col text-sm'>
+        <div className='border-2 border-gray-200 rounded-xl px-4 py-3 bg-white max-h-[80vh] overflow-y-auto shadow-lg'>
+          <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4'>
+            {sortedItems.map(it => (
+            <div key={it._id} className='card p-4 flex flex-col text-sm min-h-[280px]'>
               {Array.isArray(it.images) && it.images.length > 0 ? (
                 <div className={`overflow-hidden rounded-lg -mt-1 -mx-1 ${isFarmer ? 'mb-2' : 'mb-1.5'}`}>
-                  <img src={it.images[0]} alt={isFarmer ? it.name : it.cropName} className={`w-full ${isFarmer ? 'h-24' : 'h-28'} object-cover`} />
+                  <img src={it.images[0]} alt={isFarmer ? it.name : it.cropName} className={`w-full ${isFarmer ? 'h-32' : 'h-36'} object-cover`} />
                 </div>
               ) : (
-                <div className={`w-full ${isFarmer ? 'h-24' : 'h-28'} bg-gray-100 rounded-lg -mt-1 -mx-1 ${isFarmer ? 'mb-2' : 'mb-1.5'} grid place-items-center text-gray-400 text-xs`}>
+                <div className={`w-full ${isFarmer ? 'h-32' : 'h-36'} bg-gray-100 rounded-lg -mt-1 -mx-1 ${isFarmer ? 'mb-2' : 'mb-1.5'} grid place-items-center text-gray-400 text-xs`}>
                   No image
                 </div>
               )}
-              <div className={`${isFarmer ? 'text-base' : 'text-sm'} font-semibold`}>{isFarmer ? it.name : it.cropName}</div>
-              <div className={`mt-1 ${isFarmer ? 'text-sm' : 'text-xs'} font-semibold text-gray-900`}>
+              <div className={`${isFarmer ? 'text-sm' : 'text-xs'} font-semibold`}>{isFarmer ? it.name : it.cropName}</div>
+              <div className={`mt-1 ${isFarmer ? 'text-xs' : 'text-[10px]'} font-semibold text-gray-900`}>
                 LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}
               </div>
               {isFarmer ? (
                 <>
-                  <div className='text-sm text-gray-700'>Stock: {it.stockQuantity} units</div>
                   <div className='text-xs text-gray-500 mt-1'>Category: {it.category}</div>
                 </>
               ) : (
@@ -294,14 +306,15 @@ const Marketplace = () => {
                 </div>
                 <div className='flex gap-2'>
                   <button className='border flex-1 px-2.5 py-1.5 rounded-md text-xs flex items-center justify-center' onClick={() => { setSelected(it); setSelectedImageIndex(0) }}>View info</button>
-                  <button className='btn-primary flex-1 px-2.5 py-1.5 text-xs flex items-center justify-center gap-1' onClick={() => addToCart(it)}>
+                  <button className='btn-primary flex-1 px-2 py-1.5 text-[10px] flex items-center justify-center gap-0.5' onClick={() => addToCart(it)}>
                     <ShoppingCart className='w-3 h-3' />
-                    Add to cart
+                    <span className='whitespace-nowrap'>Add to cart</span>
                   </button>
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 

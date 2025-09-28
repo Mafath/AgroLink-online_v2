@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Plus, X, Edit, Trash2, Info } from 'lucide-react'
+import { Plus, X, Edit, Trash2, Info, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useNavigate } from 'react-router-dom'
 
 const MyListings = () => {
+  const navigate = useNavigate()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -114,7 +116,17 @@ const MyListings = () => {
 
   return (
     <div className='p-4 max-w-7xl mx-auto'>
-      <h2 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>My Listings</h2>
+      <div className='flex items-center justify-between mb-4 mt-6'>
+        <button 
+          onClick={() => navigate('/')}
+          className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+        >
+          <ArrowLeft className='w-3.5 h-3.5' />
+          <span className='text-xs'>Back</span>
+        </button>
+        <h2 className='text-3xl md:text-4xl font-bold text-black'>My Listings</h2>
+        <div className='w-20'></div>
+      </div>
       <div className='flex items-center justify-end mb-4'>
         <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 whitespace-nowrap'>
           <Plus className='w-4 h-4' /> Add new post

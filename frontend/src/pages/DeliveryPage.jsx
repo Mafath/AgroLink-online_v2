@@ -60,10 +60,10 @@ const DeliveryPage = () => {
         <div className="mb-6">
           <button
             onClick={() => navigate(-1)}
-            className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50"
           >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="text-xs">Back</span>
           </button>
         </div>
 

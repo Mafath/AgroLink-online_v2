@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../lib/axios";
+import { ArrowLeft } from "lucide-react";
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
@@ -87,12 +88,10 @@ const HarvestSchedule = () => {
           <div className='flex items-center gap-4'>
             <button 
               onClick={() => navigate('/harvest-dashboard')}
-              className='flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors duration-200'
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
             >
-              <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M10 19l-7-7m0 0l7-7m-7 7h18' />
-              </svg>
-              <span className='text-sm font-medium'>Back to Dashboard</span>
+              <ArrowLeft className='w-3.5 h-3.5' />
+              <span className='text-xs'>Back</span>
             </button>
             <div className='h-6 w-px bg-gray-300'></div>
             <div className='text-center'>
