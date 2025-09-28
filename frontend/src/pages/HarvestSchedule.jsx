@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { axiosInstance } from "../lib/axios";
 import { ArrowLeft } from "lucide-react";
+import { Calendar, MapPin, Users, Package, Clock, CheckCircle, AlertCircle, Play, Pause, RotateCcw, MessageSquare } from "lucide-react";
+import toast from "react-hot-toast";
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
@@ -15,70 +17,67 @@ const HarvestSchedule = () => {
   const [filter, setFilter] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [schedules, setSchedules] = useState([]);
+  // Removed status update functionality - this page is now read-only
 
   useEffect(() => {
-    const fetchSchedules = async () => {
-      setLoading(true);
-      try {
-        const { data } = await axiosInstance.get('/harvest/requests', { 
-          params: { status: 'REQUEST_PENDING,ACCEPTED,SCHEDULED,IN_PROGRESS' } 
-        });
-
-        const mapped = (data?.requests || []).map((r) => ({
-          id: r._id,
-          cropType: r.crop || r.cropType || 'Unknown',
-          expertName: r.expertName || '—',
-          expectedYield: r.expectedYield || 0,
-          harvestDate: r.harvestDate ? new Date(r.harvestDate).toISOString().slice(0,10) : 'Pending',
-          scheduledDate: r.scheduledDate ? new Date(r.scheduledDate).toISOString().slice(0,10) : '—',
-          status: r.status === 'REQUEST_PENDING' ? 'Request Pending' : 
-                 r.status === 'ACCEPTED' || r.status === 'SCHEDULED' || r.status === 'IN_PROGRESS' ? 'Ongoing' :
-                 r.status === 'COMPLETED' ? 'Completed' : 'Unknown',
-          // Additional fields from new comprehensive form
-          farmSize: r.personalizedData?.farmSize || '—',
-          variety: r.personalizedData?.variety || '—',
-          soilType: r.personalizedData?.soilType || '—',
-          harvestMethod: r.personalizedData?.harvestMethodPreference || '—',
-          storageRequirements: r.personalizedData?.storageRequirements || '—',
-          qualityStandards: r.personalizedData?.qualityStandards || '—',
-          notes: r.notes || r.personalizedData?.notes || '',
-        }));
-
-        setSchedules(mapped);
-      } catch (error) {
-        console.error('Failed to load harvest schedules:', error);
-        setSchedules([]);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchSchedules();
   }, []);
 
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case "Completed":
-        return "bg-green-100 text-green-800";
-      case "Ongoing":
-        return "bg-blue-100 text-blue-800";
-      case "Request Pending":
-        return "bg-yellow-100 text-yellow-800";
-      default:
-        return "bg-gray-100 text-gray-800";
+  const fetchSchedules = async () => {
+    setLoading(true);
+    try {
+      const { data } = await axiosInstance.get('/harvest/schedules');
+      // Filter out cancelled/abandoned harvests
+      const activeSchedules = (data.harvests || []).filter(schedule => 
+        schedule.status !== 'CANCELLED' && 
+        schedule.harvestSchedule?.scheduleStatus !== 'Cancelled'
+      );
+      setSchedules(activeSchedules);
+    } catch (error) {
+      console.error('Failed to load harvest schedules:', error);
+      toast.error('Failed to load harvest schedules');
+      setSchedules([]);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const filteredSchedules = schedules
-    .filter((s) => (filter === "All" ? true : s.status === filter))
-    .filter(
-      (s) =>
-        s.cropType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.expertName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.variety.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.soilType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.harvestMethod.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.notes.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+  // Status update functionality moved to HarvestTrack page
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Pending': return 'bg-gray-100 text-gray-700';
+      case 'In Progress': return 'bg-blue-100 text-blue-700';
+      case 'Completed': return 'bg-green-100 text-green-700';
+      case 'Delayed': return 'bg-red-100 text-red-700';
+      default: return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Pending': return <Clock className="w-4 h-4" />;
+      case 'In Progress': return <Play className="w-4 h-4" />;
+      case 'Completed': return <CheckCircle className="w-4 h-4" />;
+      case 'Delayed': return <AlertCircle className="w-4 h-4" />;
+      default: return <Clock className="w-4 h-4" />;
+    }
+  };
+
+  const filteredSchedules = schedules.filter(schedule => {
+    const matchesFilter = filter === "All" || 
+      (filter === "Ongoing" && ['Published', 'In Progress'].includes(schedule.harvestSchedule?.scheduleStatus)) ||
+      (filter === "Completed" && schedule.harvestSchedule?.scheduleStatus === 'Completed') ||
+      (filter === "Draft" && schedule.harvestSchedule?.scheduleStatus === 'Draft');
+    
+    const matchesSearch = searchTerm === "" || 
+      schedule.crop.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      schedule.farmerName.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    return matchesFilter && matchesSearch;
+  });
+
+  // Status modal functionality moved to HarvestTrack page
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -101,165 +100,181 @@ const HarvestSchedule = () => {
           </div>
         </div>
 
-        {/* Search and Filter */}
-        <div className='mb-6'>
-          <Card>
-            <div className='p-4'>
-              <div className='flex flex-col sm:flex-row gap-4 items-center justify-between'>
-                <div className='flex-1 max-w-md'>
-                  <input
-                    type='text'
-                    placeholder='Search by crop, variety, soil type, method, or notes...'
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className='input-field w-full'
-                  />
-                </div>
-                <div className='flex gap-2'>
-                  {["All", "Ongoing", "Completed", "Request Pending"].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => setFilter(status)}
-                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        filter === status
-                          ? 'bg-green-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Card>
+        {/* Filters and Search */}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex gap-2">
+            {["All", "Ongoing", "Completed", "Draft"].map((filterOption) => (
+              <button
+                key={filterOption}
+                onClick={() => setFilter(filterOption)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  filter === filterOption
+                    ? "bg-blue-500 text-white"
+                    : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                }`}
+              >
+                {filterOption}
+              </button>
+            ))}
+          </div>
+          
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search by crop or farmer name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <svg className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
         </div>
 
-        {/* Schedule Cards */}
+        {/* Schedules List */}
         {loading ? (
-          <div className='text-center py-12'>
-            <div className='inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-600'></div>
-            <p className='text-gray-500 mt-2'>Loading schedules...</p>
+          <div className="flex justify-center items-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
           </div>
         ) : filteredSchedules.length === 0 ? (
-          <Card>
-            <div className='p-12 text-center'>
-              <div className='w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4'>
-                <svg className='w-8 h-8 text-gray-400' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' />
-                </svg>
-              </div>
-              <h3 className='text-lg font-semibold text-gray-900 mb-2'>No schedules found</h3>
-              <p className='text-gray-500 mb-4'>
-                {filter === "All" 
-                  ? "You haven't created any harvest schedules yet." 
-                  : `No schedules found for "${filter}".`
-                }
-              </p>
-              <button
-                onClick={() => navigate('/harvest-request')}
-                className='btn-primary px-6 py-2 rounded-md text-sm font-medium'
-              >
-                Create New Schedule
-              </button>
-            </div>
+          <Card className="p-8 text-center">
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No harvest schedules found</h3>
+            <p className="text-gray-600">No harvest schedules match your current filters.</p>
           </Card>
         ) : (
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+          <div className="grid gap-6">
             {filteredSchedules.map((schedule) => (
-              <Card key={schedule.id} className='p-6 hover:shadow-lg transition-shadow'>
-                <div className='flex justify-between items-start mb-4'>
-                  <h3 className='text-xl font-semibold text-gray-900'>{schedule.cropType}</h3>
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(schedule.status)}`}>
-                    {schedule.status}
-                  </span>
+              <Card key={schedule._id} className="p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <h3 className="text-xl font-semibold text-gray-900 mb-1">
+                      {schedule.crop} - {schedule.harvestSchedule?.cropVariety || 'Standard'}
+                    </h3>
+                    <p className="text-gray-600">Farmer: {schedule.farmerName}</p>
+                    <p className="text-gray-600">Agronomist: {schedule.expertName}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                      schedule.harvestSchedule?.scheduleStatus === 'Published' ? 'bg-blue-100 text-blue-700' :
+                      schedule.harvestSchedule?.scheduleStatus === 'In Progress' ? 'bg-green-100 text-green-700' :
+                      schedule.harvestSchedule?.scheduleStatus === 'Completed' ? 'bg-gray-100 text-gray-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {schedule.harvestSchedule?.scheduleStatus === 'Published' ? 'Ongoing' :
+                       schedule.harvestSchedule?.scheduleStatus || 'Draft'}
+                    </span>
+                  </div>
                 </div>
 
-                <div className='space-y-3 mb-6'>
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-500'>Expert:</span>
-                    <span className='font-medium text-gray-900'>{schedule.expertName}</span>
-                  </div>
-                  
-                  {/* Basic Information */}
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-500'>Farm Size:</span>
-                    <span className='font-medium text-gray-900'>{schedule.farmSize}</span>
-                  </div>
-                  
-                  {schedule.variety !== '—' && (
-                    <div className='flex justify-between text-sm'>
-                      <span className='text-gray-500'>Variety:</span>
-                      <span className='font-medium text-gray-900'>{schedule.variety}</span>
+                {/* Schedule Details */}
+                {schedule.harvestSchedule && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <MapPin className="w-4 h-4" />
+                      <span>{schedule.harvestSchedule.farmLocation?.address || 'Location not specified'}</span>
                     </div>
-                  )}
-                  
-                  <div className='flex justify-between text-sm'>
-                    <span className='text-gray-500'>Harvest Date:</span>
-                    <span className='font-medium text-gray-900'>{schedule.harvestDate}</span>
-                  </div>
-                  
-                  {schedule.status === "Ongoing" && schedule.scheduledDate && (
-                    <div className='flex justify-between text-sm'>
-                      <span className='text-gray-500'>Scheduled Date:</span>
-                      <span className='font-medium text-gray-900'>{schedule.scheduledDate}</span>
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Calendar className="w-4 h-4" />
+                      <span>Harvest: {schedule.harvestSchedule.expectedHarvestDate ? 
+                        new Date(schedule.harvestSchedule.expectedHarvestDate).toLocaleDateString() : 'TBD'}</span>
                     </div>
-                  )}
-                  
-                  {/* Additional Details (collapsible) */}
-                  <div className='border-t border-gray-200 pt-3 mt-3'>
-                    <div className='text-xs text-gray-500 mb-2'>Additional Details:</div>
-                    <div className='grid grid-cols-1 gap-2 text-xs'>
-                      {schedule.soilType !== '—' && (
-                        <div className='flex justify-between'>
-                          <span className='text-gray-500'>Soil:</span>
-                          <span className='text-gray-700'>{schedule.soilType}</span>
-                        </div>
-                      )}
-                      {schedule.harvestMethod !== '—' && (
-                        <div className='flex justify-between'>
-                          <span className='text-gray-500'>Method:</span>
-                          <span className='text-gray-700'>{schedule.harvestMethod}</span>
-                        </div>
-                      )}
-                      {schedule.storageRequirements !== '—' && (
-                        <div className='flex justify-between'>
-                          <span className='text-gray-500'>Storage:</span>
-                          <span className='text-gray-700'>{schedule.storageRequirements}</span>
-                        </div>
-                      )}
-                      {schedule.qualityStandards !== '—' && (
-                        <div className='flex justify-between'>
-                          <span className='text-gray-500'>Quality:</span>
-                          <span className='text-gray-700'>{schedule.qualityStandards}</span>
-                        </div>
-                      )}
+                    <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <Package className="w-4 h-4" />
+                      <span>Yield: {schedule.harvestSchedule.expectedYield?.quantity || 0} {schedule.harvestSchedule.expectedYield?.unit || 'kg'}</span>
                     </div>
                   </div>
-                  
-                  {/* Notes */}
-                  {schedule.notes && (
-                    <div className='border-t border-gray-200 pt-3 mt-3'>
-                      <div className='text-xs text-gray-500 mb-1'>Notes:</div>
-                      <p className='text-xs text-gray-600 bg-gray-50 p-2 rounded'>
-                        {schedule.notes.length > 100 ? `${schedule.notes.substring(0, 100)}...` : schedule.notes}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                )}
 
-                {schedule.status === "Ongoing" && (
+                {/* Timeline */}
+                {schedule.harvestSchedule?.timeline && schedule.harvestSchedule.timeline.length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900 mb-3">Harvest Timeline</h4>
+                    <div className="space-y-3">
+                      {schedule.harvestSchedule.timeline.map((phase, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h5 className="font-medium text-gray-900">{phase.phase}</h5>
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(phase.status)}`}>
+                                {getStatusIcon(phase.status)}
+                                {phase.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mb-1">
+                              Activities: {phase.activities?.join(', ') || 'No activities specified'}
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Duration: {phase.duration} day{phase.duration !== 1 ? 's' : ''}
+                              {phase.startDate && ` • Start: ${new Date(phase.startDate).toLocaleDateString()}`}
+                              {phase.completedAt && ` • Completed: ${new Date(phase.completedAt).toLocaleDateString()}`}
+                            </p>
+                            {phase.notes && (
+                              <p className="text-sm text-gray-500 mt-1 italic">Notes: {phase.notes}</p>
+                            )}
+                          </div>
+                          <div className="ml-4">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(phase.status)}`}>
+                              {getStatusIcon(phase.status)}
+                              {phase.status}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quality Standards */}
+                {schedule.harvestSchedule?.qualityStandards && (
+                  <div className="mt-4">
+                    <h4 className="text-lg font-semibold text-gray-900 mb-2">Quality Standards</h4>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      {schedule.harvestSchedule.qualityStandards.size && (
+                        <div>
+                          <span className="font-medium text-gray-700">Size:</span>
+                          <p className="text-gray-600">{schedule.harvestSchedule.qualityStandards.size}</p>
+                        </div>
+                      )}
+                      {schedule.harvestSchedule.qualityStandards.color && (
+                        <div>
+                          <span className="font-medium text-gray-700">Color:</span>
+                          <p className="text-gray-600">{schedule.harvestSchedule.qualityStandards.color}</p>
+                        </div>
+                      )}
+                      {schedule.harvestSchedule.qualityStandards.ripeness && (
+                        <div>
+                          <span className="font-medium text-gray-700">Ripeness:</span>
+                          <p className="text-gray-600">{schedule.harvestSchedule.qualityStandards.ripeness}</p>
+                        </div>
+                      )}
+                      {schedule.harvestSchedule.qualityStandards.packaging && (
+                        <div>
+                          <span className="font-medium text-gray-700">Packaging:</span>
+                          <p className="text-gray-600">{schedule.harvestSchedule.qualityStandards.packaging}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Action Button */}
+                <div className="mt-6 flex justify-center">
                   <button
-                    onClick={() => navigate("/harvest-track")}
-                    className='w-full btn-primary py-2 px-4 rounded-md text-sm font-medium'
+                    onClick={() => navigate('/harvest-track')}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                   >
+                    <MessageSquare className="w-4 h-4" />
                     Track Progress
                   </button>
-                )}
+                </div>
               </Card>
             ))}
           </div>
         )}
+
+        {/* Status update functionality moved to HarvestTrack page */}
       </div>
     </div>
   );

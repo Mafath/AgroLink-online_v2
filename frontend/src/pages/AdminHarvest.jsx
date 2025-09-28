@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Info, Calendar, User, ClipboardList, CheckCircle, Pencil, Trash2, Users, Plus, Eye, EyeOff, UserCheck } from 'lucide-react'
+import { Info, Calendar, User, ClipboardList, CheckCircle, Pencil, Trash2, Users, Plus, Eye, EyeOff, UserCheck, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
@@ -20,27 +20,76 @@ const AdminHarvest = () => {
   const [showRequestInfo, setShowRequestInfo] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [availableAgronomists, setAvailableAgronomists] = useState([])
-  const [assignForm, setAssignForm] = useState({ expertId: '', expertName: '', adminAdvice: '', scheduledDate: '' })
+  const [assignForm, setAssignForm] = useState({ expertId: '', expertName: '', adminAdvice: '' })
+  const [rejectionNotification, setRejectionNotification] = useState(null)
 
   const fetchPending = async () => {
     setLoading(true) 
     try {
       const { data } = await axiosInstance.get('/harvest/admin/requests')
-      setRequests(data?.requests || [])
+      const requests = data?.requests || []
+      
+      
+      setRequests(requests)
+      
+      // Check for recent rejections to show notifications
+      checkForRejections(requests)
     } catch (e) {
       toast.error('Failed to load pending harvest requests')
       setRequests([])
     } finally { setLoading(false) }
   }
 
+  const checkForRejections = (requests) => {
+    // Clear any existing notification first
+    setRejectionNotification(null)
+    
+    // Look through all requests
+    for (const request of requests) {
+      // Only check REQUEST_PENDING requests
+      if (request.status !== 'REQUEST_PENDING') {
+        continue
+      }
+      
+      // Look through all tracking entries
+      if (request.tracking && request.tracking.length > 0) {
+        for (const track of request.tracking) {
+          // Check if this is a rejection
+          if (track.progress && track.progress.includes('rejected')) {
+            // Check if it's recent (within last 5 minutes)
+            const now = new Date()
+            const trackTime = new Date(track.updatedAt)
+            const timeDiff = now - trackTime
+            const isRecent = timeDiff < (5 * 60 * 1000) // 5 minutes in milliseconds
+            
+            if (isRecent) {
+              const notificationData = {
+                requestId: request._id,
+                farmerName: request.farmerName,
+                crop: request.crop,
+                reason: track.notes || 'No reason provided',
+                agronomistName: track.agronomistName || 'Unknown agronomist',
+                isOldData: !track.agronomistName || !track.notes
+              }
+              
+              setRejectionNotification(notificationData)
+              return // Exit after finding the first recent rejection
+            }
+          }
+        }
+      }
+    }
+  }
+
   const fetchAvailableAgronomists = async () => {
     try {
-      const { data } = await axiosInstance.get('/auth/admin/users', {
-        params: { role: 'AGRONOMIST', availability: 'AVAILABLE', status: 'ACTIVE' }
+      const { data } = await axiosInstance.get('/harvest/admin/agronomists', {
+        params: { onlyAvailable: true }
       })
-      setAvailableAgronomists(data?.data || [])
+      setAvailableAgronomists(data?.agronomists || [])
     } catch (e) {
       console.error('Failed to fetch agronomists:', e)
+      toast.error('Failed to load available agronomists')
       setAvailableAgronomists([])
     }
   }
@@ -55,13 +104,12 @@ const AdminHarvest = () => {
       await axiosInstance.post(`/harvest/${selected._id}/admin/schedule`, {
         expertId: assignForm.expertId,
         expertName: assignForm.expertName,
-        adminAdvice: assignForm.adminAdvice,
-        scheduledDate: assignForm.scheduledDate || selected.harvestDate
+        adminAdvice: assignForm.adminAdvice
       })
       
       toast.success('Agronomist assigned successfully!')
       setShowAssignModal(false)
-      setAssignForm({ expertId: '', expertName: '', adminAdvice: '', scheduledDate: '' })
+      setAssignForm({ expertId: '', expertName: '', adminAdvice: '' })
       fetchPending()
     } catch (error) {
       console.error('Failed to assign agronomist:', error)
@@ -75,14 +123,15 @@ const AdminHarvest = () => {
     setAssignForm({
       expertId: '',
       expertName: '',
-      adminAdvice: '',
-      scheduledDate: request.harvestDate || ''
+      adminAdvice: ''
     })
     setShowAssignModal(true)
-    fetchAvailableAgronomists()
+    fetchAvailableAgronomists() // Fetch agronomists when modal opens
   }
 
-  useEffect(() => { fetchPending() }, [])
+  useEffect(() => { 
+    fetchPending() 
+  }, [])
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -160,6 +209,44 @@ const AdminHarvest = () => {
           </div>
           <div />
         </div>
+
+        {/* Rejection Notification */}
+        {rejectionNotification && (
+          <div className='mb-6 p-4 bg-red-50 border border-red-200 rounded-lg'>
+            <div className='flex items-start justify-between'>
+              <div className='flex items-start gap-3'>
+                <div className='p-2 bg-red-100 rounded-full'>
+                  <AlertCircle className='w-5 h-5 text-red-600' />
+                </div>
+                <div>
+                  <h3 className='text-sm font-semibold text-red-800'>Assignment Rejected</h3>
+                  <p className='text-sm text-red-700 mt-1'>
+                    <strong>{rejectionNotification.agronomistName}</strong> rejected the assignment for{' '}
+                    <strong>{rejectionNotification.farmerName}</strong>'s {rejectionNotification.crop} harvest.
+                  </p>
+                  {rejectionNotification.reason && rejectionNotification.reason !== 'No reason provided' && (
+                    <p className='text-sm text-red-600 mt-2'>
+                      <strong>Reason:</strong> {rejectionNotification.reason}
+                    </p>
+                  )}
+                  {rejectionNotification.isOldData && (
+                    <p className='text-xs text-orange-600 mt-2'>
+                      <strong>Note:</strong> This is old rejection data. New rejections will show agronomist name and reason.
+                    </p>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setRejectionNotification(null)}
+                className='text-red-400 hover:text-red-600'
+              >
+                <svg className='w-5 h-5' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
+                  <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M6 18L18 6M6 6l12 12' />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
           {/* Sidebar */}
@@ -308,6 +395,18 @@ const AdminHarvest = () => {
                             <button className='icon-btn bg-blue-100 text-blue-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => openAssignModal(r)} title='Assign Agronomist'>
                               <UserCheck className='w-3 h-3' />
                               <span className='text-xs'>Assign</span>
+                            </button>
+                          )}
+                          {r.status === 'ASSIGNED' && (
+                            <button className='icon-btn bg-yellow-100 text-yellow-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' disabled title='Assignment Pending'>
+                              <UserCheck className='w-3 h-3' />
+                              <span className='text-xs'>Assign Pending</span>
+                            </button>
+                          )}
+                          {r.status === 'ACCEPTED' && (
+                            <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' disabled title='Assignment Accepted'>
+                              <CheckCircle className='w-3 h-3' />
+                              <span className='text-xs'>Accepted</span>
                             </button>
                           )}
                         </td>
@@ -479,15 +578,16 @@ const AdminHarvest = () => {
                       {/* Y-axis */}
                       <div className='flex flex-col justify-between h-64 pr-2'>
                         {(() => {
-                          const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                          const values = Object.values(stats.monthlyStats)
+                          const maxCount = values.length > 0 ? Math.max(...values) : 0
                           const ticks = []
                           const numTicks = 5
                           for (let i = 0; i <= numTicks; i++) {
-                            const value = Math.round((maxCount / numTicks) * i)
+                            const value = maxCount > 0 ? Math.round((maxCount / numTicks) * i) : 0
                             ticks.push(value)
                           }
                           return ticks.reverse().map((tick, index) => (
-                            <div key={tick} className='flex items-center justify-end h-0'>
+                            <div key={`y-tick-${index}`} className='flex items-center justify-end h-0'>
                               <div className='text-xs text-gray-500 font-medium'>{tick}</div>
                               <div className='w-2 h-px bg-gray-300 ml-1'></div>
                             </div>
@@ -499,16 +599,17 @@ const AdminHarvest = () => {
                       <div className='flex-1 px-4 border-b border-gray-200 relative h-64'>
                         {/* Y-axis grid lines */}
                         {(() => {
-                          const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                          const values = Object.values(stats.monthlyStats)
+                          const maxCount = values.length > 0 ? Math.max(...values) : 0
                           const numTicks = 5
                           const ticks = []
                           for (let i = 0; i <= numTicks; i++) {
-                            const value = Math.round((maxCount / numTicks) * i)
+                            const value = maxCount > 0 ? Math.round((maxCount / numTicks) * i) : 0
                             ticks.push(value)
                           }
                           return ticks.map((tick, index) => (
-                            <div 
-                              key={tick}
+                            <div
+                              key={`grid-line-${index}`}
                               className='absolute w-full h-px bg-gray-100'
                               style={{ bottom: `${(index / numTicks) * 100}%` }}
                             ></div>
@@ -521,9 +622,11 @@ const AdminHarvest = () => {
                           <path
                             d={(() => {
                               const entries = Object.entries(stats.monthlyStats)
-                              const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                              const values = Object.values(stats.monthlyStats)
+                              const maxCount = values.length > 0 ? Math.max(...values) : 0
+                              if (entries.length === 0 || maxCount === 0) return 'M 0,100'
                               const points = entries.map(([month, count], index) => {
-                                const x = (index / (entries.length - 1)) * 100
+                                const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                                 const y = 100 - (count / maxCount) * 100
                                 return `${x},${y}`
                               }).join(' L ')
@@ -539,9 +642,11 @@ const AdminHarvest = () => {
                           <path
                             d={(() => {
                               const entries = Object.entries(stats.monthlyStats)
-                              const maxCount = Math.max(...Object.values(stats.monthlyStats))
+                              const values = Object.values(stats.monthlyStats)
+                              const maxCount = values.length > 0 ? Math.max(...values) : 0
+                              if (entries.length === 0 || maxCount === 0) return 'M 0,100 L 100,100 Z'
                               const points = entries.map(([month, count], index) => {
-                                const x = (index / (entries.length - 1)) * 100
+                                const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                                 const y = 100 - (count / maxCount) * 100
                                 return `${x},${y}`
                               }).join(' L ')
@@ -561,8 +666,11 @@ const AdminHarvest = () => {
                           
                           {/* Data points */}
                           {Object.entries(stats.monthlyStats).map(([month, count], index) => {
-                            const maxCount = Math.max(...Object.values(stats.monthlyStats))
-                            const x = (index / (Object.entries(stats.monthlyStats).length - 1)) * 100
+                            const values = Object.values(stats.monthlyStats)
+                            const maxCount = values.length > 0 ? Math.max(...values) : 0
+                            if (maxCount === 0) return null
+                            const entries = Object.entries(stats.monthlyStats)
+                            const x = entries.length > 1 ? (index / (entries.length - 1)) * 100 : 50
                             const y = 100 - (count / maxCount) * 100
                             return (
                               <g key={month}>
@@ -607,7 +715,7 @@ const AdminHarvest = () => {
                       </div>
                       <div className='text-right'>
                         <div>Total: {stats.total} requests</div>
-                        <div>Peak: {Math.max(...Object.values(stats.monthlyStats))} requests</div>
+                        <div>Peak: {Object.values(stats.monthlyStats).length > 0 ? Math.max(...Object.values(stats.monthlyStats)) : 0} requests</div>
                       </div>
                     </div>
                   </>
@@ -957,16 +1065,6 @@ const AdminHarvest = () => {
                 />
               </div>
 
-              <div>
-                <label className='block text-sm font-medium text-gray-700 mb-2'>Scheduled Date</label>
-                <input
-                  type='date'
-                  className='w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500'
-                  value={assignForm.scheduledDate}
-                  onChange={(e) => setAssignForm({ ...assignForm, scheduledDate: e.target.value })}
-                />
-                <p className='text-xs text-gray-500 mt-1'>Leave empty to use the farmer's preferred harvest date</p>
-              </div>
             </div>
 
             {/* Action Buttons */}
