@@ -19,8 +19,69 @@ const ProfilePage = () => {
   const [errors, setErrors] = useState({ fullName: '', phone: '', address: '', bio: '' })
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity'
   const [isEditing, setIsEditing] = useState(false)
+  const [activities, setActivities] = useState([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+  const [lastActivityCheck, setLastActivityCheck] = useState(null)
   const navigate = useNavigate()
   const { logout, checkAuth } = useAuthStore()
+
+  const loadActivities = async (showLoading = true) => {
+    if (me?.role !== 'FARMER') return
+    
+    if (showLoading) setActivitiesLoading(true)
+    try {
+      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
+      setActivities(res.data)
+      setLastActivityCheck(new Date())
+    } catch (error) {
+      console.error('Error loading activities:', error)
+      setActivities([])
+    } finally {
+      if (showLoading) setActivitiesLoading(false)
+    }
+  }
+
+  const checkForNewActivities = async () => {
+    if (me?.role !== 'FARMER' || !lastActivityCheck) return
+    
+    try {
+      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
+      const newActivities = res.data
+      
+      // Check if there are new activities by comparing the first activity's timestamp
+      if (newActivities.length > 0 && activities.length > 0) {
+        const latestActivity = newActivities[0]
+        const currentLatest = activities[0]
+        
+        if (latestActivity._id !== currentLatest._id) {
+          // New activities found, update the list
+          setActivities(newActivities)
+          setLastActivityCheck(new Date())
+        }
+      } else if (newActivities.length > 0 && activities.length === 0) {
+        // First load
+        setActivities(newActivities)
+        setLastActivityCheck(new Date())
+      }
+    } catch (error) {
+      console.error('Error checking for new activities:', error)
+    }
+  }
+
+  // Function to refresh activities immediately (can be called from other components)
+  const refreshActivities = () => {
+    if (me?.role === 'FARMER') {
+      loadActivities(false) // Don't show loading spinner for background refresh
+    }
+  }
+
+  // Expose refresh function globally for other components to use
+  React.useEffect(() => {
+    window.refreshFarmerActivities = refreshActivities
+    return () => {
+      delete window.refreshFarmerActivities
+    }
+  }, [me?.role])
 
   useEffect(() => {
     const load = async () => {
@@ -37,6 +98,31 @@ const ProfilePage = () => {
     }
     load()
   }, [])
+
+  useEffect(() => {
+    if (me?.role === 'FARMER') {
+      loadActivities()
+    }
+  }, [me?.role])
+
+  // Load activities when switching to activity tab
+  useEffect(() => {
+    if (activeTab === 'activity' && me?.role === 'FARMER' && activities.length === 0) {
+      loadActivities()
+    }
+  }, [activeTab, me?.role])
+
+  // Poll for new activities when on activity tab
+  useEffect(() => {
+    if (activeTab === 'activity' && me?.role === 'FARMER') {
+      // Check for new activities every 30 seconds
+      const interval = setInterval(() => {
+        checkForNewActivities()
+      }, 30000) // 30 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [activeTab, me?.role, lastActivityCheck])
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
@@ -344,18 +430,12 @@ const ProfilePage = () => {
 
       {/* Activity Content */}
       {activeTab === 'activity' && (
-        <div className='mt-6 card'>
-          <div className='font-medium mb-3'>Recent Activity</div>
-          <ul className='space-y-3 text-sm'>
-            <li className='flex items-start gap-3'>
-              <span className='mt-1 w-2 h-2 rounded-full bg-primary-500'></span>
-              <div>
-                <div className='text-gray-800'>No recent activity to show</div>
-                <div className='text-xs text-gray-500'>Your latest actions will appear here.</div>
-              </div>
-            </li>
-          </ul>
-        </div>
+        <ActivitySection 
+          activities={activities}
+          activitiesLoading={activitiesLoading}
+          loadActivities={loadActivities}
+          userRole={me?.role}
+        />
       )}
 
       {/* Footer Section */}
@@ -371,6 +451,69 @@ const ProfilePage = () => {
   )
 }
 
+// Activity Section Component
+const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRole }) => {
+  if (userRole !== 'FARMER') {
+    return (
+      <div className='mt-6 card'>
+        <div className='font-medium mb-3'>Recent Activity</div>
+        <div className='text-center py-4 text-gray-500'>Activity tracking is only available for farmers.</div>
+      </div>
+    )
+  }
+
+  return (
+    <div className='mt-6 card'>
+      <div className='flex items-center justify-between mb-4'>
+        <div className='flex items-center gap-2'>
+          <div className='font-medium'>Recent Activity</div>
+          <div className='text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full'>
+            Auto-refreshes every 30s
+          </div>
+        </div>
+        <button 
+          onClick={() => loadActivities(true)}
+          disabled={activitiesLoading}
+          className='flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 disabled:opacity-50'
+        >
+          <svg className={`w-4 h-4 ${activitiesLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {activitiesLoading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      
+      {activitiesLoading ? (
+        <div className='text-center py-4 text-gray-500'>Loading activities...</div>
+      ) : activities.length === 0 ? (
+        <div className='text-center py-4 text-gray-500'>No recent activity to show</div>
+      ) : (
+        <ul className='space-y-4'>
+          {activities.map((activity, index) => (
+            <li key={activity._id || index} className='flex items-start gap-3 p-3 bg-gray-50 rounded-lg'>
+              <div className={`mt-1 w-3 h-3 rounded-full ${
+                activity.type === 'LISTING_ADDED' ? 'bg-green-500' :
+                activity.type === 'ITEM_SOLD' ? 'bg-blue-500' :
+                activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
+                activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
+                activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
+                'bg-gray-500'
+              }`}></div>
+              <div className='flex-1'>
+                <div className='text-gray-800 font-medium'>{activity.title}</div>
+                <div className='text-sm text-gray-600 mt-1'>{activity.description}</div>
+                <div className='text-xs text-gray-500 mt-2'>
+                  {new Date(activity.createdAt).toLocaleString()}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default ProfilePage
 
 // Inline Stats component to show real counts
@@ -379,53 +522,78 @@ const StatsSection = ({ me }) => {
   const [listingsCount, setListingsCount] = React.useState(null)
   const [farmerMonthRevenue, setFarmerMonthRevenue] = React.useState(null)
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
-  React.useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
-        const ordersRes = await axiosInstance.get('/orders/me')
-        if (!cancelled) setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
-      } catch {
-        if (!cancelled) setOrdersCount(0)
-      }
-
-      try {
-        if (me.role === 'FARMER') {
-          const [listingsRes, farmerStats] = await Promise.all([
-            axiosInstance.get('/listings/mine'),
-            axiosInstance.get('/orders/stats/farmer')
-          ])
-          if (!cancelled) {
-            setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
-            setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
-            setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
-          }
-        } else {
-          if (!cancelled) setListingsCount(0)
-        }
-      } catch {
-        if (!cancelled) setListingsCount(0)
-      }
+  const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
+  const [loading, setLoading] = React.useState(false)
+  const loadStats = async () => {
+    setLoading(true)
+    try {
+      // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
+      const ordersRes = await axiosInstance.get('/orders/me')
+      setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
+    } catch {
+      setOrdersCount(0)
     }
-    load()
-    return () => { cancelled = true }
+
+    try {
+      if (me.role === 'FARMER') {
+        const [listingsRes, farmerStats] = await Promise.all([
+          axiosInstance.get('/listings/mine'),
+          axiosInstance.get('/orders/stats/farmer')
+        ])
+        console.log('Farmer stats response:', farmerStats.data)
+        setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
+        setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
+        setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
+        setFarmerTotalSales(farmerStats.data?.totalSalesCount ?? 0)
+      } else {
+        setListingsCount(0)
+      }
+    } catch (error) {
+      console.error('Error loading farmer stats:', error)
+      setListingsCount(0)
+      setFarmerMonthRevenue(0)
+      setFarmerLastMonthDelivered(0)
+      setFarmerTotalSales(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadStats()
   }, [me?.role])
 
   if (me.role === 'FARMER') {
     return (
-      <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Available Listings</div>
-          <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+      <div className='mt-6'>
+        <div className='flex items-center justify-between mb-4'>
+          <h3 className='text-lg font-semibold text-gray-800'>Farm Statistics</h3>
+          <button 
+            onClick={loadStats}
+            disabled={loading}
+            className='flex items-center gap-2 px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 disabled:opacity-50'
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {loading ? 'Refreshing...' : 'Refresh Stats'}
+          </button>
         </div>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Revenue (Last 30 Days)</div>
-          <div className='text-2xl font-semibold'>{farmerMonthRevenue == null ? '—' : `LKR ${Number(farmerMonthRevenue).toLocaleString()}`}</div>
-        </div>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Delivered Orders (Last 30 Days)</div>
-          <div className='text-2xl font-semibold'>{farmerLastMonthDelivered == null ? '—' : farmerLastMonthDelivered}</div>
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Available Listings</div>
+            <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+          </div>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Revenue (Last 30 Days)</div>
+            <div className='text-2xl font-semibold'>{farmerMonthRevenue == null ? '—' : `LKR ${Number(farmerMonthRevenue).toLocaleString()}`}</div>
+            <div className='text-xs text-gray-400 mt-1'>All sales (COD, PAID, etc.)</div>
+          </div>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Total Sales (Last 30 Days)</div>
+            <div className='text-2xl font-semibold'>{farmerTotalSales == null ? '—' : farmerTotalSales}</div>
+            <div className='text-xs text-gray-400 mt-1'>Orders placed</div>
+          </div>
         </div>
       </div>
     )

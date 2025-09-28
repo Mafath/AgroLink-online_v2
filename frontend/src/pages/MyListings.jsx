@@ -100,6 +100,11 @@ const MyListings = () => {
       setShowForm(false)
       setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
       setItems(prev => [res.data, ...prev])
+      
+      // Refresh farmer activities if the global function exists
+      if (window.refreshFarmerActivities) {
+        window.refreshFarmerActivities()
+      }
     } catch (e) {
       toast.error(e?.response?.data?.error?.message || 'Failed to create')
     } finally {
@@ -425,7 +430,23 @@ const MyListings = () => {
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []).slice(0, 4)
-                    const readers = files.map(file => new Promise((resolve) => {
+                    
+                    // Validate file size and type
+                    const validFiles = files.filter(file => {
+                      if (!file.type.startsWith('image/')) {
+                        toast.error(`${file.name} is not a valid image file`)
+                        return false
+                      }
+                      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                        toast.error(`${file.name} is too large. Please select images under 5MB`)
+                        return false
+                      }
+                      return true
+                    })
+                    
+                    if (validFiles.length === 0) return
+                    
+                    const readers = validFiles.map(file => new Promise((resolve) => {
                       const reader = new FileReader()
                       reader.onload = () => resolve(reader.result)
                       reader.readAsDataURL(file)
@@ -571,7 +592,23 @@ const MyListings = () => {
                   multiple
                   onChange={(e) => {
                     const files = Array.from(e.target.files || []).slice(0, 4)
-                    const readers = files.map(file => new Promise((resolve) => {
+                    
+                    // Validate file size and type
+                    const validFiles = files.filter(file => {
+                      if (!file.type.startsWith('image/')) {
+                        toast.error(`${file.name} is not a valid image file`)
+                        return false
+                      }
+                      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                        toast.error(`${file.name} is too large. Please select images under 5MB`)
+                        return false
+                      }
+                      return true
+                    })
+                    
+                    if (validFiles.length === 0) return
+                    
+                    const readers = validFiles.map(file => new Promise((resolve) => {
                       const reader = new FileReader()
                       reader.onload = () => resolve(reader.result)
                       reader.readAsDataURL(file)
