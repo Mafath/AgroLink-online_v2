@@ -4,15 +4,72 @@ import Listing from "../models/listing.model.js";
 import Order from "../models/order.model.js";
 import Cart from "../models/cart.model.js";
 import Activity from "../models/activity.model.js";
+import LoginHistory from "../models/loginHistory.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken } from "../lib/emailService.js";
 
+// Helper function to log login attempts
+const logLoginAttempt = async (userId, req, success, failureReason = null) => {
+  try {
+    // Skip logging if no userId (for non-existent users)
+    if (!userId) return;
+    
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+    
+    // Simple device detection from user agent
+    let deviceName = 'Unknown Device';
+    let deviceType = 'desktop';
+    
+    if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
+      deviceType = 'mobile';
+      if (userAgent.includes('Android')) {
+        deviceName = 'Android Device';
+      } else if (userAgent.includes('iPhone')) {
+        deviceName = 'iPhone';
+      } else {
+        deviceName = 'Mobile Device';
+      }
+    } else if (userAgent.includes('Tablet') || userAgent.includes('iPad')) {
+      deviceType = 'tablet';
+      deviceName = 'Tablet';
+    } else {
+      if (userAgent.includes('Chrome')) {
+        deviceName = 'Chrome Browser';
+      } else if (userAgent.includes('Firefox')) {
+        deviceName = 'Firefox Browser';
+      } else if (userAgent.includes('Safari')) {
+        deviceName = 'Safari Browser';
+      } else {
+        deviceName = 'Desktop Browser';
+      }
+    }
+    
+    // Simple location detection (in a real app, you'd use IP geolocation)
+    const location = 'Unknown Location';
+    
+    await LoginHistory.create({
+      user: userId,
+      deviceName,
+      deviceType,
+      location,
+      ipAddress,
+      userAgent,
+      success,
+      failureReason
+    });
+  } catch (error) {
+    console.error('Error logging login attempt:', error);
+    // Don't throw error to avoid breaking login flow
+  }
+};
+
 export const signup = async (req, res) => {
   try {
     const { email, password, role, fullName } = req.body || {};
-
+                      
     if (!email || !password) {
       return res
         .status(400)
@@ -109,15 +166,21 @@ export const signin = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
+      // Log failed login attempt for non-existent user
+      await logLoginAttempt(null, req, false, 'User not found');
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
     if (user.status === 'SUSPENDED') {
+      // Log failed login attempt for suspended account
+      await logLoginAttempt(user._id, req, false, 'Account suspended');
       return res.status(403).json({ error: { code: "ACCOUNT_SUSPENDED", message: "Your account is suspended. Please contact support." } });
     }
 
     // Check if email is verified
     if (!user.isEmailVerified) {
+      // Log failed login attempt for unverified email
+      await logLoginAttempt(user._id, req, false, 'Email not verified');
       return res.status(403).json({ 
         error: { 
           code: "EMAIL_NOT_VERIFIED", 
@@ -130,11 +193,16 @@ export const signin = async (req, res) => {
 
     const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordCorrect) {
+      // Log failed login attempt
+      await logLoginAttempt(user._id, req, false, 'Invalid password');
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
     // Update last login timestamp
     try { await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }); } catch (_) {}
+
+    // Log successful login attempt
+    await logLoginAttempt(user._id, req, true);
 
     const accessToken = signAccessToken({ userId: user._id.toString(), role: user.role });
 
@@ -705,32 +773,13 @@ export const getLoginHistory = async (req, res) => {
     const userId = req.user._id;
     const limit = parseInt(req.query.limit) || 20;
 
-    // For now, return mock data. In a real implementation, you'd query a login history collection
-    const mockLoginHistory = [
-      {
-        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        deviceName: 'Chrome on Windows',
-        deviceType: 'desktop',
-        location: 'Colombo, Sri Lanka',
-        success: true
-      },
-      {
-        timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-        deviceName: 'Safari on iPhone',
-        deviceType: 'mobile',
-        location: 'Kandy, Sri Lanka',
-        success: true
-      },
-      {
-        timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // 3 days ago
-        deviceName: 'Firefox on Mac',
-        deviceType: 'desktop',
-        location: 'Galle, Sri Lanka',
-        success: false
-      }
-    ];
+    // Get real login history from database
+    const loginHistory = await LoginHistory.find({ user: userId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .select('timestamp deviceName deviceType location success failureReason');
 
-    return res.json(mockLoginHistory.slice(0, limit));
+    return res.json(loginHistory);
   } catch (error) {
     console.error('Error in getLoginHistory:', error);
     return res.status(500).json({ 

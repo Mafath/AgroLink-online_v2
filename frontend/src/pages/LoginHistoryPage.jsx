@@ -9,6 +9,30 @@ const LoginHistoryPage = () => {
   const [loginHistory, setLoginHistory] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  const [stats, setStats] = useState({
+    recentLogins: 0,
+    activeDevices: 0
+  })
+
+  const calculateStats = (loginData) => {
+    const now = new Date()
+    // Go back 7 days from now (including today)
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    
+    // Count successful logins in the last 7 days (including today)
+    const recentLogins = loginData.filter(login => {
+      const loginDate = new Date(login.timestamp)
+      return login.success && loginDate >= sevenDaysAgo
+    }).length
+    
+    // Count unique devices
+    const uniqueDevices = new Set(loginData.map(login => login.deviceName)).size
+    
+    return {
+      recentLogins,
+      activeDevices: uniqueDevices
+    }
+  }
 
   const loadLoginHistory = async (showRefresh = false) => {
     if (showRefresh) {
@@ -20,6 +44,7 @@ const LoginHistoryPage = () => {
     try {
       const res = await axiosInstance.get('/auth/login-history')
       setLoginHistory(res.data)
+      setStats(calculateStats(res.data))
     } catch (error) {
       console.error('Error loading login history:', error)
       toast.error('Failed to load login history')
@@ -120,7 +145,7 @@ const LoginHistoryPage = () => {
                     <CheckCircle className='w-5 h-5 text-green-600' />
                     <span className='text-sm font-medium text-green-800'>Recent Logins</span>
                   </div>
-                  <p className='text-2xl font-bold text-green-700'>3</p>
+                  <p className='text-2xl font-bold text-green-700'>{stats.recentLogins}</p>
                   <p className='text-xs text-green-600'>Last 7 days</p>
                 </div>
                 <div className='bg-blue-50 border border-blue-200 rounded-lg p-4'>
@@ -128,16 +153,8 @@ const LoginHistoryPage = () => {
                     <Monitor className='w-5 h-5 text-blue-600' />
                     <span className='text-sm font-medium text-blue-800'>Devices</span>
                   </div>
-                  <p className='text-2xl font-bold text-blue-700'>2</p>
+                  <p className='text-2xl font-bold text-blue-700'>{stats.activeDevices}</p>
                   <p className='text-xs text-blue-600'>Active devices</p>
-                </div>
-                <div className='bg-orange-50 border border-orange-200 rounded-lg p-4'>
-                  <div className='flex items-center gap-2 mb-2'>
-                    <MapPin className='w-5 h-5 text-orange-600' />
-                    <span className='text-sm font-medium text-orange-800'>Locations</span>
-                  </div>
-                  <p className='text-2xl font-bold text-orange-700'>2</p>
-                  <p className='text-xs text-orange-600'>Different cities</p>
                 </div>
               </div>
             </div>
