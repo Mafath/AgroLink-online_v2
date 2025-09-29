@@ -195,16 +195,20 @@ const AdminUsers = () => {
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // Top green and black bar
+      // Top green and black bar (3/4 green, 1/4 black)
       pdf.setFillColor(13, 126, 121); // Primary green (#0d7e79)
-      pdf.rect(0, 0, 105, 8, 'F');
+      pdf.rect(0, 0, 157.5, 8, 'F'); // 3/4 of 210mm = 157.5mm
       
       pdf.setFillColor(0, 0, 0); // Black
-      pdf.rect(105, 0, 105, 8, 'F');
+      pdf.rect(157.5, 0, 52.5, 8, 'F'); // 1/4 of 210mm = 52.5mm
+      
+      // Add space below top bar
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 5, 'F'); // 5mm white space
       
       // Main content area (white background)
       pdf.setFillColor(255, 255, 255);
-      pdf.rect(0, 8, 210, 25, 'F');
+      pdf.rect(0, 13, 210, 25, 'F');
       
       // Add the actual AgroLink logo using html2canvas
       try {
@@ -232,53 +236,72 @@ const AdminUsers = () => {
         // Remove the temporary div
         document.body.removeChild(tempDiv);
         
-        // Add the logo to PDF with correct aspect ratio
+        // Add the logo to PDF with correct aspect ratio (bigger size)
         const logoDataURL = canvas.toDataURL('image/png');
-        pdf.addImage(logoDataURL, 'PNG', 15, 10, 10, 10); // Square dimensions
+        pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16); // Adjusted for space below top bar
       } catch (error) {
         console.log('Could not load logo, using text fallback');
         // Fallback: just show company name if logo fails to load
       }
       
-      // Company name with gradient effect (using primary green)
-      pdf.setTextColor(13, 126, 121); // Primary green
+      // Company name with gradient effect (left to right like navbar)
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('AgroLink', 35, 18);
+      
+      // Create gradient effect by interpolating colors from left to right
+      const startColor = { r: 0, g: 128, b: 111 }; // #00806F (darker teal)
+      const endColor = { r: 139, g: 195, b: 75 }; // #8BC34B (lighter yellow-green)
+      const text = 'AgroLink';
+      const startX = 35;
+      
+      // Custom letter positions for better spacing
+      const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5]; // A-g-r-o-L-i-n-k
+      
+      for (let i = 0; i < text.length; i++) {
+        const progress = i / (text.length - 1); // 0 to 1
+        
+        // Interpolate colors
+        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        
+        pdf.setTextColor(r, g, b);
+        pdf.text(text[i], startX + letterPositions[i], 23); // Adjusted for space below top bar
+      }
       
       // Tagline
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
       pdf.setTextColor(100, 100, 100);
-      pdf.text('Agricultural Technology Solutions', 35, 22);
+      pdf.text('Agricultural Technology Solutions', 35, 27); // Adjusted for space below top bar
       
       // Vertical separator line
       pdf.setDrawColor(200, 200, 200);
       pdf.setLineWidth(0.5);
-      pdf.line(120, 12, 120, 28);
+      pdf.line(120, 17, 120, 33); // Adjusted for space below top bar
       
       // Contact information on the right
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       pdf.setTextColor(0, 0, 0);
-      pdf.text('Phone:', 130, 16);
+      pdf.text('Phone:', 130, 21); // Adjusted for space below top bar
       pdf.setFont('helvetica', 'normal');
-      pdf.text('+94 11 234 5678', 145, 16);
+      pdf.text('+94 71 920 7688', 145, 21);
       
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Web:', 130, 20);
+      pdf.text('Web:', 130, 25);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('info@agrolink.com', 145, 20);
+      pdf.text('www.AgroLink.org', 145, 25);
       
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Address:', 130, 24);
+      pdf.text('Address:', 130, 29);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Colombo, Sri Lanka', 145, 24);
+      pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29);
       
       // Bottom line separator
       pdf.setDrawColor(13, 126, 121); // Primary green
       pdf.setLineWidth(1);
-      pdf.line(20, 35, 190, 35);
+      pdf.line(20, 40, 190, 40); // Adjusted for space below top bar
       
       // Reset text color for content
       pdf.setTextColor(0, 0, 0);
@@ -286,12 +309,12 @@ const AdminUsers = () => {
       // Add report title
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Users & Roles Management Report', 20, 50);
+      pdf.text('Users & Roles Management Report', 20, 55); // Adjusted for space below top bar
       
       // Add date
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 58);
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63); // Adjusted for space below top bar
       
       // Add summary stats
       pdf.setFontSize(12);
@@ -328,10 +351,10 @@ const AdminUsers = () => {
       pdf.setFont('helvetica', 'bold');
       let tableY = yPos + 20;
       pdf.text('Name', 20, tableY);
-      pdf.text('Email', 60, tableY);
-      pdf.text('Role', 100, tableY);
-      pdf.text('Status', 130, tableY);
-      pdf.text('Joined', 160, tableY);
+      pdf.text('Email', 50, tableY); // Moved closer to name column
+      pdf.text('Role', 100, tableY); // Adjusted position
+      pdf.text('Status', 130, tableY); // Adjusted position
+      pdf.text('Joined', 160, tableY); // Adjusted position
       
       // Table data
       pdf.setFont('helvetica', 'normal');
@@ -344,10 +367,10 @@ const AdminUsers = () => {
         }
         
         pdf.text(user.fullName || '—', 20, tableY);
-        pdf.text(user.email || '—', 60, tableY);
-        pdf.text(user.role || '—', 100, tableY);
-        pdf.text(user.status || '—', 130, tableY);
-        pdf.text(user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—', 160, tableY);
+        pdf.text(user.email || '—', 50, tableY); // Moved closer to name column
+        pdf.text(user.role || '—', 100, tableY); // Adjusted position
+        pdf.text(user.status || '—', 130, tableY); // Adjusted position
+        pdf.text(user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—', 160, tableY); // Adjusted position
         
         tableY += 5;
       });
