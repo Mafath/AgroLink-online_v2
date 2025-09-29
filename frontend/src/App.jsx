@@ -12,11 +12,13 @@ import AdminUsers from './pages/AdminUsers';
 import AdminDrivers from './pages/AdminDrivers';
 import AdminConsultants from './pages/AdminConsultants';
 import AdminLogistics from './pages/AdminLogistics';
+import AdminDeliveryReviews from './pages/AdminDeliveryReviews';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
 import AdminListings from './pages/AdminListings';
 import AdminRentals from './pages/AdminRentals';
 import AdminHarvest from './pages/AdminHarvest';
+import MyDeliveryReviews from './pages/MyDeliveryReviews';
 import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
@@ -96,7 +98,9 @@ const App = () => {
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
           <Route path="/admin/consultants" element={authUser && authUser.role === 'ADMIN' ? <AdminConsultants /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
+          <Route path="/admin/delivery-reviews" element={authUser && authUser.role === 'ADMIN' ? <AdminDeliveryReviews /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+          <Route path="/my-delivery-reviews" element={authUser ? <MyDeliveryReviews /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />
           <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />

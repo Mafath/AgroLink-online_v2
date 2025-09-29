@@ -13,6 +13,7 @@ import { connectDB } from './lib/db.js'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import harvestRoutes from "./routes/harvest.route.js";
+import deliveryReviewRoutes from "./routes/deliveryReview.route.js";
 
 
 const app = express();
@@ -41,6 +42,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/email-verification", emailVerificationRoutes);
 app.use("/api/harvest", harvestRoutes);
+app.use("/api/delivery-reviews", deliveryReviewRoutes);
 
 
 
