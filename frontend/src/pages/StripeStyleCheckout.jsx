@@ -413,7 +413,7 @@ const handleInputChange = (e) => {
             </button>
             <div className="flex items-center">
               <CreditCard className="w-5 h-5 text-teal-600 mr-2" />
-              <h1 className="text-xl font-bold text-gray-900">Payment</h1>
+              <h1 className="text-xl font-bold text-gray-900">Checkout</h1>
             </div>
           </div>
         </div>
@@ -439,11 +439,17 @@ const handleInputChange = (e) => {
                   </>
                 )}
               </div>
+              <p className="text-sm text-gray-600 mt-2">
+                {checkoutData.deliveryType === 'PICKUP' 
+                  ? 'You can collect your order from our warehouse at Galle Road, Colombo 03. Please collect your order within 2-3 days, otherwise it will be cancelled.'
+                  : 'Will take 2-3 business days'}
+              </p>
             </div>
 
             {/* Contact Information Card */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h2>
+              <p className="text-sm text-gray-600 mb-4">You will be receiving the order confirmation to the email you provide</p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
@@ -506,18 +512,34 @@ const handleInputChange = (e) => {
             {/* Payment Method Card */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Payment Method</h2>
+              <p className="text-sm text-gray-600 mb-4">Select your preferred payment option. All transactions are secure and encrypted.</p>
               <div className="space-y-4">
-                <label className="flex items-center">
-                  <input
-                    type="radio"
-                    name="paymentMethod"
-                    value="CASH"
-                    checked={paymentMethod === 'CASH'}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="mr-3 text-red-600 focus:ring-red-500"
-                  />
-                  <span className="text-gray-700">Cash on Delivery/Pickup</span>
-                </label>
+                {checkoutData.deliveryType === 'DELIVERY' && (
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="CASH"
+                      checked={paymentMethod === 'CASH'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mr-3 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-gray-700">Cash on Delivery</span>
+                  </label>
+                )}
+                {checkoutData.deliveryType === 'PICKUP' && (
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="paymentMethod"
+                      value="CASH"
+                      checked={paymentMethod === 'CASH'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="mr-3 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-gray-700">Pay at Seller</span>
+                  </label>
+                )}
                 <label className="flex items-center">
                   <input
                     type="radio"
@@ -623,6 +645,7 @@ const handleInputChange = (e) => {
             {checkoutData?.deliveryType === 'DELIVERY' && (
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Delivery Address</h2>
+                <p className="text-sm text-gray-600 mb-4">Provide accurate information to ensure seamless delivery. Your data is safe with us.</p>
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Address Line 1 *</label>
@@ -865,7 +888,7 @@ const handleInputChange = (e) => {
                   </div>
                   <div className="flex justify-between mb-1">
                     <span>Payment Method:</span>
-                    <span>{paymentMethod === 'CARD' ? 'Card Payment' : 'Cash on Delivery/Pickup'}</span>
+                    <span>{paymentMethod === 'CARD' ? 'Card Payment' : checkoutData?.deliveryType === 'DELIVERY' ? 'Cash on Delivery' : 'Pay at Seller'}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Delivery:</span>

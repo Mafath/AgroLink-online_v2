@@ -172,10 +172,12 @@ const CartPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center mb-8">
-          <ShoppingCart className="w-8 h-8 text-primary-600 mr-3" />
-          <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-        </div>
+        <div className="flex items-center justify-center mb-8">
+  <div className="flex items-center space-x-3">
+    <ShoppingCart className="w-8 h-8 text-primary-600" />
+    <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+  </div>
+</div>
 
         {cart.length === 0 ? (
           <div className="text-center py-12">

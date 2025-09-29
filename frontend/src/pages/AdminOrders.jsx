@@ -7,7 +7,15 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import AdminSidebar from "../components/AdminSidebar";
 
-const statuses = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED']
+const statuses = ['NOT READY', 'READY', 'CANCELLED'];
+const statusList = ['NOT READY', 'READY', 'CANCELLED'];
+
+const colorMap = {
+  'NOT READY': '#f59e0b',
+  'READY': '#22c55e',
+  'CANCELLED': '#ef4444'
+};
+
 
 const Card = ({ children, className = '' }) => (
   <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
@@ -86,6 +94,40 @@ const AdminOrders = () => {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+ const updateOrderStatus = async (orderId, newStatus) => {
+  try {
+    if (newStatus === "CANCELLED") {
+      // Use cancel endpoint for cancellations
+      await axiosInstance.patch(`/orders/${orderId}/cancel`);
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId
+            ? { ...o, status: "CANCELLED", cancelledBy: "admin" }
+            : o
+        )
+      );
+    } else {
+      // Use status endpoint for other status updates
+      await axiosInstance.patch(`/orders/${orderId}/status`, {
+        status: newStatus,
+      });
+
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, status: newStatus } : o
+        )
+      );
+    }
+
+    toast.success("Status updated successfully");
+  } catch (err) {
+    console.error("Error updating status:", err.response?.data?.error || err.message);
+    toast.error(`Failed to update status: ${err.response?.data?.error || "Unknown error"}`);
+  }
+};
+
 
   const filteredOrders = useMemo(() => {
     let list = orders;
@@ -170,33 +212,24 @@ const AdminOrders = () => {
   }, [filteredOrders]);
 
   const statusCounts = useMemo(() => {
-    const counts = { PENDING: 0, PROCESSING: 0, SHIPPED: 0, DELIVERED: 0, CANCELLED: 0 };
-    for (const o of filteredOrders) {
-      const s = String(o.status || '').toUpperCase();
-      if (counts[s] != null) counts[s] += 1;
-    }
-    return counts;
-  }, [filteredOrders]);
+  const counts = { 'NOT READY': 0, 'READY': 0, 'CANCELLED': 0 };
+  for (const o of filteredOrders) {
+    const s = o.status || 'NOT READY';
+    if (counts[s] != null) counts[s] += 1;
+  }
+  return counts;
+}, [filteredOrders]);
 
-  const statusList = ['PENDING', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
-  const colorMap = {
-    PENDING: '#f59e0b',
-    PROCESSING: '#3b82f6',
-    SHIPPED: '#8b5cf6',
-    DELIVERED: '#22c55e',
-    CANCELLED: '#ef4444'
-  };
 
   const getStatusColor = (status) => {
-    switch (String(status).toUpperCase()) {
-      case 'PENDING': return 'bg-amber-100 text-amber-700';
-      case 'PROCESSING': return 'bg-blue-100 text-blue-700';
-      case 'SHIPPED': return 'bg-violet-100 text-violet-700';
-      case 'DELIVERED': return 'bg-green-100 text-green-700';
-      case 'CANCELLED': return 'bg-red-100 text-red-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
+  switch (status) {
+    case 'NOT READY': return 'bg-amber-100 text-amber-700';
+    case 'READY': return 'bg-green-100 text-green-700';
+    case 'CANCELLED': return 'bg-red-100 text-red-700';
+    default: return 'bg-gray-100 text-gray-700';
+  }
+};
+
 
   const downloadPDF = () => {
     const doc = new jsPDF();
@@ -237,15 +270,19 @@ const AdminOrders = () => {
     doc.line(20, 75, 190, 75);
 
     // Table styling
-    const tableColumn = ["Order ID", "Date", "Time", "Total (LKR)", "Status"];
+    const tableColumn = ["Order ID", "Date", "Time", "Products", "Payment Method", "Delivery Option", "Total (LKR)", "Status"];
     const tableRows = filteredOrders.map(order => {
       const date = new Date(order.createdAt);
+      const products = order.items?.map(item => `${item.title || item.listing?.title} x ${item.quantity}`).join(', ') || '';
       return [
         order.orderNumber || order._id,
         date.toLocaleDateString(),
         date.toLocaleTimeString(),
+        products,
+        capitalizeFirst(order.paymentMethod),
+        capitalizeFirst(order.deliveryType),
         order.total?.toFixed(2) || "0.00",
-        capitalizeFirst(order.status)
+        capitalizeFirst(order.status || 'not_ready')
       ];
     });
 
@@ -268,11 +305,14 @@ const AdminOrders = () => {
         fillColor: [245, 245, 245]
       },
       columnStyles: {
-        0: { cellWidth: 40 }, // Order ID
-        1: { cellWidth: 30 }, // Date
-        2: { cellWidth: 30 }, // Time
-        3: { cellWidth: 30 }, // Total
-        4: { cellWidth: 40 }  // Status
+        0: { cellWidth: 20 }, // Order ID
+        1: { cellWidth: 15 }, // Date
+        2: { cellWidth: 15 }, // Time
+        3: { cellWidth: 'auto' }, // Products
+        4: { cellWidth: 20 }, // Payment Method
+        5: { cellWidth: 20 }, // Delivery Option
+        6: { cellWidth: 15 }, // Total
+        7: { cellWidth: 20 }  // Status
       },
       margin: { left: 20, right: 20 }
     });
@@ -360,30 +400,52 @@ const AdminOrders = () => {
                         <th className="py-3 px-3 rounded-tl-lg pl-3 text-center align-middle">Order ID</th>
                         <th className="py-3 px-3 text-center align-middle">Date</th>
                         <th className="py-3 px-3 text-center align-middle">Time</th>
+                        <th className="py-3 px-3 text-center align-middle">Products</th>
+                        <th className="py-3 px-3 text-center align-middle">Payment Method</th>
+                        <th className="py-3 px-3 text-center align-middle">Delivery Option</th>
                         <th className="py-3 px-3 text-center align-middle">Total</th>
-                        <th className="py-3 px-3 rounded-tr-xl text-center align-middle">Status</th>
+                        <th className="py-3 px-3 text-center align-middle">Status</th>
+                        <th className="py-3 px-3 rounded-tr-xl text-center align-middle">Action</th>
                       </tr>
                     </thead>
                     <tbody>
                       {loading ? (
                         <tr>
-                          <td className="py-6 text-center text-gray-500" colSpan={5}>Loading…</td>
+                          <td className="py-6 text-center text-gray-500" colSpan={9}>Loading…</td>
                         </tr>
                       ) : filteredOrders.length === 0 ? (
                         <tr>
-                          <td className="py-6 text-center text-gray-500" colSpan={5}>No orders</td>
+                          <td className="py-6 text-center text-gray-500" colSpan={9}>No orders</td>
                         </tr>
                       ) : filteredOrders.map((order) => (
                         <tr key={order._id} className="border-t align-middle">
                           <td className="py-2 px-3 text-center align-middle">{order.orderNumber || order._id}</td>
                           <td className="py-2 px-3 text-center align-middle">{new Date(order.createdAt).toLocaleDateString()}</td>
                           <td className="py-2 px-3 text-center align-middle">{new Date(order.createdAt).toLocaleTimeString()}</td>
+                          <td className="py-2 px-3 text-center align-middle">
+                            {order.items?.map(item => `${item.title || item.listing?.title} x ${item.quantity}`).join(', ')}
+                          </td>
+                          <td className="py-2 px-3 text-center align-middle">{capitalizeFirst(order.paymentMethod)}</td>
+                          <td className="py-2 px-3 text-center align-middle">{capitalizeFirst(order.deliveryType)}</td>
                           <td className="py-2 px-3 text-center align-middle">LKR {order.total?.toFixed(2)}</td>
                           <td className="py-2 px-3 text-center align-middle">
                             <span className={`px-2 py-0.5 text-xs rounded-full ${getStatusColor(order.status)}`}>
-                              {capitalizeFirst(order.status)}
+                              {capitalizeFirst(order.status || 'not_ready')}
                             </span>
                           </td>
+                          <td className="py-2 px-3 text-center align-middle">
+  <select
+    value={order.status || 'NOT READY'}
+    onChange={(e) => updateOrderStatus(order._id, e.target.value)}
+    className="px-2 py-1 border rounded-md text-sm"
+    disabled={order.status === 'CANCELLED'} // <-- disable if cancelled
+  >
+    <option value="NOT READY">Not Ready</option>
+    <option value="READY">Ready</option>
+    <option value="CANCELLED">Cancel</option>
+  </select>
+</td>
+
                         </tr>
                       ))}
                     </tbody>
