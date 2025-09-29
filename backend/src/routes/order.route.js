@@ -1,6 +1,6 @@
 import express from 'express';
 import { requireAuth, requireRole } from '../middleware/auth.middleware.js';
-import {
+import { 
   createOrder,
   createOrderFromCart,
   getMyOrders,
@@ -9,6 +9,8 @@ import {
   adminListOrders,
   cancelOrder,
   getFarmerStats,
+  getFarmerActivitiesEndpoint,
+  getBuyerActivitiesEndpoint,
 } from '../controllers/order.controller.js';
 
 const router = express.Router();
@@ -21,6 +23,12 @@ router.get('/:id', requireAuth, getOrderById);
 
 // Farmer stats
 router.get('/stats/farmer', requireAuth, requireRole('FARMER'), getFarmerStats);
+
+// Farmer activities
+router.get('/activities/farmer', requireAuth, requireRole('FARMER'), getFarmerActivitiesEndpoint);
+
+// Buyer activities
+router.get('/activities/buyer', requireAuth, requireRole('FARMER', 'BUYER'), getBuyerActivitiesEndpoint);
 
 // Admin routes
 router.get('/', requireAuth, requireRole('ADMIN'), adminListOrders);

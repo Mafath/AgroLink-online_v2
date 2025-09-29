@@ -1,15 +1,75 @@
 import { signAccessToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import Listing from "../models/listing.model.js";
+import Order from "../models/order.model.js";
+import Cart from "../models/cart.model.js";
+import Activity from "../models/activity.model.js";
+import LoginHistory from "../models/loginHistory.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
-import { sendVerificationEmail, generateVerificationToken } from "../lib/emailService.js";
+import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken } from "../lib/emailService.js";
+
+// Helper function to log login attempts
+const logLoginAttempt = async (userId, req, success, failureReason = null) => {
+  try {
+    // Skip logging if no userId (for non-existent users)
+    if (!userId) return;
+    
+    const userAgent = req.get('User-Agent') || 'Unknown';
+    const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+    
+    // Simple device detection from user agent
+    let deviceName = 'Unknown Device';
+    let deviceType = 'desktop';
+    
+    if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
+      deviceType = 'mobile';
+      if (userAgent.includes('Android')) {
+        deviceName = 'Android Device';
+      } else if (userAgent.includes('iPhone')) {
+        deviceName = 'iPhone';
+      } else {
+        deviceName = 'Mobile Device';
+      }
+    } else if (userAgent.includes('Tablet') || userAgent.includes('iPad')) {
+      deviceType = 'tablet';
+      deviceName = 'Tablet';
+    } else {
+      if (userAgent.includes('Chrome')) {
+        deviceName = 'Chrome Browser';
+      } else if (userAgent.includes('Firefox')) {
+        deviceName = 'Firefox Browser';
+      } else if (userAgent.includes('Safari')) {
+        deviceName = 'Safari Browser';
+      } else {
+        deviceName = 'Desktop Browser';
+      }
+    }
+    
+    // Simple location detection (in a real app, you'd use IP geolocation)
+    const location = 'Unknown Location';
+    
+    await LoginHistory.create({
+      user: userId,
+      deviceName,
+      deviceType,
+      location,
+      ipAddress,
+      userAgent,
+      success,
+      failureReason
+    });
+  } catch (error) {
+    console.error('Error logging login attempt:', error);
+    // Don't throw error to avoid breaking login flow
+  }
+};
 
 export const signup = async (req, res) => {
   try {
     const { email, password, role, fullName } = req.body || {};
-
+                      
     if (!email || !password) {
       return res
         .status(400)
@@ -106,15 +166,21 @@ export const signin = async (req, res) => {
 
     const user = await User.findOne({ email: email.toLowerCase().trim() });
     if (!user) {
+      // Log failed login attempt for non-existent user
+      await logLoginAttempt(null, req, false, 'User not found');
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
     if (user.status === 'SUSPENDED') {
+      // Log failed login attempt for suspended account
+      await logLoginAttempt(user._id, req, false, 'Account suspended');
       return res.status(403).json({ error: { code: "ACCOUNT_SUSPENDED", message: "Your account is suspended. Please contact support." } });
     }
 
     // Check if email is verified
     if (!user.isEmailVerified) {
+      // Log failed login attempt for unverified email
+      await logLoginAttempt(user._id, req, false, 'Email not verified');
       return res.status(403).json({ 
         error: { 
           code: "EMAIL_NOT_VERIFIED", 
@@ -127,11 +193,16 @@ export const signin = async (req, res) => {
 
     const isPasswordCorrect = await bcrypt.compare(password, user.passwordHash);
     if (!isPasswordCorrect) {
+      // Log failed login attempt
+      await logLoginAttempt(user._id, req, false, 'Invalid password');
       return res.status(401).json({ error: { code: "INVALID_CREDENTIALS", message: "Invalid credentials" } });
     }
 
     // Update last login timestamp
     try { await User.findByIdAndUpdate(user._id, { lastLogin: new Date() }); } catch (_) {}
+
+    // Log successful login attempt
+    await logLoginAttempt(user._id, req, true);
 
     const accessToken = signAccessToken({ userId: user._id.toString(), role: user.role });
 
@@ -226,7 +297,7 @@ export const updateProfile = async (req, res) => {
 
 export const getCurrentUser = (req, res) => {
   try {
-    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified, availability, service_area } = req.user;
+    const { _id, email, role, fullName, profilePic, createdAt, phone, address, bio, lastLogin, isEmailVerified, availability, service_area, pendingEmail, emailChangeExpires } = req.user;
     return res.status(200).json({ 
       id: _id, 
       email, 
@@ -240,7 +311,9 @@ export const getCurrentUser = (req, res) => {
       lastLogin,
       isEmailVerified,
       availability,
-      service_area
+      service_area,
+      pendingEmail,
+      emailChangeExpires
     });
   } catch (error) {
     console.error("Error in getCurrentUser controller: ", error.message);
@@ -456,5 +529,328 @@ export const adminCreateUser = async (req, res) => {
   } catch (error) {
     console.error('Error in adminCreateUser: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};
+
+// Security endpoints
+export const changeEmail = async (req, res) => {
+  try {
+    const { newEmail, currentPassword } = req.body;
+    const userId = req.user._id;
+
+    if (!newEmail || !currentPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'New email and current password are required' } 
+      });
+    }
+
+    // Validate email format
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Invalid email format' } 
+      });
+    }
+
+    // Check if new email is already in use
+    const existingUser = await User.findOne({ email: newEmail.toLowerCase().trim() });
+    if (existingUser && existingUser._id.toString() !== userId.toString()) {
+      return res.status(409).json({ 
+        error: { code: 'EMAIL_IN_USE', message: 'Email already in use by another account' } 
+      });
+    }
+
+    // Verify current password
+    const user = await User.findById(userId);
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' } 
+      });
+    }
+
+    // Generate email change token
+    const emailChangeToken = generateVerificationToken();
+    const emailChangeExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    console.log('Generated email change token:', emailChangeToken);
+    console.log('Token expires at:', emailChangeExpires);
+
+    // Store pending email change (DO NOT update actual email yet)
+    user.pendingEmail = newEmail.toLowerCase().trim();
+    user.emailChangeToken = emailChangeToken;
+    user.emailChangeExpires = emailChangeExpires;
+    await user.save();
+
+    console.log('User updated with pending email change:', {
+      userId: user._id,
+      currentEmail: user.email,
+      pendingEmail: user.pendingEmail,
+      token: user.emailChangeToken,
+      expires: user.emailChangeExpires
+    });
+
+    // Send email change verification email to NEW address
+    const emailResult = await sendEmailChangeVerification(
+      newEmail.toLowerCase().trim(),
+      user.fullName,
+      emailChangeToken
+    );
+
+    if (!emailResult.success) {
+      console.error('Failed to send verification email:', emailResult.error);
+      return res.status(500).json({ 
+        error: { code: 'EMAIL_SEND_FAILED', message: 'Failed to send verification email' } 
+      });
+    }
+
+    return res.json({ 
+      message: 'Email change initiated. Please check your new email for verification instructions. Your current email remains active until verification is complete.',
+      currentEmail: user.email,
+      pendingEmail: user.pendingEmail
+    });
+  } catch (error) {
+    console.error('Error in changeEmail:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to change email' } 
+    });
+  }
+};
+
+// Verify email change
+export const verifyEmailChange = async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    console.log('Email change verification attempt with token:', token);
+    console.log('Token length:', token?.length);
+    console.log('Token type:', typeof token);
+    console.log('Token characters:', token?.split('').map(c => c.charCodeAt(0)));
+    console.log('Token encoded:', encodeURIComponent(token));
+
+    if (!token) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Verification token is required' } 
+      });
+    }
+
+    // Debug: Check all users with pending email changes
+    const allPendingUsers = await User.find({ 
+      emailChangeToken: { $exists: true, $ne: null }
+    }).select('_id email pendingEmail emailChangeToken emailChangeExpires');
+    console.log('All users with pending email changes:', allPendingUsers);
+    
+    // Debug: Check if token matches any stored token
+    const tokenMatches = allPendingUsers.filter(user => user.emailChangeToken === token);
+    console.log('Token matches found:', tokenMatches.length);
+    if (tokenMatches.length > 0) {
+      console.log('Matching user details:', tokenMatches[0]);
+    }
+
+    // Find user with matching email change token
+    const user = await User.findOne({ 
+      emailChangeToken: token,
+      emailChangeExpires: { $gt: new Date() }
+    });
+
+    console.log('User found for token:', user ? 'Yes' : 'No');
+    if (user) {
+      console.log('User details:', {
+        id: user._id,
+        email: user.email,
+        pendingEmail: user.pendingEmail,
+        tokenExpires: user.emailChangeExpires,
+        currentTime: new Date()
+      });
+    }
+
+    if (!user) {
+      // Check if token exists but is expired
+      const expiredUser = await User.findOne({ emailChangeToken: token });
+      if (expiredUser) {
+        console.log('Token found but expired. Expires:', expiredUser.emailChangeExpires, 'Current:', new Date());
+        return res.status(400).json({ 
+          error: { code: 'EXPIRED_TOKEN', message: 'Verification token has expired. Please request a new email change.' } 
+        });
+      }
+      
+      return res.status(400).json({ 
+        error: { code: 'INVALID_TOKEN', message: 'Invalid verification token' } 
+      });
+    }
+
+    if (!user.pendingEmail) {
+      return res.status(400).json({ 
+        error: { code: 'NO_PENDING_EMAIL', message: 'No pending email change found' } 
+      });
+    }
+
+    // Check if the new email is already in use by another user
+    const existingUser = await User.findOne({ 
+      email: user.pendingEmail,
+      _id: { $ne: user._id }
+    });
+
+    if (existingUser) {
+      return res.status(409).json({ 
+        error: { code: 'EMAIL_IN_USE', message: 'Email is already in use by another account' } 
+      });
+    }
+
+    // Update email and clear pending change
+    const oldEmail = user.email;
+    user.email = user.pendingEmail;
+    user.isEmailVerified = true;
+    user.pendingEmail = null;
+    user.emailChangeToken = null;
+    user.emailChangeExpires = null;
+    await user.save();
+
+    console.log('Email change completed successfully:', {
+      userId: user._id,
+      oldEmail: oldEmail,
+      newEmail: user.email
+    });
+
+    return res.json({ 
+      message: 'Email successfully changed and verified',
+      oldEmail: oldEmail,
+      newEmail: user.email
+    });
+  } catch (error) {
+    console.error('Error in verifyEmailChange:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to verify email change' } 
+    });
+  }
+};
+
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Current password and new password are required' } 
+      });
+    }
+
+    if (newPassword.length < 8) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'New password must be at least 8 characters' } 
+      });
+    }
+
+    // Verify current password
+    const user = await User.findById(userId);
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect' } 
+      });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const newPasswordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    user.passwordHash = newPasswordHash;
+    await user.save();
+
+    return res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Error in changePassword:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to change password' } 
+    });
+  }
+};
+
+export const getLoginHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+
+    // Get real login history from database
+    const loginHistory = await LoginHistory.find({ user: userId })
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .select('timestamp deviceName deviceType location success failureReason');
+
+    return res.json(loginHistory);
+  } catch (error) {
+    console.error('Error in getLoginHistory:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to fetch login history' } 
+    });
+  }
+};
+
+export const deleteAccount = async (req, res) => {
+  try {
+    const { currentPassword } = req.body;
+    const userId = req.user._id;
+
+    // Validate required fields
+    if (!currentPassword) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'Current password is required' } 
+      });
+    }
+
+    // Find user and related data
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' } 
+      });
+    }
+
+    // Debug: Log user data to see what's available
+    console.log('User found for deletion:', {
+      id: user._id,
+      email: user.email,
+      hasPassword: !!user.passwordHash,
+      passwordLength: user.passwordHash ? user.passwordHash.length : 0
+    });
+
+    // Check if user has a password (for users who might have signed up with OAuth)
+    if (!user.passwordHash) {
+      return res.status(400).json({ 
+        error: { code: 'NO_PASSWORD', message: 'This account does not have a password set. Please contact support.' } 
+      });
+    }
+
+    // Verify current password
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isPasswordValid) {
+      return res.status(401).json({ 
+        error: { code: 'INVALID_PASSWORD', message: 'Current password is incorrect' } 
+      });
+    }
+
+    // Delete user's listings
+    await Listing.deleteMany({ farmer: userId });
+
+    // Delete user's orders (as customer)
+    await Order.deleteMany({ customer: userId });
+
+    // Delete user's cart
+    await Cart.deleteOne({ user: userId });
+
+    // Delete user's activities
+    await Activity.deleteMany({ farmer: userId });
+
+    // Finally, delete the user
+    await User.findByIdAndDelete(userId);
+
+    return res.json({ message: 'Account deleted successfully' });
+  } catch (error) {
+    console.error('Error in deleteAccount:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to delete account' } 
+    });
   }
 };

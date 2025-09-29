@@ -93,6 +93,21 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Email change fields
+    pendingEmail: {
+      type: String,
+      default: null,
+      lowercase: true,
+      trim: true,
+    },
+    emailChangeToken: {
+      type: String,
+      default: null,
+    },
+    emailChangeExpires: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true },
 );

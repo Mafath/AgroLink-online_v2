@@ -7,8 +7,9 @@ import {
   List,
   Activity,
   AlertCircle,
+  ArrowLeft,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from 'react-router-dom';
 import { axiosInstance } from "../lib/axios";
 
 const Card = ({ children, className = '', onClick }) => (
@@ -205,8 +206,16 @@ const HarvestDashboard = () => {
     <div className='min-h-screen bg-gray-50'>
       <div className='max-w-none mx-0 w-full px-8 py-6'>
         {/* Top bar */}
-        <div className='mb-8'>
-          <h1 className='text-3xl md:text-4xl font-bold text-black text-center mt-6 mb-6'>🌾 Track Your Harvests</h1>
+        <div className='flex items-center justify-between mb-8 mt-6'>
+          <button 
+            onClick={() => navigate('/')}
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+          >
+            <ArrowLeft className='w-3.5 h-3.5' />
+            <span className='text-xs'>Back</span>
+          </button>
+          <h1 className='text-3xl md:text-4xl font-bold text-black'>🌾 Track Your Harvests</h1>
+          <div className='w-20'></div>
         </div>
 
         {/* Summary Metrics */}

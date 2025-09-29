@@ -33,7 +33,7 @@ export default {
           900: '#365314',
           DEFAULT: '#8bc53f',
         },
-        bg: '#f5f7f5',
+        bg: '#fafafa',
         text: '#1f2937',
         success: '#34d399',
         info: '#2563eb',

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, Truck, Package, Trash2, Plus, Minus, Check } from 'lucide-react';
+import { ShoppingCart, Truck, Package, Trash2, Plus, Minus, Check, ArrowLeft } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -172,12 +172,22 @@ const CartPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center mb-8">
-  <div className="flex items-center space-x-3">
-    <ShoppingCart className="w-8 h-8 text-primary-600" />
-    <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
-  </div>
-</div>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+            >
+              <ArrowLeft className='w-3.5 h-3.5' />
+              <span className='text-xs'>Back</span>
+            </button>
+            <div className="flex items-center">
+              <ShoppingCart className="w-8 h-8 text-primary-600 mr-3" />
+              <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+            </div>
+          </div>
+        </div>
+
 
         {cart.length === 0 ? (
           <div className="text-center py-12">
