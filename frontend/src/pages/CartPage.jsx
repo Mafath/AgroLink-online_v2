@@ -188,6 +188,7 @@ const CartPage = () => {
           </div>
         </div>
 
+
         {cart.length === 0 ? (
           <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />

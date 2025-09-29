@@ -254,7 +254,8 @@ export const updateOrderStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ['PENDING', 'PAID', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED'];
+    // Match with model enums
+    const allowedStatuses = ["NOT READY", "READY", "CANCELLED"];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid status' } });
     }
@@ -268,20 +269,19 @@ export const updateOrderStatus = async (req, res) => {
     order.status = status;
     await order.save();
 
-    // If order is being cancelled, restore stock quantities
+    // If order is being cancelled, restore stock
     if (status === 'CANCELLED' && previousStatus !== 'CANCELLED') {
       try {
-        // Convert order items back to the format expected by updateStockQuantities
         const itemsToRestore = order.items.map(item => ({
           inventoryId: item.itemType === 'inventory' ? item.listing : null,
           listingId: item.itemType === 'listing' ? item.listing : null,
           quantity: item.quantity
         }));
-        
-        await updateStockQuantities(itemsToRestore, true); // true = cancellation
-      } catch (stockRestoreError) {
-        console.error('Error restoring stock quantities:', stockRestoreError);
-        // Log the error but don't fail the status update
+
+        await updateStockQuantities(itemsToRestore, true);
+        console.log('Stock quantities restored successfully');
+      } catch (err) {
+        console.error('Error restoring stock quantities:', err);
       }
     }
 
@@ -291,6 +291,7 @@ export const updateOrderStatus = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to update order status' } });
   }
 };
+
 
 export const createOrderFromCart = async (req, res) => {
   try {
