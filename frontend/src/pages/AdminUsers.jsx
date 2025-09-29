@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, Download } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Agronomist']
 const statuses = ['Active', 'Suspended']
@@ -188,12 +191,210 @@ const AdminUsers = () => {
     return new Date(input).toLocaleDateString();
   }
 
+  const downloadUsersPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Top green and black bar
+      pdf.setFillColor(13, 126, 121); // Primary green (#0d7e79)
+      pdf.rect(0, 0, 105, 8, 'F');
+      
+      pdf.setFillColor(0, 0, 0); // Black
+      pdf.rect(105, 0, 105, 8, 'F');
+      
+      // Main content area (white background)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 25, 'F');
+      
+      // Add the actual AgroLink logo using html2canvas
+      try {
+        // Create a temporary div with the logo maintaining aspect ratio
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '60px';
+        tempDiv.style.height = '60px';
+        tempDiv.style.display = 'flex';
+        tempDiv.style.alignItems = 'center';
+        tempDiv.style.justifyContent = 'center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+        document.body.appendChild(tempDiv);
+        
+        // Capture the logo with html2canvas
+        const canvas = await html2canvas(tempDiv, {
+          width: 60,
+          height: 60,
+          backgroundColor: null,
+          scale: 2 // Higher resolution
+        });
+        
+        // Remove the temporary div
+        document.body.removeChild(tempDiv);
+        
+        // Add the logo to PDF with correct aspect ratio
+        const logoDataURL = canvas.toDataURL('image/png');
+        pdf.addImage(logoDataURL, 'PNG', 15, 10, 10, 10); // Square dimensions
+      } catch (error) {
+        console.log('Could not load logo, using text fallback');
+        // Fallback: just show company name if logo fails to load
+      }
+      
+      // Company name with gradient effect (using primary green)
+      pdf.setTextColor(13, 126, 121); // Primary green
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('AgroLink', 35, 18);
+      
+      // Tagline
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Agricultural Technology Solutions', 35, 22);
+      
+      // Vertical separator line
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(120, 12, 120, 28);
+      
+      // Contact information on the right
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Phone:', 130, 16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('+94 11 234 5678', 145, 16);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Web:', 130, 20);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('info@agrolink.com', 145, 20);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Address:', 130, 24);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Colombo, Sri Lanka', 145, 24);
+      
+      // Bottom line separator
+      pdf.setDrawColor(13, 126, 121); // Primary green
+      pdf.setLineWidth(1);
+      pdf.line(20, 35, 190, 35);
+      
+      // Reset text color for content
+      pdf.setTextColor(0, 0, 0);
+      
+      // Add report title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Users & Roles Management Report', 20, 50);
+      
+      // Add date
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 58);
+      
+      // Add summary stats
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Summary Statistics:', 20, 70);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Total Users: ${filteredItems.length}`, 20, 80);
+      pdf.text(`Active Users: ${activeUsersCount}`, 20, 85);
+      pdf.text(`Suspended Users: ${suspendedUsersCount}`, 20, 90);
+      pdf.text(`Recent Signups (24h): ${recentSignupsCount}`, 20, 95);
+      
+      // Add role distribution
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Role Distribution:', 20, 110);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      let yPos = 120;
+      Object.entries(roleCounts).forEach(([role, count]) => {
+        pdf.text(`${role}: ${count}`, 20, yPos);
+        yPos += 5;
+      });
+      
+      // Add user details table
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('User Details:', 20, yPos + 10);
+      
+      // Table headers
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      let tableY = yPos + 20;
+      pdf.text('Name', 20, tableY);
+      pdf.text('Email', 60, tableY);
+      pdf.text('Role', 100, tableY);
+      pdf.text('Status', 130, tableY);
+      pdf.text('Joined', 160, tableY);
+      
+      // Table data
+      pdf.setFont('helvetica', 'normal');
+      tableY += 5;
+      
+      filteredItems.slice(0, 20).forEach((user, index) => {
+        if (tableY > 280) {
+          pdf.addPage();
+          tableY = 20;
+        }
+        
+        pdf.text(user.fullName || '—', 20, tableY);
+        pdf.text(user.email || '—', 60, tableY);
+        pdf.text(user.role || '—', 100, tableY);
+        pdf.text(user.status || '—', 130, tableY);
+        pdf.text(user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—', 160, tableY);
+        
+        tableY += 5;
+      });
+      
+      // Add footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        
+        // Footer line
+        pdf.setDrawColor(13, 126, 121); // Primary green
+        pdf.setLineWidth(1);
+        pdf.line(20, 280, 190, 280);
+        
+        // Footer text
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285);
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 285);
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+      }
+      
+      // Save the PDF
+      pdf.save(`AgroLink-Users-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
+
   return (
     <div className='min-h-screen bg-gray-50'>
       <div className='max-w-none mx-0 w-full px-8 py-6'>
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>User & Role Management</h1>
+          <div className='flex items-center gap-2'>
+            <button
+              onClick={downloadUsersPDF}
+              className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors'
+              title='Download Users Report as PDF'
+            >
+              <Download className='w-4 h-4' />
+              Download PDF
+            </button>
+          </div>
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>

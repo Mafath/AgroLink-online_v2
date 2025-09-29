@@ -1,8 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2 } from 'lucide-react'
+import { Info, Pencil, Trash2, Package, DollarSign } from 'lucide-react'
 import AdminSidebar from '../components/AdminSidebar'
+
+const Card = ({ children, className = '' }) => (
+  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    {children}
+  </div>
+)
 
 // Charts used in AdminInventory replicated here
 const LineChart = () => (
@@ -106,6 +112,38 @@ const AdminRentals = () => {
 
           {/* Main content */}
           <div className='space-y-6'>
+            {/* Rental Metrics Cards */}
+            <div className='grid grid-cols-4 gap-6'>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Total Rental Items</div>
+                    <div className='text-2xl font-semibold mt-1'>{rentalItems.length}</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full'>All Items</span>
+                    </div>
+                  </div>
+                  <div className='w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center'>
+                    <Package className='w-6 h-6 text-blue-600' />
+                  </div>
+                </div>
+              </Card>
+              <Card className='col-span-1'>
+                <div className='p-4 flex items-center justify-between'>
+                  <div>
+                    <div className='text-sm text-gray-600'>Total Rental Value</div>
+                    <div className='text-2xl font-semibold mt-1'>LKR {rentalItems.reduce((sum, item) => sum + (Number(item.rentalPerDay || 0) * Number(item.totalQty || 0)), 0).toLocaleString()}</div>
+                    <div className='mt-3'>
+                      <span className='text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full'>Daily Value</span>
+                    </div>
+                  </div>
+                  <div className='w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center'>
+                    <DollarSign className='w-6 h-6 text-green-600' />
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {/* Rentals table */}
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
               <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
@@ -127,7 +165,7 @@ const AdminRentals = () => {
               </div>
               <div className='h-[61vh] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
-                  <thead>
+                  <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
                       <th className='py-3 px-4 text-center font-normal'>Product name</th>
                       <th className='py-3 px-4 text-center font-normal'>Rental / Day</th>
@@ -179,6 +217,35 @@ const AdminRentals = () => {
                 </table>
               </div>
             </div>
+
+            {/* Recent Rental Activity and Metrics */}
+            <div className='grid grid-cols-4 gap-6'>
+              <Card className='col-span-2'>
+                <div className='p-4'>
+                  <div className='text-sm text-gray-700 font-medium mb-2'>Recent Rental Activity</div>
+                  <div className='space-y-4 text-sm'>
+                    {rentalItems.slice(0, 4).map((item, i) => (
+                      <div key={i}>
+                        <div className='grid grid-cols-[1fr,110px,120px] gap-3 items-start'>
+                        <div>
+                            <div className='font-medium'>{item.productName}</div>
+                            <div className='text-gray-500'>Total Qty: {item.totalQty} items available</div>
+                          </div>
+                          <div className='text-gray-600 text-xs mt-0.5 ml-5'>LKR {Number(item.rentalPerDay || 0).toLocaleString()} / day</div>
+                          <div className='text-gray-700 text-right text-xs font-medium'>
+                            LKR {Number(item.rentalPerDay || 0).toLocaleString()}
+                          </div>
+                        </div>
+                        {i !== Math.min(rentalItems.length, 4) - 1 && (
+                          <div className='h-px bg-gray-200 mx-2 my-2'></div>
+                        )}
+                </div>
+              ))}
+                  </div>
+                </div>
+              </Card>
+            </div>
+
             {/* View/Edit Modal */}
             {viewItem && (
               <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
@@ -257,111 +324,6 @@ const AdminRentals = () => {
               </div>
             )}
 
-            {/* Top cards row: 1-1-2 */}
-            <div className='grid grid-cols-4 gap-6'>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Ratings</div>
-                    <div className='text-2xl font-semibold mt-1'>13k <span className='text-green-600 text-xs align-middle'>+15.6%</span></div>
-                    <div className='mt-3'><span className='text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full'>Year of 2025</span></div>
-                  </div>
-                  <div className='w-24 h-24 bg-violet-100 rounded-lg' />
-                </div>
-              </div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'>
-                <div className='p-4 flex items-center justify-between'>
-                  <div>
-                    <div className='text-sm text-gray-600'>Sessions</div>
-                    <div className='text-2xl font-semibold mt-1'>24.5k <span className='text-rose-500 text-xs align-middle'>-20%</span></div>
-                    <div className='mt-3 text-xs text-gray-600'>Last Week</div>
-                  </div>
-                  <div className='w-24 h-24 bg-gray-100 rounded-lg' />
-                </div>
-              </div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-2'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium'>Transactions</div>
-                  <div className='text-xs text-gray-500 mt-1'>Total 48.5% Growth this month</div>
-                  <div className='grid grid-cols-3 gap-3 mt-4'>
-                    {[{t:'Sales',v:'245k'},{t:'Users',v:'12.5k'},{t:'Product',v:'1.54k'}].map((x,i)=>(
-                      <div key={i} className='bg-gray-50 rounded-lg p-3'>
-                        <div className='text-xs text-gray-500'>{x.t}</div>
-                        <div className='text-lg font-semibold mt-1'>{x.v}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Middle cards: 1-1-2 */}
-            <div className='grid grid-cols-4 gap-6'>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'><div className='p-4'><div className='text-sm text-gray-700 font-medium mb-2'>Total Sales</div><div className='rounded-lg border border-dashed'><LineChart /></div></div></div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'><div className='p-4'><div className='text-sm text-gray-700 font-medium mb-2'>Revenue Report</div><div className='rounded-lg border border-dashed'><BarChart /></div></div></div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-2'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Sales Overview</div>
-                  <div className='grid grid-cols-[1fr,240px] gap-4'>
-                    <div className='grid place-items-center'>
-                      <div className='rounded-lg border border-dashed w-full max-w-[220px]'><DonutChart /></div>
-                    </div>
-                    <div className='text-sm'>
-                      <div className='flex items-center gap-3 mb-3'>
-                        <span className='w-9 h-9 rounded-lg bg-violet-100 grid place-items-center text-violet-600'>📄</span>
-                        <div>
-                          <div className='text-xs text-gray-500'>Number of Sales</div>
-                          <div className='font-semibold text-base'>$86,400</div>
-                        </div>
-                      </div>
-                      <div className='border-t border-gray-200 my-3'></div>
-                      <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
-                        <div><div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-500'></span>Apparel</div><div className='text-xs text-gray-500 mt-0.5'>$12,150</div></div>
-                        <div><div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-300'></span>Electronics</div><div className='text-xs text-gray-500 mt-0.5'>$24,900</div></div>
-                        <div><div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-200'></span>FMCG</div><div className='text-xs text-gray-500 mt-0.5'>$12,750</div></div>
-                        <div><div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-400'></span>Other Sales</div><div className='text-xs text-gray-500 mt-0.5'>$50,200</div></div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom row: 2-1-1 */}
-            <div className='grid grid-cols-4 gap-6'>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-2'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Activity Timeline</div>
-                  <div className='space-y-5 text-sm'>
-                    {[
-                      ['12 Invoices have been paid','Invoices have been paid to the company','12 min ago'],
-                      ['Client Meeting','Project meeting with john @10:15am','45 min ago'],
-                    ].map((t,i)=> (
-                      <div key={i} className='grid grid-cols-[16px,1fr,100px] gap-3 items-start'>
-                        <span className={`w-3 h-3 rounded-full mt-1 ${i===0?'bg-violet-500':'bg-green-500'}`} />
-                        <div>
-                          <div className='font-medium'>{t[0]}</div>
-                          <div className='text-gray-500'>{t[1]}</div>
-                        </div>
-                        <div className='text-gray-500 text-xs text-right'>{t[2]}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'>
-                <div className='p-4'>
-                  <div className='text-sm text-gray-700 font-medium mb-2'>Weekly Sales</div>
-                  <div className='rounded-lg border border-dashed'><BarChart /></div>
-                </div>
-              </div>
-              <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-1'>
-                <div className='p-4'>
-                  <div className='text-2xl font-semibold'>42.5k</div>
-                  <div className='mt-2 rounded-lg border border-dashed'><Sparkline /></div>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
