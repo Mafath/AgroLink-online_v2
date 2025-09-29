@@ -43,6 +43,7 @@ import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
 
 // Security pages
 import EmailChangePage from './pages/EmailChangePage';
+import EmailChangeVerificationPage from './pages/EmailChangeVerificationPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import LoginHistoryPage from './pages/LoginHistoryPage';
 import AccountDeletionPage from './pages/AccountDeletionPage';
@@ -118,6 +119,7 @@ const App = () => {
 
           {/* Security pages */}
           <Route path="/security/email" element={authUser ? <EmailChangePage /> : <Navigate to="/login" />} />
+          <Route path="/verify-email-change/:token" element={<EmailChangeVerificationPage />} />
           <Route path="/security/password" element={authUser ? <PasswordChangePage /> : <Navigate to="/login" />} />
           <Route path="/security/history" element={authUser ? <LoginHistoryPage /> : <Navigate to="/login" />} />
           <Route path="/security/deletion" element={authUser ? <AccountDeletionPage /> : <Navigate to="/login" />} />

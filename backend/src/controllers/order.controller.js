@@ -5,7 +5,7 @@ import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
 import mongoose from 'mongoose';
 import { sendOrderPlacedEmail, sendOrderCancellationEmail } from '../lib/emailService.js';
-import { logItemSold, getFarmerActivities } from '../lib/activityService.js';
+import { logItemSold, getFarmerActivities, logBuyerOrderPlaced, logBuyerOrderCancelled, getBuyerActivities } from '../lib/activityService.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
 const updateStockQuantities = async (items, isCancellation = false, order = null) => {
@@ -29,7 +29,6 @@ const updateStockQuantities = async (items, isCancellation = false, order = null
         }
         
         await inventoryItem.save();
-        console.log(`Updated inventory item ${inventoryItem.name}: stock ${inventoryItem.stockQuantity}, status ${inventoryItem.status}`);
       }
     } else if (item.listingId) {
       // Update listing capacity
@@ -46,7 +45,6 @@ const updateStockQuantities = async (items, isCancellation = false, order = null
         }
         
         await listing.save();
-        console.log(`Updated listing ${listing.cropName}: capacity ${listing.capacityKg}kg, status ${listing.status}`);
         
         // Log activity for listing sales (only for orders, not cancellations)
         // Check both itemType field and if it's a listing item by checking if listingId exists
@@ -196,6 +194,13 @@ export const createOrder = async (req, res) => {
       await sendOrderPlacedEmail(order, req.user);
     } catch (e) {
       console.error('Failed to send order confirmation email:', e);
+    }
+
+    // Log buyer activity (fire and forget)
+    try {
+      await logBuyerOrderPlaced(order, req.user._id);
+    } catch (e) {
+      console.error('Failed to log buyer order placed:', e);
     }
 
     return res.status(201).json(order);
@@ -500,6 +505,13 @@ export const cancelOrder = async (req, res) => {
     order.status = 'CANCELLED';
     await order.save();
 
+    // Log buyer cancellation activity (fire and forget)
+    try {
+      await logBuyerOrderCancelled(order, order.customer);
+    } catch (e) {
+      console.error('Failed to log buyer order cancelled:', e);
+    }
+
     // If this order has a delivery, cancel it too
     if (order.delivery) {
       try {
@@ -658,5 +670,22 @@ export const getFarmerActivitiesEndpoint = async (req, res) => {
   } catch (error) {
     console.error('getFarmerActivitiesEndpoint error:', error);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch farmer activities' } });
+  }
+};
+
+// Get buyer activities
+export const getBuyerActivitiesEndpoint = async (req, res) => {
+  try {
+    if (req.user.role !== 'BUYER' && req.user.role !== 'FARMER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only BUYER or FARMER can access this endpoint' } });
+    }
+
+    const buyerId = req.user._id;
+    const limit = parseInt(req.query.limit) || 20;
+    const activities = await getBuyerActivities(buyerId, limit);
+    return res.json(activities);
+  } catch (error) {
+    console.error('getBuyerActivitiesEndpoint error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to fetch buyer activities' } });
   }
 };

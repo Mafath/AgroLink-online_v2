@@ -8,7 +8,7 @@ const HomePage = () => {
   const isAuthenticated = Boolean(authUser);
   const user = authUser;
 
-  const displayName = user?.email ? user.email.split('@')[0] : 'User';
+  const displayName = user?.fullName || (user?.email ? user.email.split('@')[0] : 'User');
 
   const getWelcomeMessage = () => {
     if (!isAuthenticated) {

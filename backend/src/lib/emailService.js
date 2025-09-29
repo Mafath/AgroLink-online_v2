@@ -17,6 +17,82 @@ export const generateVerificationToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
+// Send email change verification email
+export const sendEmailChangeVerification = async (email, fullName, verificationToken) => {
+  try {
+    const transporter = createTransporter();
+    
+    // Create verification URL for email change
+    const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email-change/${verificationToken}`;
+    
+    // Email template for email change verification (matching purchase email style)
+    const htmlTemplate = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1" />
+          <title>Email Change Verification - AgroLink</title>
+        </head>
+        <body style="font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f9fafb;padding:24px;">
+          <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+            <div style="background:#111827;color:#ffffff;padding:20px 24px;">
+              <div style="font-size:20px;font-weight:700;">AgroLink</div>
+              <div style="margin-top:6px;font-size:14px;opacity:.9;">Email change verification required</div>
+            </div>
+
+            <div style="padding:24px;">
+              <div style="font-size:18px;font-weight:600;color:#111827;">Hi ${fullName},</div>
+              <div style="margin-top:8px;color:#374151;">You have requested to change your email address. Please verify your new email address to complete this change:</div>
+
+              <div style="margin-top:16px;color:#374151;font-size:14px;">
+                <div><strong>New Email</strong> ${email}</div>
+                <div><strong>Requested</strong> ${new Date().toLocaleString()}</div>
+              </div>
+
+              <div style="margin-top:20px;">
+                <a href="${verificationUrl}" style="display:inline-block;background:#111827;color:#ffffff;text-decoration:none;padding:12px 16px;border-radius:8px;font-weight:600;">Verify Email Change</a>
+              </div>
+
+              <div style="margin-top:20px;border-top:1px solid #e5e7eb;padding-top:12px;">
+                <div style="background:#f9fafb;padding:16px;border-radius:8px;border-left:4px solid #111827;">
+                  <div style="font-weight:600;color:#111827;margin-bottom:8px;">🛡️ Security Information</div>
+                  <div style="color:#374151;font-size:14px;margin-bottom:6px;">• This verification link will expire in 24 hours</div>
+                  <div style="color:#374151;font-size:14px;margin-bottom:6px;">• Your current email remains active until verification</div>
+                  <div style="color:#374151;font-size:14px;">• If you didn't request this change, please ignore this email</div>
+                </div>
+              </div>
+
+              <div style="margin-top:16px;color:#6b7280;font-size:12px;">
+                <div>If the button doesn't work, copy and paste this link:</div>
+                <div style="background:#f3f4f6;padding:8px;border-radius:4px;margin-top:4px;font-family:monospace;word-break:break-all;">${verificationUrl}</div>
+              </div>
+            </div>
+
+            <div style="background:#f9fafb;padding:16px 24px;color:#6b7280;font-size:12px;text-align:center;">
+              © ${new Date().getFullYear()} AgroLink. This is an automated message; please do not reply.
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    const mailOptions = {
+      from: `"AgroLink Security" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: '🔐 Verify Your Email Change - AgroLink',
+      html: htmlTemplate,
+    };
+
+    const result = await transporter.sendMail(mailOptions);
+    console.log('Email change verification email sent successfully:', result.messageId);
+    return { success: true, messageId: result.messageId };
+  } catch (error) {
+    console.error('Error sending email change verification email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Send verification email
 export const sendVerificationEmail = async (email, fullName, verificationToken) => {
   try {

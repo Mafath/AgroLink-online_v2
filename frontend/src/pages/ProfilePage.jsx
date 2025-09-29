@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
 import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft, ArrowRight, Lock, Eye, EyeOff, AlertTriangle, Trash2, CheckCircle, XCircle, Clock, Monitor, Smartphone, Globe, Key, MailCheck } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import toast from 'react-hot-toast'
 
 const ProfilePage = () => {
+  const location = useLocation()
   const [me, setMe] = useState(null)
   const [error, setError] = useState(null)
   const [fullName, setFullName] = useState('')
@@ -26,12 +27,22 @@ const ProfilePage = () => {
   const { logout, checkAuth } = useAuthStore()
 
   const loadActivities = async (showLoading = true) => {
-    if (me?.role !== 'FARMER') return
+    if (!me?.role) return
     
     if (showLoading) setActivitiesLoading(true)
     try {
-      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
-      setActivities(res.data)
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setActivities(merged)
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        setActivities(res.data)
+      }
       setLastActivityCheck(new Date())
     } catch (error) {
       console.error('Error loading activities:', error)
@@ -42,11 +53,22 @@ const ProfilePage = () => {
   }
 
   const checkForNewActivities = async () => {
-    if (me?.role !== 'FARMER' || !lastActivityCheck) return
+    if (!me?.role || !lastActivityCheck) return
     
     try {
-      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
-      const newActivities = res.data
+      let newActivities = []
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        newActivities = merged
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        newActivities = res.data
+      }
       
       // Check if there are new activities by comparing the first activity's timestamp
       if (newActivities.length > 0 && activities.length > 0) {
@@ -70,7 +92,7 @@ const ProfilePage = () => {
 
   // Function to refresh activities immediately (can be called from other components)
   const refreshActivities = () => {
-    if (me?.role === 'FARMER') {
+    if (me?.role) {
       loadActivities(false) // Don't show loading spinner for background refresh
     }
   }
@@ -100,21 +122,30 @@ const ProfilePage = () => {
   }, [])
 
   useEffect(() => {
-    if (me?.role === 'FARMER') {
+    if (me?.role) {
       loadActivities()
     }
   }, [me?.role])
 
+  // Handle URL parameters for tab switching
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search)
+    const tab = urlParams.get('tab')
+    if (tab && ['overview', 'activity', 'security'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [location.search])
+
   // Load activities when switching to activity tab
   useEffect(() => {
-    if (activeTab === 'activity' && me?.role === 'FARMER' && activities.length === 0) {
+    if (activeTab === 'activity' && me?.role && activities.length === 0) {
       loadActivities()
     }
   }, [activeTab, me?.role])
 
   // Poll for new activities when on activity tab
   useEffect(() => {
-    if (activeTab === 'activity' && me?.role === 'FARMER') {
+    if (activeTab === 'activity' && me?.role) {
       // Check for new activities every 30 seconds
       const interval = setInterval(() => {
         checkForNewActivities()
@@ -472,7 +503,10 @@ const ProfilePage = () => {
                       setPhone(me.phone || ''); 
                       setAddress(me.address || ''); 
                       setBio(me.bio || '');
-                      setProfilePic('') 
+                      setProfilePic('');
+                      setIsEditing(false);
+                      setTouched({ fullName: false, phone: false, address: false, bio: false });
+                      setErrors({ fullName: '', phone: '', address: '', bio: '' });
                     }}
                   >
                     Cancel
@@ -730,14 +764,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
 
 // Activity Section Component
 const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRole }) => {
-  if (userRole !== 'FARMER') {
-    return (
-      <div className='mt-6 card'>
-        <div className='font-medium mb-3'>Recent Activity</div>
-        <div className='text-center py-4 text-gray-500'>Activity tracking is only available for farmers.</div>
-      </div>
-    )
-  }
 
   return (
     <div className='mt-6 card'>
@@ -786,6 +812,8 @@ const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRo
                       activity.type === 'ITEM_EXPIRED' ? 'bg-orange-50 border-l-4 border-orange-400' :
                       activity.type === 'LISTING_UPDATED' ? 'bg-purple-50 border-l-4 border-purple-400' :
                       activity.type === 'LISTING_REMOVED' ? 'bg-red-50 border-l-4 border-red-400' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-50 border-l-4 border-red-400' :
                       'bg-gray-50 border-l-4 border-gray-400'
                     }`}
                   >
@@ -795,6 +823,8 @@ const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRo
                       activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
                       activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
                       activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-500' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-500' :
                       'bg-gray-500'
                     }`}></div>
                     <div className='flex-1'>
@@ -824,6 +854,7 @@ const StatsSection = ({ me }) => {
   const [farmerMonthRevenue, setFarmerMonthRevenue] = React.useState(null)
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
   const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
+  const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const loadStats = async () => {
     setLoading(true)
@@ -831,8 +862,21 @@ const StatsSection = ({ me }) => {
       // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
       const ordersRes = await axiosInstance.get('/orders/me')
       setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
+
+      // Buyer: compute total spent in last 30 days
+      if (me.role !== 'FARMER' && Array.isArray(ordersRes.data)) {
+        const now = new Date()
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+        const total = ordersRes.data
+          .filter(o => new Date(o.createdAt) >= thirtyDaysAgo && o.status !== 'CANCELLED')
+          .reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+        setBuyerTotalSpent30(total)
+      } else if (me.role !== 'FARMER') {
+        setBuyerTotalSpent30(0)
+      }
     } catch {
       setOrdersCount(0)
+      if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
     }
 
     try {
@@ -911,8 +955,8 @@ const StatsSection = ({ me }) => {
         <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
       </div>
       <div className='card text-center'>
-        <div className='text-xs text-gray-500'>Products Listed</div>
-        <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+        <div className='text-xs text-gray-500'>Total Spent (Last 30 Days)</div>
+        <div className='text-2xl font-semibold'>{buyerTotalSpent30 == null ? '—' : `LKR ${Number(buyerTotalSpent30).toLocaleString()}`}</div>
       </div>
     </div>
   )

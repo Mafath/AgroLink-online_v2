@@ -1,6 +1,7 @@
 import Activity from '../models/activity.model.js';
 import Listing from '../models/listing.model.js';
 import Order from '../models/order.model.js';
+import BuyerActivity from '../models/buyerActivity.model.js';
 
 // Helper function to create activity entries
 export const logActivity = async (farmerId, type, title, description, listingId = null, orderId = null, metadata = {}) => {
@@ -103,6 +104,72 @@ export const getFarmerActivities = async (farmerId, limit = 20) => {
     return activities;
   } catch (error) {
     console.error('Error fetching farmer activities:', error);
+    return [];
+  }
+};
+
+// Buyer activity helpers
+export const logBuyerOrderPlaced = async (order, buyerId) => {
+  try {
+    const title = 'Order Placed';
+    const description = `You placed an order totaling LKR ${order.total}`;
+    const metadata = {
+      subtotal: order.subtotal,
+      deliveryFee: order.deliveryFee,
+      total: order.total,
+      itemsCount: order.items?.length || 0,
+      orderNumber: order.orderNumber,
+    };
+
+    const act = new BuyerActivity({
+      buyer: buyerId,
+      type: 'ORDER_PLACED',
+      title,
+      description,
+      orderId: order._id,
+      metadata,
+    });
+    await act.save();
+    return act;
+  } catch (e) {
+    console.error('Error logging buyer order placed:', e);
+    return null;
+  }
+};
+
+export const logBuyerOrderCancelled = async (order, buyerId) => {
+  try {
+    const title = 'Order Cancelled';
+    const description = `Your order ${order.orderNumber || ''} was cancelled`;
+    const metadata = {
+      orderNumber: order.orderNumber,
+      status: order.status,
+    };
+    const act = new BuyerActivity({
+      buyer: buyerId,
+      type: 'ORDER_CANCELLED',
+      title,
+      description,
+      orderId: order._id,
+      metadata,
+    });
+    await act.save();
+    return act;
+  } catch (e) {
+    console.error('Error logging buyer order cancelled:', e);
+    return null;
+  }
+};
+
+export const getBuyerActivities = async (buyerId, limit = 20) => {
+  try {
+    const activities = await BuyerActivity.find({ buyer: buyerId })
+      .populate('orderId', 'orderNumber status total createdAt')
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    return activities;
+  } catch (e) {
+    console.error('Error fetching buyer activities:', e);
     return [];
   }
 };
