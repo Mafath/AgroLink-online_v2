@@ -53,15 +53,13 @@ const MyOrders = () => {
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center space-x-2">
-            <Package className="w-6 h-6 text-gray-900" />
+            <Package className="w-8 h-8 text-primary-600" />
             <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
           </div>
         </div>
 
-        {loading ? (
-          <Card className="p-8 text-center text-gray-500">Loading…</Card>
-        ) : orders.length === 0 ? (
-          <Card className="text-center py-12">
+        {orders.length === 0 ? (
+          <div className="text-center py-12">
             <Package className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-900 mb-2">No orders yet</h2>
             <p className="text-gray-600 mb-6">
@@ -73,7 +71,7 @@ const MyOrders = () => {
             >
               Browse Marketplace
             </button>
-          </Card>
+          </div>
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
