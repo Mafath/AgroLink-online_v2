@@ -27,11 +27,12 @@ const ProfilePage = () => {
   const { logout, checkAuth } = useAuthStore()
 
   const loadActivities = async (showLoading = true) => {
-    if (me?.role !== 'FARMER') return
+    if (!me?.role) return
     
     if (showLoading) setActivitiesLoading(true)
     try {
-      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
+      const endpoint = me.role === 'FARMER' ? '/orders/activities/farmer?limit=10' : '/orders/activities/buyer?limit=10'
+      const res = await axiosInstance.get(endpoint)
       setActivities(res.data)
       setLastActivityCheck(new Date())
     } catch (error) {
@@ -43,10 +44,11 @@ const ProfilePage = () => {
   }
 
   const checkForNewActivities = async () => {
-    if (me?.role !== 'FARMER' || !lastActivityCheck) return
+    if (!me?.role || !lastActivityCheck) return
     
     try {
-      const res = await axiosInstance.get('/orders/activities/farmer?limit=10')
+      const endpoint = me.role === 'FARMER' ? '/orders/activities/farmer?limit=10' : '/orders/activities/buyer?limit=10'
+      const res = await axiosInstance.get(endpoint)
       const newActivities = res.data
       
       // Check if there are new activities by comparing the first activity's timestamp
@@ -71,7 +73,7 @@ const ProfilePage = () => {
 
   // Function to refresh activities immediately (can be called from other components)
   const refreshActivities = () => {
-    if (me?.role === 'FARMER') {
+    if (me?.role) {
       loadActivities(false) // Don't show loading spinner for background refresh
     }
   }
@@ -101,7 +103,7 @@ const ProfilePage = () => {
   }, [])
 
   useEffect(() => {
-    if (me?.role === 'FARMER') {
+    if (me?.role) {
       loadActivities()
     }
   }, [me?.role])
@@ -117,14 +119,14 @@ const ProfilePage = () => {
 
   // Load activities when switching to activity tab
   useEffect(() => {
-    if (activeTab === 'activity' && me?.role === 'FARMER' && activities.length === 0) {
+    if (activeTab === 'activity' && me?.role && activities.length === 0) {
       loadActivities()
     }
   }, [activeTab, me?.role])
 
   // Poll for new activities when on activity tab
   useEffect(() => {
-    if (activeTab === 'activity' && me?.role === 'FARMER') {
+    if (activeTab === 'activity' && me?.role) {
       // Check for new activities every 30 seconds
       const interval = setInterval(() => {
         checkForNewActivities()
@@ -743,14 +745,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
 
 // Activity Section Component
 const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRole }) => {
-  if (userRole !== 'FARMER') {
-    return (
-      <div className='mt-6 card'>
-        <div className='font-medium mb-3'>Recent Activity</div>
-        <div className='text-center py-4 text-gray-500'>Activity tracking is only available for farmers.</div>
-      </div>
-    )
-  }
 
   return (
     <div className='mt-6 card'>
@@ -799,6 +793,8 @@ const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRo
                       activity.type === 'ITEM_EXPIRED' ? 'bg-orange-50 border-l-4 border-orange-400' :
                       activity.type === 'LISTING_UPDATED' ? 'bg-purple-50 border-l-4 border-purple-400' :
                       activity.type === 'LISTING_REMOVED' ? 'bg-red-50 border-l-4 border-red-400' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-50 border-l-4 border-red-400' :
                       'bg-gray-50 border-l-4 border-gray-400'
                     }`}
                   >
@@ -808,6 +804,8 @@ const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRo
                       activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
                       activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
                       activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-500' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-500' :
                       'bg-gray-500'
                     }`}></div>
                     <div className='flex-1'>
