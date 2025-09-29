@@ -20,7 +20,7 @@ const Sparkline = () => (
 
 const AdminRentals = () => {
   const [isAddOpen, setIsAddOpen] = useState(false)
-  const [rentalForm, setRentalForm] = useState({ productName: '', description: '', rentalPerDay: '', rentalPerWeek: '', images: [], totalQty: '' })
+  const [rentalForm, setRentalForm] = useState({ productName: '', description: '', rentalPerDay: '', images: [], totalQty: '' })
   const [rentalItems, setRentalItems] = useState([])
   const [isLoadingRentals, setIsLoadingRentals] = useState(false)
   const [search, setSearch] = useState('')
@@ -79,13 +79,12 @@ const AdminRentals = () => {
         productName: rentalForm.productName,
         description: rentalForm.description,
         rentalPerDay: Number(rentalForm.rentalPerDay),
-        rentalPerWeek: Number(rentalForm.rentalPerWeek),
         images: rentalForm.images,
         totalQty: Number(rentalForm.totalQty),
       }
       await axiosInstance.post('rentals', payload)
       setIsAddOpen(false)
-      setRentalForm({ productName: '', description: '', rentalPerDay: '', rentalPerWeek: '', images: [], totalQty: '' })
+      setRentalForm({ productName: '', description: '', rentalPerDay: '', images: [], totalQty: '' })
       loadRentals()
     } catch (err) {
       // handle error later; keep silent for now
@@ -132,24 +131,22 @@ const AdminRentals = () => {
                     <tr className='text-left text-gray-500'>
                       <th className='py-3 px-4 text-center'>Product name</th>
                       <th className='py-3 px-4 text-center'>Rental / Day</th>
-                      <th className='py-3 px-4 text-center'>Rental / Week</th>
                       <th className='py-3 px-4 text-center'>Images</th>
                       <th className='py-3 px-4 text-center'>Total Qty</th>
-                      <th className='py-3 px-4 text-center'>Available Qty</th>
                       <th className='py-3 px-4 text-center'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {isLoadingRentals ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>Loading…</td></tr>
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={5}>Loading…</td></tr>
                     ) : rentalItems.length === 0 ? (
-                      <tr><td className='py-10 text-center text-gray-400' colSpan={8}>No data yet</td></tr>
+                      <tr><td className='py-10 text-center text-gray-400' colSpan={5}>No data yet</td></tr>
                     ) : (
                       filteredRentals.map((it) => (
                         <tr key={it._id} className='border-t'>
                           <td className='py-3 px-4 text-center'>{it.productName}</td>
                           <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerDay || 0).toLocaleString()}</td>
-                          <td className='py-3 px-4 text-center'>LKR {Number(it.rentalPerWeek || 0).toLocaleString()}</td>
+                          
                           <td className='py-3 px-4 text-center'>
                             {Array.isArray(it.images) && it.images.filter(Boolean).length > 0 ? (
                               <div className='inline-grid grid-cols-4 gap-1'>
@@ -162,7 +159,6 @@ const AdminRentals = () => {
                             )}
                           </td>
                           <td className='py-3 px-4 text-center'>{it.totalQty}</td>
-                          <td className='py-3 px-4 text-center'>{it.availableQty}</td>
                           <td className='py-3 px-4 text-center'>
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem(it); setIsEditing(false); }}>
@@ -192,7 +188,7 @@ const AdminRentals = () => {
                     <button onClick={()=>{ setViewItem(null); setIsEditing(false); }} className='text-gray-500'>Close</button>
                   </div>
                   {isEditing ? (
-                    <form onSubmit={async (e)=>{ e.preventDefault(); try { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); setViewItem(null); setIsEditing(false); } catch(_){} }} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                    <form onSubmit={async (e)=>{ e.preventDefault(); try { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); setViewItem(null); setIsEditing(false); } catch(_){} }} className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                       <div>
                         <label className='form-label'>Product name</label>
                         <input className='input-field' value={viewItem.productName||''} onChange={(e)=>setViewItem(v=>({...v, productName:e.target.value}))} required />
@@ -209,10 +205,7 @@ const AdminRentals = () => {
                         <label className='form-label'>Rental / Day</label>
                         <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
                       </div>
-                      <div>
-                        <label className='form-label'>Rental / Week</label>
-                        <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerWeek||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerWeek:e.target.value}))} required />
-                      </div>
+                      
                       <div className='md:col-span-2'>
                         <label className='form-label'>Images (up to 4)</label>
                         <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
@@ -239,7 +232,7 @@ const AdminRentals = () => {
                       <div><span className='text-gray-500'>Description:</span> <span className='font-medium'>{viewItem.description||'—'}</span></div>
                       <div className='grid grid-cols-2 gap-4'>
                         <div><span className='text-gray-500'>Rental / Day:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</span></div>
-                        <div><span className='text-gray-500'>Rental / Week:</span> <span className='font-medium'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</span></div>
+                        
                         <div><span className='text-gray-500'>Total Qty:</span> <span className='font-medium'>{viewItem.totalQty}</span></div>
                         <div><span className='text-gray-500'>Available Qty:</span> <span className='font-medium'>{viewItem.availableQty}</span></div>
                       </div>
@@ -398,10 +391,7 @@ const AdminRentals = () => {
                 <label className='form-label'>Rental / Day</label>
                 <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerDay} onChange={(e)=>setRentalForm(f=>({...f, rentalPerDay:e.target.value}))} required />
               </div>
-              <div>
-                <label className='form-label'>Rental / Week</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerWeek} onChange={(e)=>setRentalForm(f=>({...f, rentalPerWeek:e.target.value}))} required />
-              </div>
+              
               <div className='md:col-span-2'>
                 <label className='form-label'>Images (up to 4)</label>
                 <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{

@@ -121,7 +121,6 @@ const AdminInventory = () => {
     productName: '',
     description: '',
     rentalPerDay: '',
-    rentalPerWeek: '',
     images: [],
     totalQty: '',
   })
@@ -313,13 +312,12 @@ const AdminInventory = () => {
         productName: rentalForm.productName,
         description: rentalForm.description,
         rentalPerDay: Number(rentalForm.rentalPerDay),
-        rentalPerWeek: Number(rentalForm.rentalPerWeek),
         images: rentalForm.images,
         totalQty: Number(rentalForm.totalQty),
       }
       await axiosInstance.post('rentals', payload)
       setIsAddOpen(false)
-      setRentalForm({ productName: '', description: '', rentalPerDay: '', rentalPerWeek: '', images: [], totalQty: '' })
+      setRentalForm({ productName: '', description: '', rentalPerDay: '', images: [], totalQty: '' })
       loadRentals()
     } catch (err) {
       // handle error later; keep silent for now
@@ -544,7 +542,7 @@ const AdminInventory = () => {
                 <h3 className='text-md font-semibold text-gray-800 mb-1'>Edit Item Details</h3>
                 <p className='text-xs text-gray-600'>Update the information below and click Save to apply changes.</p>
               </div>
-              <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, images:viewItem.images, stockQuantity:Number(viewItem.stockQuantity || 0), price:Number(viewItem.price || 0) }; console.log('Submitting inventory update:', payload); await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), rentalPerWeek:Number(viewItem.rentalPerWeek), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(err){ console.error('Update failed:', err); }}} className='grid grid-cols-1 md:grid-cols-2 gap-3'>
+              <form onSubmit={async (e)=>{ e.preventDefault(); try{ if(viewItem.isInventory){ const payload={ name:viewItem.name, category:viewItem.category, description:viewItem.description, images:viewItem.images, stockQuantity:Number(viewItem.stockQuantity || 0), price:Number(viewItem.price || 0) }; console.log('Submitting inventory update:', payload); await axiosInstance.put(`inventory/${viewItem._id}`, payload); loadInventory(); } else { const payload={ productName:viewItem.productName, description:viewItem.description, rentalPerDay:Number(viewItem.rentalPerDay), images:viewItem.images, totalQty:Number(viewItem.totalQty) }; await axiosInstance.put(`rentals/${viewItem._id}`, payload); loadRentals(); } setViewItem(null); setIsEditing(false); }catch(err){ console.error('Update failed:', err); }}} className='grid grid-cols-1 md:grid-cols-2 gap-3'>
               <div>
                 <label className='form-label'>{viewItem.isInventory ? 'Name' : 'Product name'}</label>
                 <input className='input-field' value={(viewItem.isInventory ? viewItem.name : viewItem.productName) || ''} onChange={(e)=>setViewItem(v=> v.isInventory ? ({...v, name:e.target.value}) : ({...v, productName:e.target.value}))} required />
@@ -617,10 +615,7 @@ const AdminInventory = () => {
                     <label className='form-label'>Rental / Day</label>
                     <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
                   </div>
-                  <div>
-                    <label className='form-label'>Rental / Week</label>
-                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerWeek||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerWeek:e.target.value}))} required />
-                  </div>
+                  
                   <div className='md:col-span-2'>
                     <label className='form-label'>Images (up to 4)</label>
                     <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{
@@ -688,10 +683,7 @@ const AdminInventory = () => {
                       <div className='text-gray-500 text-xs uppercase tracking-wide'>Rental / Day</div>
                       <div className='font-semibold text-blue-800 text-sm'>LKR {Number(viewItem.rentalPerDay||0).toLocaleString()}</div>
                     </div>
-                    <div className='bg-green-50 p-2 rounded-lg'>
-                      <div className='text-gray-500 text-xs uppercase tracking-wide'>Rental / Week</div>
-                      <div className='font-semibold text-green-800 text-sm'>LKR {Number(viewItem.rentalPerWeek||0).toLocaleString()}</div>
-                    </div>
+                    
                     <div className='bg-purple-50 p-2 rounded-lg'>
                       <div className='text-gray-500 text-xs uppercase tracking-wide'>Total Qty</div>
                       <div className='font-semibold text-purple-800 text-sm'>{viewItem.totalQty}</div>
@@ -831,10 +823,7 @@ const AdminInventory = () => {
                 <label className='form-label'>Rental / Day</label>
                 <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerDay} onChange={(e)=>setRentalForm(f=>({...f, rentalPerDay:e.target.value}))} required />
               </div>
-              <div>
-                <label className='form-label'>Rental / Week</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerWeek} onChange={(e)=>setRentalForm(f=>({...f, rentalPerWeek:e.target.value}))} required />
-              </div>
+              
               <div className='md:col-span-2'>
                 <label className='form-label'>Images (up to 4)</label>
                 <input type='file' accept='image/*' multiple className='block w-full text-sm' onChange={(e)=>{

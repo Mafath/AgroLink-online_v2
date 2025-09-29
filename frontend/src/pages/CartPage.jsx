@@ -122,7 +122,15 @@ const CartPage = () => {
   };
 
   const calculateSubtotal = () => {
-    return getSelectedCartItems().reduce((total, item) => total + (item.price * item.quantity), 0);
+    return getSelectedCartItems().reduce((total, item) => {
+      if (item.itemType === 'rental') {
+        const startDate = new Date(item.rentalStartDate);
+        const endDate = new Date(item.rentalEndDate);
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        return total + (item.rentalPerDay * days * item.quantity);
+      }
+      return total + (item.price * item.quantity);
+    }, 0);
   };
 
   const calculateDeliveryFee = () => {
@@ -256,7 +264,18 @@ const CartPage = () => {
                         />
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900">{item.title}</h3>
-                          <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} per {item.unit}</p>
+                          {item.itemType === 'rental' ? (
+                            <div className="text-sm text-gray-600">
+                              <p>LKR {item.rentalPerDay?.toFixed(2)} / day</p>
+                              {item.rentalStartDate && item.rentalEndDate && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  {new Date(item.rentalStartDate).toLocaleDateString()} - {new Date(item.rentalEndDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} per {item.unit}</p>
+                          )}
                           {item.maxQuantity && (
                             <p className="text-xs text-gray-500">
                               Available: {item.maxQuantity} {item.unit}
@@ -280,8 +299,28 @@ const CartPage = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-gray-900">
-                            LKR {(item.price * item.quantity).toFixed(2)}
+                            {item.itemType === 'rental' ? (
+                              (() => {
+                                const startDate = new Date(item.rentalStartDate);
+                                const endDate = new Date(item.rentalEndDate);
+                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                                const totalPrice = item.rentalPerDay * days * item.quantity;
+                                return `LKR ${totalPrice.toFixed(2)}`;
+                              })()
+                            ) : (
+                              `LKR ${(item.price * item.quantity).toFixed(2)}`
+                            )}
                           </p>
+                          {item.itemType === 'rental' && (
+                            <p className="text-xs text-gray-500">
+                              {(() => {
+                                const startDate = new Date(item.rentalStartDate);
+                                const endDate = new Date(item.rentalEndDate);
+                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                                return `${days} days × ${item.quantity} items`;
+                              })()}
+                            </p>
+                          )}
                         </div>
                         <button
                           onClick={() => removeItem(index)}

@@ -24,7 +24,6 @@ const Marketplace = () => {
   const [rentalEnd, setRentalEnd] = useState('')
   const [availability, setAvailability] = useState(null)
   const [checkingAvailability, setCheckingAvailability] = useState(false)
-  const [bookingLoading, setBookingLoading] = useState(false)
 
   const userRole = String(authUser?.role || '').toUpperCase()
   const isFarmer = userRole === 'FARMER'
@@ -77,10 +76,10 @@ const Marketplace = () => {
     }
   }
 
-  // Rentals: create booking for a selected item
-  const bookRental = async (itemId) => {
+  // Rentals: add rental booking to cart
+  const addRentalToCart = async (item) => {
     if (!authUser) {
-      toast.error('Please login to book rentals')
+      toast.error('Please login to add rentals to cart')
       return
     }
     if (!rentalStart || !rentalEnd) {
@@ -91,24 +90,19 @@ const Marketplace = () => {
       toast.error('Enter a valid quantity')
       return
     }
-    try {
-      setBookingLoading(true)
-      const res = await axiosInstance.post(`/rentals/${itemId}/book`, {
-        quantity: Number(rentalQty),
-        startDate: rentalStart,
-        endDate: rentalEnd,
-      })
-      if (res.data?.success) {
-        toast.success('Rental booked successfully')
-        setSelected(null)
-      } else {
-        toast.error('Failed to book rental')
-      }
-    } catch (e) {
-      const msg = e?.response?.data?.message || 'Failed to book rental'
-      toast.error(msg)
-    } finally {
-      setBookingLoading(false)
+    
+    const userId = authUser._id || authUser.id
+    const rentalData = {
+      startDate: rentalStart,
+      endDate: rentalEnd
+    }
+    
+    const success = await addToUserCart(userId, item, rentalQty, rentalData)
+    if (success) {
+      toast.success('Rental added to cart')
+      setSelected(null)
+    } else {
+      toast.error('Failed to add rental to cart')
     }
   }
 
@@ -385,7 +379,6 @@ const Marketplace = () => {
                 {isFarmer && activeTab === 'rentals' ? (
                   <>
                     <div>LKR {Number(it.rentalPerDay).toFixed(2)} / day</div>
-                    <div className='text-[10px] text-gray-500'>LKR {Number(it.rentalPerWeek).toFixed(2)} / week</div>
                   </>
                 ) : (
                   <>LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}</>
@@ -396,10 +389,8 @@ const Marketplace = () => {
                   {activeTab === 'marketplace' ? (
                     <div className='text-xs text-gray-500 mt-1'>Category: {it.category}</div>
                   ) : (
-                    <div className='mt-1'>
-                      <span className='inline-flex items-center px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-700 border'>
-                        {it.availableQty} available
-                      </span>
+                    <div className='mt-1 text-xs text-gray-600 truncate' title={it.description || ''}>
+                      {String(it.description || '').trim() || '—'}
                     </div>
                   )}
                 </>
@@ -515,10 +506,7 @@ const Marketplace = () => {
                       <div className='text-gray-500'>Rate / day</div>
                       <div className='font-medium'>LKR {Number(selected.rentalPerDay).toFixed(2)}</div>
                     </div>
-                    <div>
-                      <div className='text-gray-500'>Rate / week</div>
-                      <div className='font-medium'>LKR {Number(selected.rentalPerWeek).toFixed(2)}</div>
-                    </div>
+                    
                   </>
                 ) : (
                   <>
@@ -596,8 +584,8 @@ const Marketplace = () => {
                 )}
                 <div className='flex justify-end gap-2'>
                   <button className='border px-2 py-1 rounded-md text-xs' onClick={() => setSelected(null)}>Close</button>
-                  <button className='btn-primary px-3 py-2 text-xs' onClick={()=> bookRental(selected._id)} disabled={bookingLoading}>
-                    {bookingLoading ? 'Booking…' : 'Book rental'}
+                  <button className='btn-primary px-3 py-2 text-xs' onClick={()=> addRentalToCart(selected)}>
+                    Add to cart
                   </button>
                 </div>
               </div>

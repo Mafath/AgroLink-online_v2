@@ -4,7 +4,7 @@ import cloudinary from "../lib/cloudinary.js";
 
 export const createRentalItem = async (req, res) => {
   try {
-    const { productName, description, rentalPerDay, rentalPerWeek, images, totalQty } = req.body;
+    const { productName, description, rentalPerDay, images, totalQty } = req.body;
 
     let imageUrls = [];
     if (Array.isArray(images) && images.length) {
@@ -30,7 +30,6 @@ export const createRentalItem = async (req, res) => {
       productName,
       description: description || "",
       rentalPerDay,
-      rentalPerWeek,
       images: imageUrls,
       totalQty,
       availableQty: totalQty,
@@ -131,7 +130,7 @@ export const createRentalBooking = async (req, res) => {
 export const updateRentalItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { productName, description, rentalPerDay, rentalPerWeek, images, totalQty } = req.body;
+    const { productName, description, rentalPerDay, images, totalQty } = req.body;
 
     let imageUrls = undefined;
     if (Array.isArray(images)) {
@@ -156,7 +155,6 @@ export const updateRentalItem = async (req, res) => {
       ...(productName !== undefined && { productName }),
       ...(description !== undefined && { description }),
       ...(rentalPerDay !== undefined && { rentalPerDay }),
-      ...(rentalPerWeek !== undefined && { rentalPerWeek }),
       ...(imageUrls !== undefined && { images: imageUrls }),
       ...(totalQty !== undefined && { totalQty, availableQty: totalQty }),
     };

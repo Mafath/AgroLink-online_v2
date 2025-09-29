@@ -1,12 +1,17 @@
 import mongoose from 'mongoose';
 
 const orderItemSchema = new mongoose.Schema({
-  listing: { type: mongoose.Schema.Types.ObjectId, required: true }, // Can reference Listing or InventoryProduct
-  itemType: { type: String, enum: ['listing', 'inventory'], required: true },
+  listing: { type: mongoose.Schema.Types.ObjectId, required: true }, // Can reference Listing, InventoryProduct, or RentalItem
+  itemType: { type: String, enum: ['listing', 'inventory', 'rental'], required: true },
   quantity: { type: Number, required: true, min: 1 },
-  price: { type: Number, required: true, min: 0 },
+  price: { type: Number, required: true, min: 0 }, // For rentals, base rate (per day)
   title: { type: String, required: true },
   image: { type: String, default: '' },
+  
+  // Rental-specific fields
+  rentalStartDate: { type: Date },
+  rentalEndDate: { type: Date },
+  rentalPerDay: { type: Number, min: 0 },
 }, { _id: false });
 
 const addressSchema = new mongoose.Schema({
