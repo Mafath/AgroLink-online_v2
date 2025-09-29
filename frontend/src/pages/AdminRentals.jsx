@@ -125,15 +125,15 @@ const AdminRentals = () => {
                   <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
                 </div>
               </div>
-              <div className='overflow-x-auto'>
+              <div className='h-[61vh] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
                   <thead>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-4 text-center'>Product name</th>
-                      <th className='py-3 px-4 text-center'>Rental / Day</th>
-                      <th className='py-3 px-4 text-center'>Images</th>
-                      <th className='py-3 px-4 text-center'>Total Qty</th>
-                      <th className='py-3 px-4 text-center'>Actions</th>
+                      <th className='py-3 px-4 text-center font-normal'>Product name</th>
+                      <th className='py-3 px-4 text-center font-normal'>Rental / Day</th>
+                      <th className='py-3 px-4 text-center font-normal'>Images</th>
+                      <th className='py-3 px-4 text-center font-normal'>Total Qty</th>
+                      <th className='py-3 px-4 text-center font-normal'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>

@@ -404,17 +404,17 @@ const AdminListings = () => {
                   </select>
                 </div>
               </div>
-              <div className='max-h-[280px] overflow-y-auto'>
+              <div className='h-[61vh] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
                   <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-3 text-left'>Crop Name</th>
-                      <th className='py-3 px-3 text-center'>Farmer</th>
-                      <th className='py-3 px-3 text-center'>Image</th>
-                      <th className='py-3 px-3 text-center'>Remaining <br />Capacity (Kg)</th>
-                      <th className='py-3 px-3 text-center'>Price/Kg</th>
-                      <th className='py-3 px-3 text-center'>Status</th>
-                      <th className='py-3 px-3 text-center'>Actions</th>
+                      <th className='py-3 px-3 text-left font-normal'>Crop Name</th>
+                      <th className='py-3 px-3 text-center font-normal'>Farmer</th>
+                      <th className='py-3 px-3 text-center font-normal'>Image</th>
+                      <th className='py-3 px-3 text-center font-normal'>Remaining <br />Capacity (Kg)</th>
+                      <th className='py-3 px-3 text-center font-normal'>Price/Kg</th>
+                      <th className='py-3 px-3 text-center font-normal'>Status</th>
+                      <th className='py-3 px-3 text-center font-normal'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -425,9 +425,9 @@ const AdminListings = () => {
                     ) : (
                       filteredListings.map((it) => (
                         <tr key={it._id} className='border-t'>
-                          <td className='py-1 px-3 ml-3 text-left'>{it.cropName}</td>
-                          <td className='py-1 px-3 text-left'>{it.farmer?.fullName || 'Unknown'}</td>
-                          <td className='py-1 px-3 text-left'>
+                          <td className='py-3 px-3 ml-3 text-left'>{it.cropName}</td>
+                          <td className='py-3 px-3 text-left'>{it.farmer?.fullName || 'Unknown'}</td>
+                          <td className='py-3 px-3 text-left'>
                             {it.images && it.images.length > 0 ? (
                               <div className='flex gap-1'>
                                 {it.images.slice(0, 2).map((img, idx) => (
@@ -443,9 +443,9 @@ const AdminListings = () => {
                               <span className='text-gray-400'>—</span>
                             )}
                           </td>
-                          <td className='py-1 px-3 text-center'>{it.capacityKg}</td>
-                          <td className='py-1 px-3 text-center'>LKR {Number(it.pricePerKg||0).toLocaleString()}</td>
-                          <td className='py-1 px-3 text-center'>
+                          <td className='py-3 px-3 text-center'>{it.capacityKg}</td>
+                          <td className='py-3 px-3 text-center'>LKR {Number(it.pricePerKg||0).toLocaleString()}</td>
+                          <td className='py-3 px-3 text-center'>
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               it.status === 'AVAILABLE' ? 'bg-green-100 text-green-700' :
                               it.status === 'SOLD' ? 'bg-blue-100 text-blue-700' :
@@ -454,7 +454,7 @@ const AdminListings = () => {
                               {it.status}
                             </span>
                           </td>
-                          <td className='py-1 px-3 text-center'>
+                          <td className='py-3 px-3 text-center'>
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isListing:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info

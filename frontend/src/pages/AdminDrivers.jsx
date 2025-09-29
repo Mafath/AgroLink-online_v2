@@ -339,16 +339,16 @@ const AdminDrivers = () => {
               </div>
             </div>
 
-            <div className='max-h-[240px] overflow-y-auto'>
+            <div className='h-[61vh] overflow-y-auto'>
               <table className='min-w-full text-sm'>
                 <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
-                    <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
-                    <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
-                    <th className='py-3 px-3 text-center align-middle'>Service Area</th>
-                    <th className='py-3 px-3 text-center align-middle'>Availability</th>
-                    <th className='py-3 px-3 text-center align-middle'>Status</th>
-                    <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
+                    <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle font-normal'>Profile</th>
+                    <th className='py-3 pl-8 pr-3 text-left align-middle font-normal'>Contact</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Service Area</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Availability</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Status</th>
+                    <th className='py-3 px-3 rounded-tr-xl text-center align-middle font-normal'>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -360,7 +360,7 @@ const AdminDrivers = () => {
                         <tr><td className='py-6 text-center text-gray-500' colSpan={6}>No drivers</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
-                    <td className='py-2 px-3 text-left align-middle'>
+                    <td className='py-3 px-3 text-left align-middle'>
                         <div className='flex items-center justify-start gap-2'>
                           <img
                             src={u.profilePic || DefaultAvatar}
@@ -371,20 +371,20 @@ const AdminDrivers = () => {
                           <span className='text-sm font-medium'>{u.fullName || '—'}</span>
                         </div>
                       </td>
-                     <td className='py-2 pl-8 pr-3 text-left align-middle'>
+                     <td className='py-3 pl-8 pr-3 text-left align-middle'>
                         <div>{u.email}</div>
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       {u.service_area || '—'}
                     </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${String(u.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE' ? 'bg-green-100 text-green-700 rounded-full' : 'bg-gray-100 text-gray-700 rounded-full'}`}>{(u.availability||'AVAILABLE').charAt(0) + String(u.availability||'AVAILABLE').slice(1).toLowerCase()}</span>
                     </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       <span className={`inline-flex items-center justify-center h-6 px-2 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{u.status && u.status.charAt(0) + u.status.slice(1).toLowerCase()}</span>
                       </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                         <div className='flex items-center justify-center gap-2'>
                         <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
                           <Info className='w-3 h-3' />

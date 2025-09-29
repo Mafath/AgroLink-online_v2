@@ -85,6 +85,7 @@ const AdminUsers = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [statsItems, setStatsItems] = useState([])
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -102,7 +103,13 @@ const AdminUsers = () => {
 
   useEffect(() => { fetchUsers() }, [query.role, query.status])
 
+  // Keep stats source in sync with table by default
+  useEffect(() => {
+    setStatsItems(Array.isArray(resp.data) ? resp.data : [])
+  }, [resp.data])
+
   const items = resp.data
+  const statsBase = statsItems
   const filteredItems = useMemo(() => {
     const search = (query.search || '').trim().toLowerCase()
     if (!search) return items
@@ -116,18 +123,18 @@ const AdminUsers = () => {
 
   const recentSignupsCount = useMemo(() => {
     const cutoff = Date.now() - 24 * 60 * 60 * 1000
-    return (Array.isArray(items) ? items : []).filter(u => {
+    return (Array.isArray(statsBase) ? statsBase : []).filter(u => {
       const t = new Date(u.createdAt || 0).getTime()
       return !Number.isNaN(t) && t >= cutoff
     }).length
-  }, [items])
+  }, [statsBase])
 
   const activeUsersCount = useMemo(() => {
-    return (Array.isArray(items) ? items : []).filter(u => String(u.status).toUpperCase() === 'ACTIVE').length
-  }, [items])
+    return (Array.isArray(statsBase) ? statsBase : []).filter(u => String(u.status).toUpperCase() === 'ACTIVE').length
+  }, [statsBase])
   const suspendedUsersCount = useMemo(() => {
-    return (Array.isArray(items) ? items : []).filter(u => String(u.status).toUpperCase() === 'SUSPENDED').length
-  }, [items])
+    return (Array.isArray(statsBase) ? statsBase : []).filter(u => String(u.status).toUpperCase() === 'SUSPENDED').length
+  }, [statsBase])
   const userGrowth = useMemo(() => {
     // last 7 days including today
     const now = new Date()
@@ -136,7 +143,7 @@ const AdminUsers = () => {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
       buckets.push({ key: `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`, label: d.toLocaleDateString(undefined,{ month:'short', day:'numeric' }), year: d.getFullYear(), month: d.getMonth(), date: d.getDate(), count: 0 })
     }
-    for (const u of (Array.isArray(items) ? items : [])) {
+    for (const u of (Array.isArray(statsBase) ? statsBase : [])) {
       const t = new Date(u.createdAt||0)
       if (!isNaN(t.getTime())) {
         const key = `${t.getFullYear()}-${t.getMonth()}-${t.getDate()}`
@@ -148,16 +155,16 @@ const AdminUsers = () => {
       categories: buckets.map(b => b.label),
       data: buckets.map(b => b.count),
     }
-  }, [items])
+  }, [statsBase])
 
   const roleCounts = useMemo(() => {
     const counts = { ADMIN: 0, FARMER: 0, BUYER: 0, DRIVER: 0, AGRONOMIST: 0 }
-    for (const u of (Array.isArray(items) ? items : [])) {
+    for (const u of (Array.isArray(statsBase) ? statsBase : [])) {
       const r = String(u.role || '').toUpperCase()
       if (counts[r] != null) counts[r] += 1
     }
     return counts
-  }, [items])
+  }, [statsBase])
 
 
   function capitalizeFirst(str) {
@@ -187,7 +194,6 @@ const AdminUsers = () => {
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>User & Role Management</h1>
-          <div />
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
@@ -220,17 +226,17 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div className='max-h-[61vh] overflow-y-auto'>
+            <div className='h-[61vh] overflow-y-auto'>
               <table className='min-w-full text-sm'>
                 <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
-                    <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle'>Profile</th>
-                    <th className='py-3 pr-8 pl-6 text-center align-middle'>Role</th>
-                    <th className='py-3 pl-8 pr-3 text-left align-middle'>Contact</th>
-                    <th className='py-3 px-3 text-center align-middle'>Joined</th>
-                    <th className='py-3 px-3 text-center align-middle'>Last login</th>
-                    <th className='py-3 px-3 text-center align-middle'>Status</th>
-                    <th className='py-3 px-3 rounded-tr-xl text-center align-middle'>Actions</th>
+                    <th className='py-3 px-3 rounded-tl-lg pl-3 text-center align-middle font-normal'>Profile</th>
+                    <th className='py-3 pr-8 pl-6 text-center align-middle font-normal'>Role</th>
+                    <th className='py-3 pl-8 pr-3 text-left align-middle font-normal'>Contact</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Joined</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Last login</th>
+                    <th className='py-3 px-3 text-center align-middle font-normal'>Status</th>
+                    <th className='py-3 px-3 rounded-tr-xl text-center align-middle font-normal'>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -304,8 +310,8 @@ const AdminUsers = () => {
             </div>
           </div>
 
-            {/* Top cards row: 1-1-2 */}
-            <div className='grid grid-cols-4 gap-6'>
+            {/* Top cards row: 1-1-1-1 */}
+            <div className='grid grid-cols-4 gap-6 items-start'>
               <Card className='col-span-1'>
                 <div className='p-4 flex items-center justify-between'>
                     <div>
@@ -349,7 +355,7 @@ const AdminUsers = () => {
             </div>
 
             {/* Middle cards: 1-1-2 */}
-            <div className='grid grid-cols-4 gap-6'>
+            <div className='grid grid-cols-4 gap-6 items-start'>
                <Card className='col-span-2'><div className='p-4'><div className='text-sm text-gray-700 font-medium mb-2'>User Growth</div><div className='rounded-lg border border-dashed'><LineChart categories={userGrowth.categories} series={[{ name: 'Users', data: userGrowth.data }]} color={'#22c55e'} /></div></div></Card>
               <Card className='col-span-2'>
                 <div className='p-4'>

@@ -39,8 +39,8 @@ const AdminRoles = () => {
                 <table className='min-w-full text-sm'>
                   <thead>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 pr-4'>Role</th>
-                      {perms.map(p => <th key={p} className='py-3 pr-4'>{p}</th>)}
+                      <th className='py-3 pr-4 font-normal'>Role</th>
+                      {perms.map(p => <th key={p} className='py-3 pr-4 font-normal'>{p}</th>)}
                     </tr>
                   </thead>
                   <tbody>

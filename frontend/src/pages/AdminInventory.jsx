@@ -458,17 +458,17 @@ const AdminInventory = () => {
                   <button className='btn-primary whitespace-nowrap px-3 py-2 text-sm' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
                 </div>
               </div>
-              <div className='max-h-[240px] overflow-y-auto'>
+              <div className='h-[61vh] overflow-y-auto'>
                 <table className='min-w-full text-sm'>
                   <thead className='sticky top-0 bg-gray-100 z-10'>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-3 px-4 text-left'>Name</th>
-                      <th className='py-3 px-4 text-left'>Category</th>
-                      <th className='py-3 px-4 text-left'>Image</th>
-                      <th className='py-3 px-4 text-center'>Stock Qty</th>
-                      <th className='py-3 px-4 text-center'>Price/qty</th>
-                      <th className='py-3 px-4 text-center'>Status</th>
-                      <th className='py-3 px-4 text-center'>Actions</th>
+                      <th className='py-3 px-4 text-left font-normal'>Name</th>
+                      <th className='py-3 px-4 text-left font-normal'>Category</th>
+                      <th className='py-3 px-4 text-left font-normal'>Image</th>
+                      <th className='py-3 px-4 text-center font-normal'>Stock Qty</th>
+                      <th className='py-3 px-4 text-center font-normal'>Price/qty</th>
+                      <th className='py-3 px-4 text-center font-normal'>Status</th>
+                      <th className='py-3 px-4 text-center font-normal'>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -479,9 +479,9 @@ const AdminInventory = () => {
                     ) : (
                       filteredInventory.map((it) => (
                         <tr key={it._id} className='border-t'>
-                          <td className='py-1 px-4 text-left'>{it.name}</td>
-                          <td className='py-1 px-4 text-left capitalize'>{it.category}</td>
-                          <td className='py-1 px-4 text-left'>
+                          <td className='py-3 px-4 text-left'>{it.name}</td>
+                          <td className='py-3 px-4 text-left capitalize'>{it.category}</td>
+                          <td className='py-3 px-4 text-left'>
                             {it.images && it.images.length > 0 ? (
                               <div className='flex gap-1'>
                                 {it.images.slice(0, 4).map((img, idx) => (
@@ -497,9 +497,9 @@ const AdminInventory = () => {
                               <span className='text-gray-400'>—</span>
                             )}
                           </td>
-                          <td className='py-1 px-4 text-center'>{it.stockQuantity}</td>
-                          <td className='py-1 px-4 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
-                          <td className='py-1 px-4 text-center'>
+                          <td className='py-3 px-4 text-center'>{it.stockQuantity}</td>
+                          <td className='py-3 px-4 text-center'>LKR {Number(it.price||0).toLocaleString()}</td>
+                          <td className='py-3 px-4 text-center'>
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               getStockStatus(it.stockQuantity) === 'Available' ? 'bg-purple-100 text-purple-700' :
                               getStockStatus(it.stockQuantity) === 'Low stock' ? 'bg-yellow-100 text-yellow-700' :
@@ -508,7 +508,7 @@ const AdminInventory = () => {
                               {getStockStatus(it.stockQuantity)}
                             </span>
                           </td>
-                          <td className='py-1 px-4 text-center'>
+                          <td className='py-3 px-4 text-center'>
                             <div className='inline-flex items-center gap-2'>
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isInventory:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info
