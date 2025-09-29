@@ -1,4 +1,5 @@
 import RentalItem from "../models/rentalItem.model.js";
+import RentalBooking from "../models/rentalBooking.model.js";
 import cloudinary from "../lib/cloudinary.js";
 
 export const createRentalItem = async (req, res) => {
@@ -45,6 +46,83 @@ export const listRentalItems = async (_req, res) => {
   try {
     const items = await RentalItem.find().sort({ createdAt: -1 });
     return res.json({ success: true, data: items });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Get availability for a rental item between dates (sum of overlapping bookings subtracted from totalQty)
+export const getRentalAvailability = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { start, end } = req.query;
+    const item = await RentalItem.findById(id);
+    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+
+    const startDate = new Date(start);
+    const endDate = new Date(end);
+    if (!(startDate instanceof Date) || isNaN(startDate) || !(endDate instanceof Date) || isNaN(endDate) || endDate < startDate) {
+      return res.status(400).json({ success: false, message: 'Invalid date range' });
+    }
+
+    // Find overlapping confirmed bookings
+    const bookings = await RentalBooking.find({
+      item: id,
+      status: 'CONFIRMED',
+      $or: [
+        { startDate: { $lte: endDate }, endDate: { $gte: startDate } },
+      ],
+    }).select('quantity startDate endDate');
+
+    // For simplicity, return total booked quantity overlapping any day in range
+    const totalBooked = bookings.reduce((sum, b) => sum + (b.quantity || 0), 0);
+    const available = Math.max(0, (item.totalQty || 0) - totalBooked);
+
+    return res.json({ success: true, data: { totalQty: item.totalQty, availableQty: available } });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// Create a booking if available
+export const createRentalBooking = async (req, res) => {
+  try {
+    const { id } = req.params; // rental item id
+    const { quantity, startDate, endDate, notes } = req.body;
+    const item = await RentalItem.findById(id);
+    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (!quantity || quantity < 1 || !(start instanceof Date) || isNaN(start) || !(end instanceof Date) || isNaN(end) || end < start) {
+      return res.status(400).json({ success: false, message: 'Invalid input' });
+    }
+
+    // Compute overlapping bookings quantity
+    const overlaps = await RentalBooking.find({
+      item: id,
+      status: 'CONFIRMED',
+      $or: [
+        { startDate: { $lte: end }, endDate: { $gte: start } },
+      ],
+    }).select('quantity');
+    const booked = overlaps.reduce((s, b) => s + (b.quantity || 0), 0);
+    const available = Math.max(0, (item.totalQty || 0) - booked);
+    if (quantity > available) {
+      return res.status(400).json({ success: false, message: `Only ${available} available for selected dates` });
+    }
+
+    const booking = await RentalBooking.create({
+      item: id,
+      renter: req.user._id,
+      quantity,
+      startDate: start,
+      endDate: end,
+      notes: notes || '',
+      status: 'CONFIRMED',
+    });
+
+    return res.status(201).json({ success: true, data: booking });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
