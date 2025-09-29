@@ -220,7 +220,7 @@ const AdminUsers = () => {
               </div>
             </div>
 
-            <div className='max-h-[240px] overflow-y-auto'>
+            <div className='max-h-[61vh] overflow-y-auto'>
               <table className='min-w-full text-sm'>
                 <thead className='sticky top-0 bg-gray-100 z-10 rounded-t-lg'>
                   <tr className='text-center text-gray-500 border-b align-middle h-12'>
@@ -242,7 +242,7 @@ const AdminUsers = () => {
                         <tr><td className='py-6 text-center text-gray-500' colSpan={7}>No users</td></tr>
                       ) : filteredItems.map(u => (
                     <tr key={u._id} className='border-t align-middle'>
-                    <td className='py-2 px-3 text-left align-middle'>
+                    <td className='py-3 px-3 text-left align-middle'>
                         <div className='flex items-center justify-start gap-2'>
                           <img
                             src={u.profilePic || DefaultAvatar}
@@ -253,7 +253,7 @@ const AdminUsers = () => {
                           <span className='text-sm font-medium'>{u.fullName || '—'}</span>
                         </div>
                       </td>
-                     <td className='py-2 pr-8 pl-6 text-center align-middle'>
+                     <td className='py-3 pr-8 pl-6 text-center align-middle'>
                        <span className='inline-flex items-center justify-center gap-1'>
                          {u.role === 'ADMIN' ? (
                            <Shield className='w-3.5 h-3.5 text-violet-600' />
@@ -269,20 +269,20 @@ const AdminUsers = () => {
                          {capitalizeFirst(u.role)}
                        </span>
                      </td>
-                     <td className='py-2 pl-8 pr-3 text-left align-middle'>
+                     <td className='py-3 pl-8 pr-3 text-left align-middle'>
                         <div>{u.email}</div>
                         {u.phone && <div className='text-xs text-gray-500'>{u.phone}</div>}
                       </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'}
                     </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       {formatRelativeTime(u.lastLogin || u.createdAt)}
                     </td>
-                    <td className='py-2 px-3 text-center align-middle'>
+                    <td className='py-3 px-3 text-center align-middle'>
                       <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{capitalizeFirst(u.status)}</span>
                       </td>
-                    <td className='py-2 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
+                    <td className='py-3 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
                         <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
