@@ -31,9 +31,18 @@ const ProfilePage = () => {
     
     if (showLoading) setActivitiesLoading(true)
     try {
-      const endpoint = me.role === 'FARMER' ? '/orders/activities/farmer?limit=10' : '/orders/activities/buyer?limit=10'
-      const res = await axiosInstance.get(endpoint)
-      setActivities(res.data)
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setActivities(merged)
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        setActivities(res.data)
+      }
       setLastActivityCheck(new Date())
     } catch (error) {
       console.error('Error loading activities:', error)
@@ -47,9 +56,19 @@ const ProfilePage = () => {
     if (!me?.role || !lastActivityCheck) return
     
     try {
-      const endpoint = me.role === 'FARMER' ? '/orders/activities/farmer?limit=10' : '/orders/activities/buyer?limit=10'
-      const res = await axiosInstance.get(endpoint)
-      const newActivities = res.data
+      let newActivities = []
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        newActivities = merged
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        newActivities = res.data
+      }
       
       // Check if there are new activities by comparing the first activity's timestamp
       if (newActivities.length > 0 && activities.length > 0) {
@@ -835,6 +854,7 @@ const StatsSection = ({ me }) => {
   const [farmerMonthRevenue, setFarmerMonthRevenue] = React.useState(null)
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
   const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
+  const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const loadStats = async () => {
     setLoading(true)
@@ -842,8 +862,21 @@ const StatsSection = ({ me }) => {
       // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
       const ordersRes = await axiosInstance.get('/orders/me')
       setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
+
+      // Buyer: compute total spent in last 30 days
+      if (me.role !== 'FARMER' && Array.isArray(ordersRes.data)) {
+        const now = new Date()
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+        const total = ordersRes.data
+          .filter(o => new Date(o.createdAt) >= thirtyDaysAgo && o.status !== 'CANCELLED')
+          .reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+        setBuyerTotalSpent30(total)
+      } else if (me.role !== 'FARMER') {
+        setBuyerTotalSpent30(0)
+      }
     } catch {
       setOrdersCount(0)
+      if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
     }
 
     try {
@@ -922,8 +955,8 @@ const StatsSection = ({ me }) => {
         <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
       </div>
       <div className='card text-center'>
-        <div className='text-xs text-gray-500'>Products Listed</div>
-        <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+        <div className='text-xs text-gray-500'>Total Spent (Last 30 Days)</div>
+        <div className='text-2xl font-semibold'>{buyerTotalSpent30 == null ? '—' : `LKR ${Number(buyerTotalSpent30).toLocaleString()}`}</div>
       </div>
     </div>
   )

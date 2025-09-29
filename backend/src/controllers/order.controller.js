@@ -29,7 +29,6 @@ const updateStockQuantities = async (items, isCancellation = false, order = null
         }
         
         await inventoryItem.save();
-        console.log(`Updated inventory item ${inventoryItem.name}: stock ${inventoryItem.stockQuantity}, status ${inventoryItem.status}`);
       }
     } else if (item.listingId) {
       // Update listing capacity
@@ -46,7 +45,6 @@ const updateStockQuantities = async (items, isCancellation = false, order = null
         }
         
         await listing.save();
-        console.log(`Updated listing ${listing.cropName}: capacity ${listing.capacityKg}kg, status ${listing.status}`);
         
         // Log activity for listing sales (only for orders, not cancellations)
         // Check both itemType field and if it's a listing item by checking if listingId exists
