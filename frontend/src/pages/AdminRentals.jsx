@@ -233,38 +233,70 @@ const AdminRentals = () => {
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Total Rental Items: ${rentalItems.length}`, 20, 85);
-      pdf.text(`Total Daily Value: LKR ${rentalItems.reduce((sum, item) => sum + (Number(item.rentalPerDay || 0) * Number(item.totalQty || 0)), 0).toLocaleString()}`, 20, 90);
+      pdf.text(`Total Items Value: LKR ${rentalItems.reduce((sum, item) => sum + (Number(item.rentalPerDay || 0) * Number(item.totalQty || 0)), 0).toLocaleString()}`, 20, 90);
       
       // Add rental details table
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Rental Items Details:', 20, 105);
       
-      // Table headers
-      pdf.setFontSize(8);
+      // Table headers with black background
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       let tableY = 115;
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
       pdf.text('Product Name', 20, tableY);
       pdf.text('Rental/Day', 80, tableY);
       pdf.text('Total Qty', 120, tableY);
       pdf.text('Description', 150, tableY);
       
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
+      
       // Table data
       pdf.setFont('helvetica', 'normal');
-      tableY += 5;
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 10; // Increased spacing
       
       rentalItems.slice(0, 20).forEach((item, index) => {
-        if (tableY > 280) {
+        if (tableY > 260) {
           pdf.addPage();
           tableY = 20;
         }
         
-        pdf.text(item.productName || '—', 20, tableY);
-        pdf.text(`LKR ${Number(item.rentalPerDay || 0).toLocaleString()}`, 80, tableY);
-        pdf.text(String(item.totalQty || 0), 120, tableY);
-        pdf.text((item.description || '—').substring(0, 30) + '...', 150, tableY);
+        // Calculate row height based on description length
+        const description = item.description || '—';
+        const maxDescriptionWidth = 40; // Maximum width for description column
+        const descriptionLines = pdf.splitTextToSize(description, maxDescriptionWidth);
+        const rowHeight = Math.max(10, descriptionLines.length * 4 + 2); // Dynamic row height
         
-        tableY += 5;
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 5, 170, rowHeight, 'F'); // Rectangle covering row (dynamic height)
+        
+        // Product name
+        pdf.text(item.productName || '—', 20, tableY);
+        
+        // Rental per day
+        pdf.text(`LKR ${Number(item.rentalPerDay || 0).toLocaleString()}`, 80, tableY);
+        
+        // Total quantity
+        pdf.text(String(item.totalQty || 0), 120, tableY);
+        
+        // Description with line wrapping
+        pdf.text(descriptionLines, 150, tableY);
+        
+        tableY += rowHeight + 2; // Dynamic spacing based on row height
       });
       
       // Add footer

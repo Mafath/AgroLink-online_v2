@@ -432,43 +432,49 @@ const AdminListings = () => {
       pdf.text(`Total Value: LKR ${listingsMetrics.totalValue.toLocaleString()}`, 20, 95);
       pdf.text(`Crop Types: ${Object.keys(listingsMetrics.crops).length}`, 20, 100);
       
-      // Add crop distribution
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('Crop Distribution:', 20, 115);
-      
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      let yPos = 125;
-      Object.entries(listingsMetrics.crops).forEach(([crop, count]) => {
-        pdf.text(`${crop}: ${count}`, 20, yPos);
-        yPos += 5;
-      });
-      
       // Add listings details table
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('Listings Details:', 20, yPos + 10);
+      pdf.text('Listings Details:', 20, 115);
       
-      // Table headers
-      pdf.setFontSize(8);
+      // Table headers with black background
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      let tableY = yPos + 20;
+      let tableY = 125;
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
       pdf.text('Crop Name', 20, tableY);
       pdf.text('Farmer', 60, tableY);
       pdf.text('Price/Kg', 100, tableY);
       pdf.text('Capacity', 130, tableY);
       pdf.text('Status', 160, tableY);
       
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
+      
       // Table data
       pdf.setFont('helvetica', 'normal');
-      tableY += 5;
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 10; // Increased spacing
       
       listings.slice(0, 20).forEach((item, index) => {
-        if (tableY > 280) {
+        if (tableY > 260) {
           pdf.addPage();
           tableY = 20;
         }
+        
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering row (consistent height)
         
         pdf.text(item.cropName || '—', 20, tableY);
         pdf.text(item.farmer?.fullName || 'Unknown', 60, tableY);
@@ -476,7 +482,7 @@ const AdminListings = () => {
         pdf.text(`${item.capacityKg} Kg`, 130, tableY);
         pdf.text(item.status || '—', 160, tableY);
         
-        tableY += 5;
+        tableY += 12; // Increased spacing
       });
       
       // Add footer

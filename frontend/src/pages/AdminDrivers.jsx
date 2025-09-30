@@ -420,33 +420,52 @@ const AdminDrivers = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.text('Driver Details:', 20, 115);
       
-      // Table headers
-      pdf.setFontSize(8);
+      // Table headers with black background
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       let tableY = 125;
-      pdf.text('Name', 20, tableY);
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
+      pdf.text('Name', 25, tableY);
       pdf.text('Email', 50, tableY);
-      pdf.text('Service Area', 80, tableY);
-      pdf.text('Availability', 120, tableY);
-      pdf.text('Status', 150, tableY);
+      pdf.text('Service Area', 100, tableY);
+      pdf.text('Availability', 135, tableY);
+      pdf.text('Status', 170, tableY);
+      
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
       
       // Table data
       pdf.setFont('helvetica', 'normal');
-      tableY += 5;
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 8; // Increased spacing
       
       items.slice(0, 20).forEach((driver, index) => {
-        if (tableY > 280) {
+        if (tableY > 260) {
           pdf.addPage();
           tableY = 20;
         }
         
-        pdf.text(driver.fullName || '—', 20, tableY);
-        pdf.text(driver.email || '—', 50, tableY);
-        pdf.text(driver.service_area || '—', 80, tableY);
-        pdf.text(driver.availability || 'UNAVAILABLE', 120, tableY);
-        pdf.text(driver.status || '—', 150, tableY);
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 6, 170, 10, 'F'); // Rectangle covering row (consistent height)
         
-        tableY += 5;
+        pdf.text(driver.fullName || '—', 25, tableY);
+        pdf.text(driver.email || '—', 50, tableY);
+        pdf.text(driver.service_area || '—', 100, tableY);
+        pdf.text(driver.availability || 'UNAVAILABLE', 135, tableY);
+        pdf.text(driver.status || '—', 170, tableY);
+        
+        tableY += 12; // Increased spacing
       });
       
       // Add footer
@@ -457,15 +476,15 @@ const AdminDrivers = () => {
         // Footer line
         pdf.setDrawColor(13, 126, 121); // Primary green
         pdf.setLineWidth(1);
-        pdf.line(20, 280, 190, 280);
+        pdf.line(20, 270, 190, 270);
         
         // Footer text
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 100, 100);
-        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285);
-        pdf.text(`Page ${i} of ${pageCount}`, 160, 285);
-        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 275);
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 275);
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 280);
       }
       
       // Save the PDF

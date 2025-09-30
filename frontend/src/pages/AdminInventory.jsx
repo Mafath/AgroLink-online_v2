@@ -503,19 +503,30 @@ const AdminInventory = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.text('Inventory Details:', 20, yPos + 10);
       
-      // Table headers
-      pdf.setFontSize(8);
+      // Table headers with black background
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       let tableY = yPos + 20;
-      pdf.text('Name', 20, tableY);
-      pdf.text('Category', 50, tableY);
-      pdf.text('Stock Qty', 80, tableY);
-      pdf.text('Price', 110, tableY);
-      pdf.text('Status', 140, tableY);
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
+      pdf.text('Name', 30, tableY);
+      pdf.text('Category', 70, tableY);
+      pdf.text('Stock Qty', 100, tableY);
+      pdf.text('Price', 120, tableY);
+      pdf.text('Status', 150, tableY);
+      
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
       
       // Table data
       pdf.setFont('helvetica', 'normal');
-      tableY += 5;
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 10; // Increased spacing
       
       inventoryItems.slice(0, 20).forEach((item, index) => {
         if (tableY > 280) {
@@ -523,13 +534,21 @@ const AdminInventory = () => {
           tableY = 20;
         }
         
-        pdf.text(item.name || '—', 20, tableY);
-        pdf.text(item.category || '—', 50, tableY);
-        pdf.text(String(item.stockQuantity || 0), 80, tableY);
-        pdf.text(`LKR ${Number(item.price || 0).toLocaleString()}`, 110, tableY);
-        pdf.text(getStockStatus(item.stockQuantity), 140, tableY);
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering row (consistent height)
         
-        tableY += 5;
+        pdf.text(item.name || '—', 30, tableY);
+        pdf.text(item.category || '—', 70, tableY);
+        pdf.text(String(item.stockQuantity || 0), 100, tableY);
+        pdf.text(`LKR ${Number(item.price || 0).toLocaleString()}`, 120, tableY);
+        pdf.text(getStockStatus(item.stockQuantity), 150, tableY);
+        
+        tableY += 12; // Increased spacing
       });
       
       // Add footer

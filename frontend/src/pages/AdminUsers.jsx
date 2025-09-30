@@ -346,33 +346,52 @@ const AdminUsers = () => {
       pdf.setFont('helvetica', 'bold');
       pdf.text('User Details:', 20, yPos + 10);
       
-      // Table headers
-      pdf.setFontSize(8);
+      // Table headers with black background
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       let tableY = yPos + 20;
-      pdf.text('Name', 20, tableY);
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 6, 170, 12, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
+      pdf.text('Name', 25, tableY);
       pdf.text('Email', 50, tableY); // Moved closer to name column
-      pdf.text('Role', 100, tableY); // Adjusted position
-      pdf.text('Status', 130, tableY); // Adjusted position
-      pdf.text('Joined', 160, tableY); // Adjusted position
+      pdf.text('Role', 110, tableY); // Adjusted position
+      pdf.text('Status', 140, tableY); // Adjusted position
+      pdf.text('Joined', 170, tableY); // Adjusted position
+      
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
       
       // Table data
       pdf.setFont('helvetica', 'normal');
-      tableY += 5;
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 10; // Increased spacing
       
       filteredItems.slice(0, 20).forEach((user, index) => {
-        if (tableY > 280) {
+        if (tableY > 260) { // Reduced from 280 to add more margin above footer
           pdf.addPage();
           tableY = 20;
         }
         
-        pdf.text(user.fullName || '—', 20, tableY);
-        pdf.text(user.email || '—', 50, tableY); // Moved closer to name column
-        pdf.text(user.role || '—', 100, tableY); // Adjusted position
-        pdf.text(user.status || '—', 130, tableY); // Adjusted position
-        pdf.text(user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—', 160, tableY); // Adjusted position
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 6, 170, 12, 'F'); // Rectangle covering row (increased height)
         
-        tableY += 5;
+        pdf.text(user.fullName || '—', 25, tableY);
+        pdf.text(user.email || '—', 50, tableY); // Moved closer to name column
+        pdf.text(user.role || '—', 110, tableY); // Adjusted position
+        pdf.text(user.status || '—', 140, tableY); // Adjusted position
+        pdf.text(user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—', 170, tableY); // Adjusted position
+        
+        tableY += 12; // Increased spacing
       });
       
       // Add footer
@@ -383,15 +402,15 @@ const AdminUsers = () => {
         // Footer line
         pdf.setDrawColor(13, 126, 121); // Primary green
         pdf.setLineWidth(1);
-        pdf.line(20, 280, 190, 280);
+        pdf.line(20, 270, 190, 270); // Moved up from 280 to 270
         
         // Footer text
         pdf.setFontSize(8);
         pdf.setFont('helvetica', 'normal');
         pdf.setTextColor(100, 100, 100);
-        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285);
-        pdf.text(`Page ${i} of ${pageCount}`, 160, 285);
-        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 275); // Moved up from 285 to 275
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 275); // Moved up from 285 to 275
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 280); // Moved up from 290 to 280
       }
       
       // Save the PDF
