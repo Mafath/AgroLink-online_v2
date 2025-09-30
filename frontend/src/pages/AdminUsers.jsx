@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, Download } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
 import jsPDF from 'jspdf'
@@ -428,13 +428,9 @@ const AdminUsers = () => {
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>User & Role Management</h1>
           <div className='flex items-center gap-2'>
-            <button
-              onClick={downloadUsersPDF}
-              className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors'
-              title='Download Users Report as PDF'
-            >
-              <Download className='w-4 h-4' />
-              Download PDF
+            <button onClick={downloadUsersPDF} className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 transition-colors' title='Export PDF'>
+              <FileDown className='w-4 h-4' />
+              Export
             </button>
           </div>
         </div>
@@ -448,7 +444,7 @@ const AdminUsers = () => {
           {/* Table */}
           <div className='grid grid-cols-4 gap-6'>
             <div className='bg-white rounded-xl shadow-sm border border-gray-200 col-span-4'>
-            <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-3'>
+            <div className='px-4 py-3 border-b border-gray-100 grid grid-cols-3 items-center gap-2'>
               <div>
                 <div className='text-md font-medium text-gray-700'>Users</div>
               </div>
@@ -457,15 +453,22 @@ const AdminUsers = () => {
                   <input className='bg-white border border-gray-200 rounded-full h-9 pl-3 pr-3 w-56 text-sm outline-none' placeholder='Search' value={query.search || ''} onChange={e => setQuery(q => ({ ...q, search: e.target.value }))} />
                 </div>
               </div>
-              <div className='flex items-center justify-end gap-3'>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-36' value={query.role} onChange={e => setQuery(q => ({ ...q, role: e.target.value }))}>
+              <div className='flex items-center justify-end gap-2'>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-32' value={query.role} onChange={e => setQuery(q => ({ ...q, role: e.target.value }))}>
                   <option value=''>All Roles</option>
                   {roles.map(r => <option key={r} value={r}>{r}</option>)}
                 </select>
-                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-36' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
+                <select className='input-field h-9 py-1 text-sm hidden sm:block rounded-full w-32' value={query.status} onChange={e => setQuery(q => ({ ...q, status: e.target.value }))}>
                   <option value=''>Any Status</option>
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+                <button
+                  onClick={() => setSelected({ _id: null, fullName: '', email: '', password: '', phone: '', role: 'ADMIN', status: 'ACTIVE' })}
+                  className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-black transition-colors whitespace-nowrap'
+                  title='Add Admin'
+                >
+                  Add Admin +
+                </button>
               </div>
             </div>
 
@@ -666,46 +669,97 @@ const AdminUsers = () => {
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-3xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>User Details</h2>
+              <h2 className='text-lg font-semibold'>{selected._id ? 'User Details' : 'Add Admin'}</h2>
               <button onClick={() => setSelected(null)} className='text-gray-500'>Close</button>
             </div>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
-              {/* Left: profile */}
-              <div className='space-y-2'>
-                <div className='flex items-center gap-3'>
-                  <img
-                    src={selected.profilePic || DefaultAvatar}
-                    onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
-                    className='w-12 h-12 rounded-full object-cover'
-                    alt='avatar'
-                  />
+            {selected._id ? (
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                {/* Left: profile */}
+                <div className='space-y-2'>
+                  <div className='flex items-center gap-3'>
+                    <img
+                      src={selected.profilePic || DefaultAvatar}
+                      onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
+                      className='w-12 h-12 rounded-full object-cover'
+                      alt='avatar'
+                    />
+                    <div>
+                      <div className='font-medium'>{selected.fullName || '—'}</div>
+                      <div className='text-xs text-gray-500'>{selected.role}</div>
+                    </div>
+                  </div>
+                  <div className='text-sm'>Email: {selected.email}</div>
+                  {selected.phone && <div className='text-sm'>Phone: {selected.phone}</div>}
+                  <div className='text-sm text-gray-500'>Member since {new Date(selected.createdAt).toLocaleDateString()}</div>
+                </div>
+                {/* Right: actions */}
+                <div className='space-y-3'>
                   <div>
-                    <div className='font-medium'>{selected.fullName || '—'}</div>
-                    <div className='text-xs text-gray-500'>{selected.role}</div>
+                    <label className='text-xs text-gray-500'>Change Role</label>
+                    <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchUsers(); setSelected(s => ({ ...s, role })); }}>
+                      {roles.map(r => <option key={r} value={r}>{r}</option>)}
+                    </select>
+                  </div>
+              <div className='grid grid-cols-2 gap-2 mt-4'>
+                    {selected.status === 'ACTIVE' ? (
+                      <button className='border px-3 py-2 rounded-md' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'SUSPENDED' }); fetchUsers(); setSelected(s => ({ ...s, status: 'SUSPENDED' })); }}>Suspend</button>
+                    ) : (
+                      <button className='btn-primary' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'ACTIVE' }); fetchUsers(); setSelected(s => ({ ...s, status: 'ACTIVE' })); }}>Activate</button>
+                    )}
                   </div>
                 </div>
-                <div className='text-sm'>Email: {selected.email}</div>
-                {selected.phone && <div className='text-sm'>Phone: {selected.phone}</div>}
-                <div className='text-sm text-gray-500'>Member since {new Date(selected.createdAt).toLocaleDateString()}</div>
               </div>
-              {/* Right: actions */}
-              <div className='space-y-3'>
-                {/* Removed verification actions */}
-                <div>
-                  <label className='text-xs text-gray-500'>Change Role</label>
-                  <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchUsers(); setSelected(s => ({ ...s, role })); }}>
-                    {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+            ) : (
+              <>
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-3'>
+                  <div>
+                    <label className='text-xs text-gray-500'>Full name</label>
+                    <input className='input-field mt-1' placeholder='Admin name' value={selected.fullName} onChange={e=>setSelected(s=>({ ...s, fullName: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className='text-xs text-gray-500'>Email</label>
+                    <input className='input-field mt-1' placeholder='email@company.com' type='email' value={selected.email} onChange={e=>setSelected(s=>({ ...s, email: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className='text-xs text-gray-500'>Password</label>
+                    <input className='input-field mt-1' placeholder='Password' type='password' value={selected.password || ''} onChange={e=>setSelected(s=>({ ...s, password: e.target.value }))} />
+                  </div>
+                  <div>
+                    <label className='text-xs text-gray-500'>Phone (optional)</label>
+                    <input className='input-field mt-1' placeholder='+94 ...' value={selected.phone || ''} onChange={e=>setSelected(s=>({ ...s, phone: e.target.value }))} />
+                  </div>
                 </div>
-                <div className='grid grid-cols-2 gap-2'>
-                  {selected.status === 'ACTIVE' ? (
-                    <button className='border px-3 py-2 rounded-md' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'SUSPENDED' }); fetchUsers(); setSelected(s => ({ ...s, status: 'SUSPENDED' })); }}>Suspend</button>
-                  ) : (
-                    <button className='btn-primary' onClick={async () => { await axiosInstance.put(`auth/admin/users/${selected._id}`, { status: 'ACTIVE' }); fetchUsers(); setSelected(s => ({ ...s, status: 'ACTIVE' })); }}>Activate</button>
-                  )}
+                <div className='space-y-3'>
+                  <div>
+                    <label className='text-xs text-gray-500'>Role</label>
+                    <select className='input-field mt-1' value={selected.role} onChange={e=>setSelected(s=>({ ...s, role: e.target.value }))}>
+                      <option value='ADMIN'>ADMIN</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className='text-xs text-gray-500'>Status</label>
+                    <select className='input-field mt-1' value={selected.status} onChange={e=>setSelected(s=>({ ...s, status: e.target.value }))}>
+                      <option value='ACTIVE'>ACTIVE</option>
+                      <option value='SUSPENDED'>SUSPENDED</option>
+                    </select>
+                  </div>
                 </div>
               </div>
-            </div>
+              <div className='pt-4 flex justify-end'>
+                <button className='px-4 py-2 rounded-md bg-black text-white hover:bg-gray-900'
+                  onClick={async ()=>{
+                    try {
+                      const payload = { fullName: selected.fullName, email: selected.email, password: selected.password, phone: selected.phone, role: 'ADMIN', status: selected.status }
+                      await axiosInstance.post('auth/admin/users', payload)
+                      setSelected(null)
+                      fetchUsers()
+                    } catch (_) {}
+                  }}
+                >Create Admin</button>
+              </div>
+              </>
+            )}
           </div>
         </div>
       )}

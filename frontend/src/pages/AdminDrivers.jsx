@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff, Download } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff, FileDown } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import toast from 'react-hot-toast'
 import AdminSidebar from '../components/AdminSidebar'
@@ -502,13 +502,9 @@ const AdminDrivers = () => {
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>Driver Management</h1>
           <div className='flex items-center gap-2'>
-            <button
-              onClick={downloadDriversPDF}
-              className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors'
-              title='Download Drivers Report as PDF'
-            >
-              <Download className='w-4 h-4' />
-              Download PDF
+            <button onClick={downloadDriversPDF} className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 transition-colors' title='Export PDF'>
+              <FileDown className='w-4 h-4' />
+              Export
             </button>
           </div>
         </div>

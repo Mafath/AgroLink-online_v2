@@ -14,6 +14,7 @@ import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import harvestRoutes from "./routes/harvest.route.js";
 import deliveryReviewRoutes from "./routes/deliveryReview.route.js";
+import financeRoutes from './routes/finance.route.js'
 
 
 const app = express();
@@ -43,6 +44,7 @@ app.use("/api/cart", cartRoutes);
 app.use("/api/email-verification", emailVerificationRoutes);
 app.use("/api/harvest", harvestRoutes);
 app.use("/api/delivery-reviews", deliveryReviewRoutes);
+app.use('/api/finance', financeRoutes);
 
 
 

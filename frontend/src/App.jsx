@@ -18,6 +18,7 @@ import AdminInventory from './pages/AdminInventory';
 import AdminListings from './pages/AdminListings';
 import AdminRentals from './pages/AdminRentals';
 import AdminHarvest from './pages/AdminHarvest';
+import AdminFinance from './pages/AdminFinance';
 import MyDeliveryReviews from './pages/MyDeliveryReviews';
 import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
@@ -100,6 +101,7 @@ const App = () => {
           <Route path="/admin/consultants" element={authUser && authUser.role === 'ADMIN' ? <AdminConsultants /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
           <Route path="/admin/delivery-reviews" element={authUser && authUser.role === 'ADMIN' ? <AdminDeliveryReviews /> : <Navigate to="/" />} />
+          <Route path="/admin/finance" element={authUser && authUser.role === 'ADMIN' ? <AdminFinance /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
           <Route path="/my-delivery-reviews" element={authUser ? <MyDeliveryReviews /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />
