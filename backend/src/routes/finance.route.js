@@ -8,6 +8,7 @@ import {
   listGoals, createGoal, updateGoal, deleteGoal,
   listDebts, createDebt, updateDebt, deleteDebt,
   listRecurring, createRecurring, updateRecurring, deleteRecurring,
+  getIncomeFromOrders,
 } from '../controllers/finance.controller.js'
 
 const router = express.Router()
@@ -16,6 +17,7 @@ const router = express.Router()
 router.use(requireAuth, requireRole('ADMIN'))
 
 router.get('/summary', getSummary)
+router.get('/income/orders', getIncomeFromOrders)
 
 router.get('/transactions', listTransactions)
 router.post('/transactions', createTransaction)

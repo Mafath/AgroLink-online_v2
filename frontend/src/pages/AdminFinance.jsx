@@ -69,6 +69,8 @@ const AdminFinance = () => {
   const [expenseItems, setExpenseItems] = React.useState([])
   const [loadingIncome, setLoadingIncome] = React.useState(false)
   const [loadingExpenses, setLoadingExpenses] = React.useState(false)
+  const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
+  const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [budgets, setBudgets] = React.useState([])
@@ -124,6 +126,7 @@ const AdminFinance = () => {
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchTransactions('INCOME')
+    if (activeTab === 'income') fetchCompanyIncome(incomeRange)
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'budgets') fetchBudgets()
     if (activeTab === 'goals') fetchGoals()
@@ -131,6 +134,32 @@ const AdminFinance = () => {
     if (activeTab === 'recurring') fetchRecurring()
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
   }, [activeTab])
+
+  React.useEffect(() => {
+    if (activeTab === 'income') fetchCompanyIncome(incomeRange)
+  }, [incomeRange])
+  const fetchCompanyIncome = async (range = 'month') => {
+    try {
+      // compute from/to
+      let from = null
+      let to = new Date().toISOString()
+      const now = new Date()
+      if (range === 'day') {
+        const d = new Date(now)
+        d.setDate(now.getDate() - 1)
+        from = d.toISOString()
+      } else if (range === 'week') {
+        const d = new Date(now)
+        d.setDate(now.getDate() - 7)
+        from = d.toISOString()
+      } else {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1)
+        from = d.toISOString()
+      }
+      const res = await axiosInstance.get('/finance/income/orders', { params: { from, to } })
+      setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
+    } catch {}
+  }
 
   const onFileToBase64 = (file) => new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -389,6 +418,60 @@ const AdminFinance = () => {
                 )}
                 {activeTab === 'income' && (
                   <div className='space-y-6'>
+                    <div className='flex items-center gap-2'>
+                      <button onClick={()=>setIncomeRange('day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
+                      <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
+                      <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                    </div>
+                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
+                        <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.inventory||0).toLocaleString()}</div>
+                      </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
+                        <div className='text-xs text-gray-500'>Orders Income • Rentals</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.rental||0).toLocaleString()}</div>
+                      </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
+                        <div className='text-xs text-gray-500'>Orders Income • Listings</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listing||0).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={TrendingUp} title='Order-based Income Details' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Created</th>
+                              <th className='py-3 px-5'>Type</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {companyIncome.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
+                            ) : companyIncome.items.map((row, idx) => (
+                              <tr key={idx} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700 capitalize'>{row.itemType}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={TrendingUp} title='Add Income' />
                       <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>

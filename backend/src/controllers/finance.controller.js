@@ -5,6 +5,7 @@ import FinanceDebt from '../models/financeDebt.model.js'
 import FinanceRecurring from '../models/financeRecurring.model.js'
 import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
+import Order from '../models/order.model.js'
 
 export const getSummary = async (req, res) => {
   try {
@@ -214,4 +215,61 @@ export const deleteRecurring = async (req, res) => {
   try { await FinanceRecurring.findByIdAndDelete(req.params.id); return res.json({ success: true }) } catch { return res.status(400).json({ error: 'Failed to delete recurring' }) }
 }
 
+// Company income from orders (inventory, rental, listing)
+export const getIncomeFromOrders = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const filter = {}
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = new Date(from)
+      if (to) filter.createdAt.$lte = new Date(to)
+    }
+    // Exclude cancelled orders
+    filter.status = { $ne: 'CANCELLED' }
+    // Prefer paid orders if paymentStatus exists
+    // We'll not strictly enforce PAID to avoid missing cash-on-delivery marked PENDING; adjust as needed
+
+    const orders = await Order.find(filter).lean()
+    const items = []
+    const totalsByType = { inventory: 0, rental: 0, listing: 0 }
+
+    for (const o of orders) {
+      for (const it of (o.items || [])) {
+        const qty = Number(it.quantity || 1)
+        let lineTotal = 0
+        if (it.itemType === 'rental') {
+          const perDay = Number(it.rentalPerDay || it.price || 0)
+          const start = it.rentalStartDate ? new Date(it.rentalStartDate) : null
+          const end = it.rentalEndDate ? new Date(it.rentalEndDate) : null
+          let days = 1
+          if (start && end && !isNaN(start) && !isNaN(end)) {
+            const ms = Math.max(0, end.setHours(0,0,0,0) - start.setHours(0,0,0,0))
+            days = Math.max(1, Math.ceil(ms / (1000*60*60*24)) + 1)
+          }
+          lineTotal = perDay * days * qty
+        } else {
+          const price = Number(it.price || 0)
+          lineTotal = price * qty
+        }
+        totalsByType[it.itemType] = (totalsByType[it.itemType] || 0) + lineTotal
+        items.push({
+          orderId: o._id,
+          orderNumber: o.orderNumber,
+          createdAt: o.createdAt,
+          itemType: it.itemType,
+          title: it.title,
+          quantity: qty,
+          unitPrice: it.itemType === 'rental' ? Number(it.rentalPerDay || it.price || 0) : Number(it.price || 0),
+          lineTotal,
+        })
+      }
+    }
+
+    const totalIncome = (totalsByType.inventory || 0) + (totalsByType.rental || 0) + (totalsByType.listing || 0)
+    return res.json({ totalsByType, totalIncome, items })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute income from orders' })
+  }
+}
 
