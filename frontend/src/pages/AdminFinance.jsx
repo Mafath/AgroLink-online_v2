@@ -71,6 +71,7 @@ const AdminFinance = () => {
   const [loadingExpenses, setLoadingExpenses] = React.useState(false)
   const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
+  const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [budgets, setBudgets] = React.useState([])
@@ -439,7 +440,22 @@ const AdminFinance = () => {
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl'>
                       <div className='p-5'>
-                        <SectionHeader icon={TrendingUp} title='Order-based Income Details' />
+                        <SectionHeader
+                          icon={TrendingUp}
+                          title='Order-based Income Details'
+                          action={
+                            <select
+                              className='border rounded-md px-3 py-1.5 text-sm'
+                              value={incomeTypeFilter}
+                              onChange={(e)=>setIncomeTypeFilter(e.target.value)}
+                            >
+                              <option value='all'>All Types</option>
+                              <option value='inventory'>Inventory</option>
+                              <option value='rental'>Rental</option>
+                              <option value='listing'>Listing</option>
+                            </select>
+                          }
+                        />
                       </div>
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
@@ -457,7 +473,9 @@ const AdminFinance = () => {
                           <tbody>
                             {companyIncome.items.length === 0 ? (
                               <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
-                            ) : companyIncome.items.map((row, idx) => (
+                            ) : (companyIncome.items
+                                  .filter(row => incomeTypeFilter === 'all' ? true : row.itemType === incomeTypeFilter)
+                                  .map((row, idx) => (
                               <tr key={idx} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
                                 <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
@@ -467,7 +485,7 @@ const AdminFinance = () => {
                                 <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
                                 <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
                               </tr>
-                            ))}
+                            )))}
                           </tbody>
                         </table>
                       </div>
