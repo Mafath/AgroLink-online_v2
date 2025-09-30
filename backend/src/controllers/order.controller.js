@@ -3,6 +3,8 @@ import Delivery from '../models/delivery.model.js';
 import Listing from '../models/listing.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Cart from '../models/cart.model.js';
+import RentalItem from '../models/rentalItem.model.js';
+import RentalBooking from '../models/rentalBooking.model.js';
 import mongoose from 'mongoose';
 import { sendOrderPlacedEmail, sendOrderCancellationEmail } from '../lib/emailService.js';
 import { logItemSold, getFarmerActivities, logBuyerOrderPlaced, logBuyerOrderCancelled, getBuyerActivities } from '../lib/activityService.js';
@@ -396,6 +398,57 @@ export const createOrderFromCart = async (req, res) => {
           listingId: listing._id,
           quantity: cartItem.quantity
         });
+      } else if (cartItem.itemType === 'rental') {
+        const rental = await RentalItem.findById(cartItem.itemId);
+        if (!rental) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Rental item ${cartItem.itemId} not found` } });
+        }
+
+        // Validate dates
+        const start = new Date(cartItem.rentalStartDate);
+        const end = new Date(cartItem.rentalEndDate);
+        if (!(start instanceof Date) || isNaN(start) || !(end instanceof Date) || isNaN(end) || end < start) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid rental date range' } });
+        }
+
+        // Check availability overlap
+        const overlaps = await RentalBooking.find({
+          item: rental._id,
+          status: 'CONFIRMED',
+          $or: [
+            { startDate: { $lte: end }, endDate: { $gte: start } },
+          ],
+        }).select('quantity');
+        const booked = overlaps.reduce((s, b) => s + (b.quantity || 0), 0);
+        const available = Math.max(0, (rental.totalQty || 0) - booked);
+        if (cartItem.quantity > available) {
+          return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Only ${available} available for selected dates` } });
+        }
+
+        // Compute subtotal for rental (per-day pricing, inclusive range)
+        const msPerDay = 1000 * 60 * 60 * 24;
+        const days = Math.ceil((end - start) / msPerDay) + 1;
+        const itemTotal = (rental.rentalPerDay || 0) * days * cartItem.quantity;
+        subtotal += itemTotal;
+
+        validatedItems.push({
+          listing: rental._id,
+          itemType: 'rental',
+          quantity: cartItem.quantity,
+          price: rental.rentalPerDay, // base rate
+          title: rental.productName,
+          image: (rental.images && rental.images[0]) || '',
+          rentalStartDate: start,
+          rentalEndDate: end,
+          rentalPerDay: rental.rentalPerDay,
+        });
+
+        itemsToRemove.push({
+          rentalId: rental._id,
+          quantity: cartItem.quantity,
+          startDate: start,
+          endDate: end,
+        });
       }
     }
 
@@ -420,6 +473,25 @@ export const createOrderFromCart = async (req, res) => {
     });
 
     await order.save();
+
+    // Create rental bookings for any rental items in this order
+    try {
+      const rentalItems = validatedItems.filter(it => it.itemType === 'rental');
+      for (const r of rentalItems) {
+        await RentalBooking.create({
+          item: r.listing,
+          renter: req.user._id,
+          quantity: r.quantity,
+          startDate: r.rentalStartDate,
+          endDate: r.rentalEndDate,
+          status: 'CONFIRMED',
+          notes: `Order ${order.orderNumber || order._id}`,
+        });
+      }
+    } catch (rbErr) {
+      console.error('Failed to create rental bookings for order:', rbErr);
+      // Do not fail the order if booking creation fails; log for follow-up.
+    }
 
     // Update stock quantities after successful order creation
     try {

@@ -1,9 +1,10 @@
 import Cart from '../models/cart.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Listing from '../models/listing.model.js';
+import RentalItem from '../models/rentalItem.model.js';
 
 // Helper function to get item details from database
-const getItemDetails = async (itemId, itemType) => {
+const getItemDetails = async (itemId, itemType, rentalData = null) => {
   if (itemType === 'inventory') {
     const item = await InventoryProduct.findById(itemId);
     if (!item) return null;
@@ -28,6 +29,35 @@ const getItemDetails = async (itemId, itemType) => {
       maxQuantity: item.capacityKg,
       unit: 'kg'
     };
+  } else if (itemType === 'rental') {
+    const item = await RentalItem.findById(itemId);
+    if (!item) return null;
+    
+    // For rentals, we need to calculate availability for the specific date range
+    let availableQty = item.totalQty || 0;
+    if (rentalData && rentalData.startDate && rentalData.endDate) {
+      // Calculate overlapping bookings for the date range
+      const RentalBooking = (await import('../models/rentalBooking.model.js')).default;
+      const overlaps = await RentalBooking.find({
+        item: itemId,
+        status: 'CONFIRMED',
+        $or: [
+          { startDate: { $lte: new Date(rentalData.endDate) }, endDate: { $gte: new Date(rentalData.startDate) } },
+        ],
+      }).select('quantity');
+      const booked = overlaps.reduce((s, b) => s + (b.quantity || 0), 0);
+      availableQty = Math.max(0, (item.totalQty || 0) - booked);
+    }
+    
+    return {
+      title: item.productName,
+      price: item.rentalPerDay, // Use daily rate as base price
+      image: item.images?.[0] || '',
+      category: item.category || '',
+      maxQuantity: availableQty,
+      unit: 'items',
+      rentalPerDay: item.rentalPerDay
+    };
   }
   return null;
 };
@@ -44,7 +74,12 @@ export const getCart = async (req, res) => {
     // Update item details and availability
     const updatedItems = [];
     for (const item of cart.items) {
-      const itemDetails = await getItemDetails(item.itemId, item.itemType);
+      const rentalData = item.itemType === 'rental' ? {
+        startDate: item.rentalStartDate,
+        endDate: item.rentalEndDate
+      } : null;
+      
+      const itemDetails = await getItemDetails(item.itemId, item.itemType, rentalData);
       
       if (!itemDetails) {
         // Item no longer exists, skip it
@@ -61,6 +96,11 @@ export const getCart = async (req, res) => {
         maxQuantity: itemDetails.maxQuantity,
         unit: itemDetails.unit
       };
+
+      // For rental items, preserve rental-specific data
+      if (item.itemType === 'rental') {
+        updatedItem.rentalPerDay = itemDetails.rentalPerDay;
+      }
 
       // Adjust quantity if it exceeds available stock
       if (updatedItem.quantity > updatedItem.maxQuantity) {
@@ -89,13 +129,13 @@ export const getCart = async (req, res) => {
 // Add item to cart
 export const addToCart = async (req, res) => {
   try {
-    const { itemId, itemType, quantity = 1 } = req.body;
+    const { itemId, itemType, quantity = 1, rentalStartDate, rentalEndDate } = req.body;
 
     if (!itemId || !itemType) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Item ID and type are required' } });
     }
 
-    if (!['inventory', 'listing'].includes(itemType)) {
+    if (!['inventory', 'listing', 'rental'].includes(itemType)) {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Invalid item type' } });
     }
 
@@ -103,8 +143,32 @@ export const addToCart = async (req, res) => {
       return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Quantity must be at least 1' } });
     }
 
-    // Get item details
-    const itemDetails = await getItemDetails(itemId, itemType);
+    // For rental items, validate date range
+    if (itemType === 'rental') {
+      if (!rentalStartDate || !rentalEndDate) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Start and end dates are required for rental items' } });
+      }
+      
+      const startDate = new Date(rentalStartDate);
+      const endDate = new Date(rentalEndDate);
+      
+      // Allow same-day rentals (startDate === endDate)
+      if (startDate > endDate) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'End date must be after start date' } });
+      }
+      
+      // Normalize to date-only for past check to allow same-day bookings
+      const today = new Date();
+      const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+      if (startMidnight < todayMidnight) {
+        return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Start date cannot be in the past' } });
+      }
+    }
+
+    // Get item details with rental data if applicable
+    const rentalData = itemType === 'rental' ? { startDate: rentalStartDate, endDate: rentalEndDate } : null;
+    const itemDetails = await getItemDetails(itemId, itemType, rentalData);
     if (!itemDetails) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Item not found' } });
     }
@@ -125,10 +189,21 @@ export const addToCart = async (req, res) => {
       cart = new Cart({ user: req.user._id, items: [] });
     }
 
-    // Check if item already exists in cart
-    const existingItemIndex = cart.items.findIndex(
-      item => item.itemId.toString() === itemId && item.itemType === itemType
-    );
+    // For rental items, check if same item with same date range already exists
+    const existingItemIndex = cart.items.findIndex(item => {
+      if (item.itemId.toString() === itemId && item.itemType === itemType) {
+        if (itemType === 'rental') {
+          // For rentals, check if date ranges match
+          const itemStart = item.rentalStartDate ? new Date(item.rentalStartDate).toISOString() : null;
+          const itemEnd = item.rentalEndDate ? new Date(item.rentalEndDate).toISOString() : null;
+          const newStart = new Date(rentalStartDate).toISOString();
+          const newEnd = new Date(rentalEndDate).toISOString();
+          return itemStart === newStart && itemEnd === newEnd;
+        }
+        return true; // For non-rental items, just check itemId and type
+      }
+      return false;
+    });
 
     if (existingItemIndex > -1) {
       // Update existing item quantity
@@ -147,7 +222,7 @@ export const addToCart = async (req, res) => {
       cart.items[existingItemIndex].maxQuantity = itemDetails.maxQuantity;
     } else {
       // Add new item to cart
-      cart.items.push({
+      const newItem = {
         itemId,
         itemType,
         title: itemDetails.title,
@@ -157,7 +232,16 @@ export const addToCart = async (req, res) => {
         quantity,
         maxQuantity: itemDetails.maxQuantity,
         unit: itemDetails.unit
-      });
+      };
+
+      // Add rental-specific fields if it's a rental item
+      if (itemType === 'rental') {
+        newItem.rentalStartDate = new Date(rentalStartDate);
+        newItem.rentalEndDate = new Date(rentalEndDate);
+        newItem.rentalPerDay = itemDetails.rentalPerDay;
+      }
+
+      cart.items.push(newItem);
     }
 
     await cart.save();
@@ -204,8 +288,13 @@ export const updateCartItem = async (req, res) => {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Item not found in cart' } });
     }
 
-    // Get fresh item details
-    const itemDetails = await getItemDetails(itemId, itemType);
+    // Get fresh item details with rental data if applicable
+    const cartItem = cart.items[itemIndex];
+    const rentalData = cartItem.itemType === 'rental' ? {
+      startDate: cartItem.rentalStartDate,
+      endDate: cartItem.rentalEndDate
+    } : null;
+    const itemDetails = await getItemDetails(itemId, itemType, rentalData);
     if (!itemDetails) {
       return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Item no longer exists' } });
     }
@@ -228,6 +317,11 @@ export const updateCartItem = async (req, res) => {
     cart.items[itemIndex].image = itemDetails.image;
     cart.items[itemIndex].category = itemDetails.category;
     cart.items[itemIndex].unit = itemDetails.unit;
+
+    // For rental items, preserve rental-specific data
+    if (cartItem.itemType === 'rental') {
+      cart.items[itemIndex].rentalPerDay = itemDetails.rentalPerDay;
+    }
 
     await cart.save();
 

@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 
 const cartItemSchema = new mongoose.Schema({
-  // Reference to either inventory or listing
+  // Reference to either inventory, listing, or rental booking
   itemId: { type: mongoose.Schema.Types.ObjectId, required: true },
-  itemType: { type: String, enum: ['inventory', 'listing'], required: true },
+  itemType: { type: String, enum: ['inventory', 'listing', 'rental'], required: true },
   
   // Cached item details for quick access
   title: { type: String, required: true },
@@ -13,10 +13,16 @@ const cartItemSchema = new mongoose.Schema({
   
   // Quantity and availability
   quantity: { type: Number, required: true, min: 1 },
-  maxQuantity: { type: Number, required: true, min: 0 }, // stockQuantity or capacityKg
+  maxQuantity: { type: Number, required: true, min: 0 }, // stockQuantity, capacityKg, or availableQty
   
   // Additional item-specific fields
-  unit: { type: String, default: 'units' }, // 'units' for inventory, 'kg' for listings
+  unit: { type: String, default: 'units' }, // 'units' for inventory, 'kg' for listings, 'items' for rentals
+  
+  // Rental-specific fields (only for rental items)
+  rentalStartDate: { type: Date },
+  rentalEndDate: { type: Date },
+  rentalPerDay: { type: Number, min: 0 },
+  rentalPerWeek: { type: Number, min: 0 },
 }, { _id: false });
 
 const cartSchema = new mongoose.Schema({

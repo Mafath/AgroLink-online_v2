@@ -5,6 +5,8 @@ import toast from "react-hot-toast";
 import { FileDown, TrendingUp, Package, DollarSign, XCircle } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import html2canvas from 'html2canvas';
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png';
 import AdminSidebar from "../components/AdminSidebar";
 
 const statuses = ['NOT READY', 'READY', 'CANCELLED'];
@@ -231,121 +233,237 @@ const AdminOrders = () => {
 };
 
 
-  const downloadPDF = () => {
-    const doc = new jsPDF();
+  const downloadPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Top green and black bar (3/4 green, 1/4 black)
+      pdf.setFillColor(13, 126, 121); // Primary green (#0d7e79)
+      pdf.rect(0, 0, 157.5, 8, 'F'); // 3/4 of 210mm = 157.5mm
+      
+      pdf.setFillColor(0, 0, 0); // Black
+      pdf.rect(157.5, 0, 52.5, 8, 'F'); // 1/4 of 210mm = 52.5mm
+      
+      // Add space below top bar
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 5, 'F'); // 5mm white space
+      
+      // Main content area (white background)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 13, 210, 25, 'F');
+      
+      // Add the actual AgroLink logo using html2canvas
+      try {
+        // Create a temporary div with the logo
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '60px';
+        tempDiv.style.height = '60px';
+        tempDiv.style.display = 'flex';
+        tempDiv.style.alignItems = 'center';
+        tempDiv.style.justifyContent = 'center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+        document.body.appendChild(tempDiv);
+        
+        // Capture the logo with html2canvas
+        const canvas = await html2canvas(tempDiv, {
+          width: 60,
+          height: 60,
+          backgroundColor: null,
+          scale: 2 // Higher resolution
+        });
+        
+        // Remove the temporary div
+        document.body.removeChild(tempDiv);
+        
+        // Add the logo to PDF with correct aspect ratio (bigger size)
+        const logoDataURL = canvas.toDataURL('image/png');
+        pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16); // Adjusted for space below top bar
+      } catch (error) {
+        console.log('Could not load logo, using text fallback');
+        // Fallback to text if logo fails
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(13, 126, 121);
+        pdf.text('AgroLink', 15, 25);
+      }
+      
+      // Company information
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Email:', 130, 17); // Adjusted for space below top bar
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('info@agrolink.org', 145, 17);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Phone:', 130, 21); // Adjusted for space below top bar
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('+94 71 920 7688', 145, 21);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Web:', 130, 25);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('www.AgroLink.org', 145, 25);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Address:', 130, 29);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29);
+      
+      // Bottom line separator
+      pdf.setDrawColor(13, 126, 121); // Primary green
+      pdf.setLineWidth(1);
+      pdf.line(20, 40, 190, 40); // Adjusted for space below top bar
+      
+      // Reset text color for content
+      pdf.setTextColor(0, 0, 0);
+      
+      // Add report title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Orders Management Report', 20, 55); // Adjusted for space below top bar
+      
+      // Add date
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63); // Adjusted for space below top bar
+    
+      // Summary Section
+      pdf.setFontSize(12);
+      pdf.setTextColor(0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Summary', 20, 75);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Total Orders: ${filteredOrders.length.toLocaleString()}`, 20, 85);
+      pdf.text(`Active Orders Revenue: LKR ${totalRevenue.toFixed(2)}`, 20, 92);
+      pdf.text(`Cancelled Orders: ${cancelledOrdersCount.toLocaleString()}`, 20, 99);
+      
+      // Line separator
+      pdf.setDrawColor(200);
+      pdf.line(20, 105, 190, 105);
 
-    // Set document properties
-    doc.setProperties({
-      title: 'Orders Report',
-      author: 'Admin',
-      creator: 'Marketplace Admin Panel'
-    });
+      // Table styling
+      const tableColumn = ["Order ID", "Date", "Time", "Products", "Payment Method", "Delivery Option", "Total (LKR)", "Status"];
+      const tableRows = filteredOrders.map(order => {
+        const date = new Date(order.createdAt);
+        const products = order.items?.map(item => `${item.title || item.listing?.title} x ${item.quantity}`).join(', ') || '';
+        return [
+          order.orderNumber || order._id,
+          date.toLocaleDateString(),
+          date.toLocaleTimeString(),
+          products,
+          capitalizeFirst(order.paymentMethod),
+          capitalizeFirst(order.deliveryType),
+          order.total?.toFixed(2) || "0.00",
+          capitalizeFirst(order.status || 'not_ready')
+        ];
+      });
 
-    // Header
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
-    doc.setTextColor(33, 150, 83); // Primary green color
-    doc.text('AgroLink Orders Report', 20, 20);
-    
-    // Report Date
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Generated on: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 20, 30);
-    
-    // Summary Section
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Summary', 20, 45);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(`Total Orders: ${filteredOrders.length.toLocaleString()}`, 20, 55);
-    doc.text(`Active Orders Revenue: LKR ${totalRevenue.toFixed(2)}`, 20, 62);
-    doc.text(`Cancelled Orders: ${cancelledOrdersCount.toLocaleString()}`, 20, 69);
-    
-    // Line separator
-    doc.setDrawColor(200);
-    doc.line(20, 75, 190, 75);
+      autoTable(pdf, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 110,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [13, 126, 121], // Primary green
+          textColor: [255, 255, 255],
+          fontSize: 10,
+          fontStyle: 'bold'
+        },
+        bodyStyles: {
+          fontSize: 9,
+          textColor: [50, 50, 50]
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245]
+        },
+        columnStyles: {
+          0: { cellWidth: 20 }, // Order ID
+          1: { cellWidth: 15 }, // Date
+          2: { cellWidth: 15 }, // Time
+          3: { cellWidth: 'auto' }, // Products
+          4: { cellWidth: 20 }, // Payment Method
+          5: { cellWidth: 20 }, // Delivery Option
+          6: { cellWidth: 15 }, // Total
+          7: { cellWidth: 20 }  // Status
+        },
+        margin: { left: 20, right: 20 }
+      });
 
-    // Table styling
-    const tableColumn = ["Order ID", "Date", "Time", "Products", "Payment Method", "Delivery Option", "Total (LKR)", "Status"];
-    const tableRows = filteredOrders.map(order => {
-      const date = new Date(order.createdAt);
-      const products = order.items?.map(item => `${item.title || item.listing?.title} x ${item.quantity}`).join(', ') || '';
-      return [
-        order.orderNumber || order._id,
-        date.toLocaleDateString(),
-        date.toLocaleTimeString(),
-        products,
-        capitalizeFirst(order.paymentMethod),
-        capitalizeFirst(order.deliveryType),
-        order.total?.toFixed(2) || "0.00",
-        capitalizeFirst(order.status || 'not_ready')
-      ];
-    });
+      // Footer with totals
+      const finalY = pdf.lastAutoTable.finalY + 10;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(12);
+      pdf.setTextColor(0);
+      pdf.text('Order Totals', 20, finalY);
+      
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      const activeTotal = filteredOrders
+        .filter(o => String(o.status).toUpperCase() !== 'CANCELLED')
+        .reduce((sum, o) => sum + (o.total || 0), 0);
+      pdf.text(`Active Orders Total: LKR ${activeTotal.toFixed(2)}`, 20, finalY + 10);
+      
+      const cancelledTotal = filteredOrders
+        .filter(o => String(o.status).toUpperCase() === 'CANCELLED')
+        .reduce((sum, o) => sum + (o.total || 0), 0);
+      pdf.text(`Cancelled Orders Total: LKR ${cancelledTotal.toFixed(2)}`, 20, finalY + 17);
+      
+      // Add footer with proper margins
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        
+        // Check if content extends too close to footer and add margin
+        const currentPageHeight = pdf.internal.pageSize.height;
+        const footerStartY = currentPageHeight - 20; // 20mm from bottom
+        const contentEndY = i === pageCount ? finalY + 25 : currentPageHeight; // Use finalY for last page
+        
+        // If content is too close to footer, add margin
+        if (contentEndY > footerStartY - 10) {
+          // Add extra space before footer
+          const extraMargin = Math.max(0, (contentEndY + 10) - footerStartY);
+          const adjustedFooterY = footerStartY + extraMargin;
+          
+          // Footer line with top margin
+          pdf.setDrawColor(13, 126, 121); // Primary green
+          pdf.setLineWidth(1);
+          pdf.line(20, adjustedFooterY, 190, adjustedFooterY);
+          
+          // Footer text with proper spacing
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text('AgroLink - Agricultural Technology Solutions', 20, adjustedFooterY + 5);
+          pdf.text(`Page ${i} of ${pageCount}`, 160, adjustedFooterY + 5);
+          pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, adjustedFooterY + 10);
+        } else {
+          // Footer line
+          pdf.setDrawColor(13, 126, 121); // Primary green
+          pdf.setLineWidth(1);
+          pdf.line(20, footerStartY, 190, footerStartY);
+          
+          // Footer text
+          pdf.setFontSize(8);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text('AgroLink - Agricultural Technology Solutions', 20, footerStartY + 5);
+          pdf.text(`Page ${i} of ${pageCount}`, 160, footerStartY + 5);
+          pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, footerStartY + 10);
+        }
+      }
 
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 80,
-      theme: 'striped',
-      headStyles: {
-        fillColor: [33, 150, 83], // Primary green
-        textColor: [255, 255, 255],
-        fontSize: 10,
-        fontStyle: 'bold'
-      },
-      bodyStyles: {
-        fontSize: 9,
-        textColor: [50, 50, 50]
-      },
-      alternateRowStyles: {
-        fillColor: [245, 245, 245]
-      },
-      columnStyles: {
-        0: { cellWidth: 20 }, // Order ID
-        1: { cellWidth: 15 }, // Date
-        2: { cellWidth: 15 }, // Time
-        3: { cellWidth: 'auto' }, // Products
-        4: { cellWidth: 20 }, // Payment Method
-        5: { cellWidth: 20 }, // Delivery Option
-        6: { cellWidth: 15 }, // Total
-        7: { cellWidth: 20 }  // Status
-      },
-      margin: { left: 20, right: 20 }
-    });
-
-    // Footer with totals
-    const finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(12);
-    doc.setTextColor(0);
-    doc.text('Order Totals', 20, finalY);
-    
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const activeTotal = filteredOrders
-      .filter(o => String(o.status).toUpperCase() !== 'CANCELLED')
-      .reduce((sum, o) => sum + (o.total || 0), 0);
-    doc.text(`Active Orders Total: LKR ${activeTotal.toFixed(2)}`, 20, finalY + 10);
-    
-    const cancelledTotal = filteredOrders
-      .filter(o => String(o.status).toUpperCase() === 'CANCELLED')
-      .reduce((sum, o) => sum + (o.total || 0), 0);
-    doc.text(`Cancelled Orders Total: LKR ${cancelledTotal.toFixed(2)}`, 20, finalY + 17);
-    
-    // Page footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(100);
-      doc.text(`Page ${i} of ${pageCount}`, 190, 290, { align: 'right' });
+      // Save the PDF
+      pdf.save(`AgroLink-Orders-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
     }
-
-    doc.save("orders_report.pdf");
   };
 
   return (

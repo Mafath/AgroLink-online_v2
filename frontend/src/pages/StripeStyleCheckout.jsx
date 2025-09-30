@@ -305,8 +305,8 @@ const handleInputChange = (e) => {
       // Simulate payment processing
       await new Promise(resolve => setTimeout(resolve, 2000));
 
-      // Validate cart items
-      const invalidItems = checkoutData.cart.filter(item => !item.itemId || !['inventory', 'listing'].includes(item.itemType));
+      // Validate cart items (allow inventory, listing, rental)
+      const invalidItems = checkoutData.cart.filter(item => !item.itemId || !['inventory', 'listing', 'rental'].includes(item.itemType));
       if (invalidItems.length > 0) {
         console.error('Invalid cart items found:', invalidItems);
         toast.error('Some items in your cart are invalid. Please refresh and try again.');
@@ -314,22 +314,12 @@ const handleInputChange = (e) => {
       }
 
       // Prepare order data
+      // Use createOrderFromCart so backend can resolve rentals and quantities safely
       const orderData = {
-        items: checkoutData.cart.map(item => {
-          if (item.itemType === 'inventory') {
-            return {
-              inventoryId: item.itemId,
-              quantity: item.quantity
-            };
-          } else if (item.itemType === 'listing') {
-            return {
-              listingId: item.itemId,
-              quantity: item.quantity
-            };
-          } else {
-            throw new Error(`Invalid item type: ${item.itemType}`);
-          }
-        }),
+        selectedItems: checkoutData.cart.map(item => ({
+          itemId: item.itemId,
+          itemType: item.itemType,
+        })),
         deliveryType: checkoutData.deliveryType,
         contactName: formData.fullName,
         contactPhone: formData.phone,
@@ -356,7 +346,7 @@ const handleInputChange = (e) => {
       console.log('Checkout data:', JSON.stringify(checkoutData, null, 2));
       console.log('Form data:', formData);
       
-      const response = await axiosInstance.post('/orders', orderData);
+      const response = await axiosInstance.post('/orders/from-cart', orderData);
       
       // Clear user-specific cart and checkout data
       if (authUser) {
