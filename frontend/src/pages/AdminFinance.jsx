@@ -1,6 +1,6 @@
 import React from 'react'
 import AdminSidebar from '../components/AdminSidebar'
-import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, CalendarRange, PieChart, BarChart3, LineChart, Receipt, Target, Repeat, FileDown } from 'lucide-react'
+import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, CalendarRange, PieChart, BarChart3, LineChart, Receipt, Target, Repeat, FileDown, ChevronDown } from 'lucide-react'
 import Chart from 'react-apexcharts'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -72,6 +72,7 @@ const AdminFinance = () => {
   const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
+  const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [selectedIncome, setSelectedIncome] = React.useState(null)
@@ -445,19 +446,25 @@ const AdminFinance = () => {
                           icon={TrendingUp}
                           title='Order-based Income Details'
                           action={
-                            <select
-                              className='border rounded-md px-3 py-1.5 text-sm'
-                              value={incomeTypeFilter}
-                              onChange={(e)=>setIncomeTypeFilter(e.target.value)}
-                            >
-                              <option value='all'>All Types</option>
-                              <option value='inventory'>Inventory</option>
-                              <option value='rental'>Rental</option>
-                              <option value='listing'>Listing</option>
-                            </select>
+                            <div className='flex items-center gap-2'>
+                              <button onClick={()=>setShowOrderIncomeDetails(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                                <ChevronDown className={`size-4 transition-transform ${showOrderIncomeDetails ? '' : '-rotate-90'}`} />
+                              </button>
+                              <select
+                                className='border rounded-md px-3 py-1.5 text-sm'
+                                value={incomeTypeFilter}
+                                onChange={(e)=>setIncomeTypeFilter(e.target.value)}
+                              >
+                                <option value='all'>All Types</option>
+                                <option value='inventory'>Inventory</option>
+                                <option value='rental'>Rental</option>
+                                <option value='listing'>Listing</option>
+                              </select>
+                            </div>
                           }
                         />
                       </div>
+                      {showOrderIncomeDetails && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -490,6 +497,7 @@ const AdminFinance = () => {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={TrendingUp} title='Add Income' />
