@@ -74,6 +74,7 @@ const AdminFinance = () => {
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
+  const [selectedIncome, setSelectedIncome] = React.useState(null)
   const [budgets, setBudgets] = React.useState([])
   const [loadingBudgets, setLoadingBudgets] = React.useState(false)
   const [budgetForm, setBudgetForm] = React.useState({ name: '', period: 'MONTHLY', amount: '', categories: '', alertThreshold: '0.8', notifyEmail: '' })
@@ -533,7 +534,10 @@ const AdminFinance = () => {
                                 <td className='py-3 px-5 text-gray-700'>{row.description || '—'}</td>
                                 <td className='py-3 px-5 font-medium text-green-700'>+ LKR {Number(row.amount||0).toLocaleString()}</td>
                                 <td className='py-3 px-5 text-right'>
-                                  <button onClick={()=>handleDelete(row._id,'INCOME')} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                  <div className='inline-flex items-center gap-2'>
+                                    <button onClick={()=>setSelectedIncome(row)} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Info</button>
+                                    <button onClick={()=>handleDelete(row._id,'INCOME')} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -901,9 +905,54 @@ const AdminFinance = () => {
           </div>
         </div>
       </div>
+
+      {/* Income info modal */}
+      {selectedIncome && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-xl border border-gray-200 w-full max-w-2xl p-5'>
+            <div className='flex items-center justify-between mb-3'>
+              <h3 className='text-lg font-semibold'>Income Details</h3>
+              <button onClick={()=>setSelectedIncome(null)} className='text-gray-500'>Close</button>
+            </div>
+            <div className='grid grid-cols-1 md:grid-cols-2 gap-4 text-sm'>
+              <div>
+                <div className='text-gray-500'>Date</div>
+                <div className='font-medium'>{selectedIncome.date ? new Date(selectedIncome.date).toLocaleString() : '—'}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Amount</div>
+                <div className='font-medium text-green-700'>LKR {Number(selectedIncome.amount||0).toLocaleString()}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Category</div>
+                <div className='font-medium'>{selectedIncome.category || '—'}</div>
+              </div>
+              <div>
+                <div className='text-gray-500'>Source</div>
+                <div className='font-medium'>{selectedIncome.source || '—'}</div>
+              </div>
+              <div className='md:col-span-2'>
+                <div className='text-gray-500'>Description</div>
+                <div className='font-medium'>{selectedIncome.description || '—'}</div>
+              </div>
+              <div className='md:col-span-2'>
+                <div className='text-gray-500 mb-2'>Receipt</div>
+                {selectedIncome.receiptUrl ? (
+                  <img src={selectedIncome.receiptUrl} alt='receipt' className='w-full max-h-96 object-contain rounded-lg border' />
+                ) : (
+                  <div className='text-gray-500'>No receipt attached</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+// Income info modal
+// Place modal at end of component render above default export
 
 export default AdminFinance
 
