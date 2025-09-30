@@ -91,6 +91,12 @@ const AdminFinance = () => {
   const [recurringForm, setRecurringForm] = React.useState({ title: '', type: 'EXPENSE', amount: '', cadence: 'MONTHLY', nextRunAt: '', category: '' })
   const [allTransactions, setAllTransactions] = React.useState([])
   const [loadingReports, setLoadingReports] = React.useState(false)
+  const [driverRange, setDriverRange] = React.useState('month')
+  const [farmerRange, setFarmerRange] = React.useState('month')
+  const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [] })
+  const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 0 })
+  const [driverRate, setDriverRate] = React.useState({ type: 'flat', value: '0' })
+  const [farmerCommission, setFarmerCommission] = React.useState('0')
 
   React.useEffect(() => {
     const load = async () => {
@@ -131,12 +137,16 @@ const AdminFinance = () => {
     if (activeTab === 'income') fetchTransactions('INCOME')
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
+    if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange, farmerCommission) }
     if (activeTab === 'budgets') fetchBudgets()
     if (activeTab === 'goals') fetchGoals()
     if (activeTab === 'debts') fetchDebts()
     if (activeTab === 'recurring') fetchRecurring()
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
   }, [activeTab])
+
+  React.useEffect(() => { if (activeTab === 'expenses') fetchDriverPayouts(driverRange, driverRate) }, [driverRange, driverRate])
+  React.useEffect(() => { if (activeTab === 'expenses') fetchFarmerPayouts(farmerRange, farmerCommission) }, [farmerRange, farmerCommission])
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
@@ -224,6 +234,31 @@ const AdminFinance = () => {
       expenseSeries.push(monthExpense)
     }
     return { labels, incomeSeries, expenseSeries }
+  }
+
+  const rangeToFromTo = (range) => {
+    const now = new Date()
+    let from
+    if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
+    else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
+    else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
+    return { from, to: new Date().toISOString() }
+  }
+
+  const fetchDriverPayouts = async (range, rate) => {
+    try {
+      const { from, to } = rangeToFromTo(range)
+      const res = await axiosInstance.get('/finance/expenses/driver-payouts', { params: { from, to, rateType: rate.type, rateValue: rate.value } })
+      setDriverPayouts(res.data || { total: 0, count: 0, items: [] })
+    } catch {}
+  }
+
+  const fetchFarmerPayouts = async (range, commission) => {
+    try {
+      const { from, to } = rangeToFromTo(range)
+      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params: { from, to, commissionPercent: commission } })
+      setFarmerPayouts(res.data || { total: 0, items: [], commissionPercent: Number(commission||0) })
+    } catch {}
   }
 
   const downloadCSV = () => {
@@ -557,6 +592,101 @@ const AdminFinance = () => {
                 )}
                 {activeTab === 'expenses' && (
                   <div className='space-y-6'>
+                    {/* Driver payouts */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={Receipt} title='Driver Payments' />
+                          <div className='text-sm text-gray-600'>Total: <span className='font-semibold'>LKR {Number(driverPayouts.total||0).toLocaleString()}</span> ({driverPayouts.count} deliveries)</div>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRange} onChange={e=>setDriverRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRate.type} onChange={e=>setDriverRate(r=>({...r, type:e.target.value}))}>
+                            <option value='flat'>Flat</option>
+                            <option value='percent'>Percent of delivery fee</option>
+                          </select>
+                          <input className='border rounded-md px-2 py-1.5 text-sm w-24' placeholder='Value' type='number' value={driverRate.value} onChange={e=>setDriverRate(r=>({...r, value:e.target.value}))} />
+                        </div>
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Delivery</th>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Date</th>
+                              <th className='py-3 px-5'>Delivery Fee</th>
+                              <th className='py-3 px-5'>Payout</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {driverPayouts.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>No payouts</td></tr>
+                            ) : driverPayouts.items.map((d, i) => (
+                              <tr key={i} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{d.deliveryId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{d.orderNumber || '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(d.deliveryFee||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(d.payout||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Farmer payouts */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={Receipt} title='Farmer Payments (after commission)' />
+                          <div className='text-sm text-gray-600'>Total: <span className='font-semibold'>LKR {Number(farmerPayouts.total||0).toLocaleString()}</span></div>
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={farmerRange} onChange={e=>setFarmerRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
+                          <input className='border rounded-md px-2 py-1.5 text-sm w-32' placeholder='Commission %' type='number' value={farmerCommission} onChange={e=>setFarmerCommission(e.target.value)} />
+                        </div>
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Date</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Payout</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {farmerPayouts.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No payouts</td></tr>
+                            ) : farmerPayouts.items.map((r, i) => (
+                              <tr key={i} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{r.orderNumber || r.orderId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.lineTotal||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(r.payout||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={Receipt} title='Log Expense' />
                       <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>

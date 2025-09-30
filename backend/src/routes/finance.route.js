@@ -9,6 +9,7 @@ import {
   listDebts, createDebt, updateDebt, deleteDebt,
   listRecurring, createRecurring, updateRecurring, deleteRecurring,
   getIncomeFromOrders,
+  getDriverPayouts, getFarmerPayouts,
 } from '../controllers/finance.controller.js'
 
 const router = express.Router()
@@ -18,6 +19,8 @@ router.use(requireAuth, requireRole('ADMIN'))
 
 router.get('/summary', getSummary)
 router.get('/income/orders', getIncomeFromOrders)
+router.get('/expenses/driver-payouts', getDriverPayouts)
+router.get('/expenses/farmer-payouts', getFarmerPayouts)
 
 router.get('/transactions', listTransactions)
 router.post('/transactions', createTransaction)

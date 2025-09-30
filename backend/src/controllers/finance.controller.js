@@ -6,6 +6,7 @@ import FinanceRecurring from '../models/financeRecurring.model.js'
 import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
 import Order from '../models/order.model.js'
+import Delivery from '../models/delivery.model.js'
 
 export const getSummary = async (req, res) => {
   try {
@@ -270,6 +271,79 @@ export const getIncomeFromOrders = async (req, res) => {
     return res.json({ totalsByType, totalIncome, items })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute income from orders' })
+  }
+}
+
+// Expenses: Driver payouts
+export const getDriverPayouts = async (req, res) => {
+  try {
+    const { from, to, rateType = 'flat', rateValue = '0' } = req.query
+    const filter = { status: 'COMPLETED' }
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = new Date(from)
+      if (to) filter.createdAt.$lte = new Date(to)
+    }
+    const deliveries = await Delivery.find(filter).populate('order').lean()
+    const rate = Number(rateValue) || 0
+    const items = []
+    let total = 0
+    for (const d of deliveries) {
+      const deliveryFee = Number(d?.order?.deliveryFee || 0)
+      const payout = rateType === 'percent' ? (deliveryFee * rate) / 100 : rate
+      total += payout
+      items.push({
+        deliveryId: d._id,
+        orderNumber: d?.order?.orderNumber,
+        createdAt: d.createdAt,
+        deliveryFee,
+        payout,
+        driver: d.driver || null,
+      })
+    }
+    return res.json({ total, count: deliveries.length, items })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute driver payouts' })
+  }
+}
+
+// Expenses: Farmer payouts from listing sales (after commission)
+export const getFarmerPayouts = async (req, res) => {
+  try {
+    const { from, to, commissionPercent = '0' } = req.query
+    const filter = { status: { $ne: 'CANCELLED' } }
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = new Date(from)
+      if (to) filter.createdAt.$lte = new Date(to)
+    }
+    const commission = Number(commissionPercent) || 0
+    const orders = await Order.find(filter).lean()
+    const items = []
+    let total = 0
+    for (const o of orders) {
+      for (const it of (o.items || [])) {
+        if (it.itemType !== 'listing') continue
+        const qty = Number(it.quantity || 1)
+        const price = Number(it.price || 0)
+        const lineTotal = price * qty
+        const payout = lineTotal * (1 - commission / 100)
+        total += payout
+        items.push({
+          orderId: o._id,
+          orderNumber: o.orderNumber,
+          createdAt: o.createdAt,
+          title: it.title,
+          quantity: qty,
+          unitPrice: price,
+          lineTotal,
+          payout,
+        })
+      }
+    }
+    return res.json({ total, items, commissionPercent: commission })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute farmer payouts' })
   }
 }
 
