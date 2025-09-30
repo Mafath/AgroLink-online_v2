@@ -634,6 +634,32 @@ export default {
   generateVerificationToken,
 };
 
+export const sendBudgetAlertEmail = async ({ to, budgetName, period, amount, spent, utilization }) => {
+  try {
+    const transporter = createTransporter();
+    const percent = Math.round((utilization || 0) * 100);
+    const subject = `Budget alert: ${budgetName} at ${percent}% (${period.toLowerCase()})`;
+    const html = `
+      <!DOCTYPE html>
+      <html><body style="font-family:Segoe UI,Tahoma,Arial,sans-serif;background:#f9fafb;padding:24px;">
+        <div style="max-width:640px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;">
+          <div style="background:#dc2626;color:#ffffff;padding:16px 20px;font-weight:700;">AgroLink • Budget Alert</div>
+          <div style="padding:20px;color:#111827;">
+            <div style="font-size:16px;margin-bottom:8px;">Budget <strong>${budgetName}</strong> is at <strong>${percent}%</strong> utilization.</div>
+            <div style="color:#374151;font-size:14px;">Period: ${period}</div>
+            <div style="color:#374151;font-size:14px;">Limit: LKR ${Number(amount||0).toLocaleString()}</div>
+            <div style="color:#374151;font-size:14px;">Spent: LKR ${Number(spent||0).toLocaleString()}</div>
+          </div>
+        </div>
+      </body></html>`;
+    await transporter.sendMail({ from: `"AgroLink" <${process.env.EMAIL_USER}>`, to, subject, html });
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending budget alert email:', error);
+    return { success: false, error: error.message };
+  }
+};
+
 // Send order confirmation email covering pickup/delivery and cash/card flows
 export const sendOrderPlacedEmail = async (order, recipient) => {
   try {

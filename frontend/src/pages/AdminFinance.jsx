@@ -1,6 +1,12 @@
 import React from 'react'
 import AdminSidebar from '../components/AdminSidebar'
 import { ArrowUpRight, ArrowDownRight, Wallet, TrendingUp, CalendarRange, PieChart, BarChart3, LineChart, Receipt, Target, Repeat, FileDown } from 'lucide-react'
+import Chart from 'react-apexcharts'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import html2canvas from 'html2canvas'
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png'
+import { axiosInstance } from '../lib/axios'
 
 const StatCard = ({ icon: Icon, title, value, trend, positive = true }) => (
   <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-start gap-3">
@@ -57,6 +63,261 @@ const TABS = [
 
 const AdminFinance = () => {
   const [activeTab, setActiveTab] = React.useState('overview')
+  const [summary, setSummary] = React.useState({ income: 0, expenses: 0, balance: 0 })
+  const [loadingSummary, setLoadingSummary] = React.useState(false)
+  const [incomeItems, setIncomeItems] = React.useState([])
+  const [expenseItems, setExpenseItems] = React.useState([])
+  const [loadingIncome, setLoadingIncome] = React.useState(false)
+  const [loadingExpenses, setLoadingExpenses] = React.useState(false)
+  const [creating, setCreating] = React.useState(false)
+  const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
+  const [budgets, setBudgets] = React.useState([])
+  const [loadingBudgets, setLoadingBudgets] = React.useState(false)
+  const [budgetForm, setBudgetForm] = React.useState({ name: '', period: 'MONTHLY', amount: '', categories: '', alertThreshold: '0.8', notifyEmail: '' })
+  const [utilization, setUtilization] = React.useState([])
+  const [goals, setGoals] = React.useState([])
+  const [loadingGoals, setLoadingGoals] = React.useState(false)
+  const [goalForm, setGoalForm] = React.useState({ title: '', targetAmount: '', dueDate: '' })
+  const [debts, setDebts] = React.useState([])
+  const [loadingDebts, setLoadingDebts] = React.useState(false)
+  const [debtForm, setDebtForm] = React.useState({ type: 'BORROWED', party: '', principal: '', interestRate: '', dueDate: '' })
+  const [recurrings, setRecurrings] = React.useState([])
+  const [loadingRecurring, setLoadingRecurring] = React.useState(false)
+  const [recurringForm, setRecurringForm] = React.useState({ title: '', type: 'EXPENSE', amount: '', cadence: 'MONTHLY', nextRunAt: '', category: '' })
+  const [allTransactions, setAllTransactions] = React.useState([])
+  const [loadingReports, setLoadingReports] = React.useState(false)
+
+  React.useEffect(() => {
+    const load = async () => {
+      try {
+        setLoadingSummary(true)
+        const res = await axiosInstance.get('/finance/summary')
+        setSummary(res.data || { income: 0, expenses: 0, balance: 0 })
+      } catch (_) {
+        // silent
+      } finally {
+        setLoadingSummary(false)
+      }
+    }
+    load()
+  }, [])
+
+  const reloadSummary = async () => {
+    try {
+      const res = await axiosInstance.get('/finance/summary')
+      setSummary(res.data || { income: 0, expenses: 0, balance: 0 })
+    } catch {}
+  }
+
+  const fetchTransactions = async (type) => {
+    if (type === 'INCOME') setLoadingIncome(true); else setLoadingExpenses(true)
+    try {
+      const res = await axiosInstance.get('/finance/transactions', { params: { type } })
+      if (type === 'INCOME') setIncomeItems(res.data || [])
+      else setExpenseItems(res.data || [])
+    } catch (_) {
+      if (type === 'INCOME') setIncomeItems([]); else setExpenseItems([])
+    } finally {
+      if (type === 'INCOME') setLoadingIncome(false); else setLoadingExpenses(false)
+    }
+  }
+
+  React.useEffect(() => {
+    if (activeTab === 'income') fetchTransactions('INCOME')
+    if (activeTab === 'expenses') fetchTransactions('EXPENSE')
+    if (activeTab === 'budgets') fetchBudgets()
+    if (activeTab === 'goals') fetchGoals()
+    if (activeTab === 'debts') fetchDebts()
+    if (activeTab === 'recurring') fetchRecurring()
+    if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
+  }, [activeTab])
+
+  const onFileToBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+
+  const handleCreate = async () => {
+    try {
+      setCreating(true)
+      const payload = { ...form }
+      if (!payload.amount || Number.isNaN(Number(payload.amount))) return
+      payload.amount = Number(payload.amount)
+      if (!payload.date) payload.date = new Date().toISOString()
+      await axiosInstance.post('/finance/transactions', payload)
+      setForm({ type: form.type, amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
+      if (form.type === 'INCOME') fetchTransactions('INCOME'); else fetchTransactions('EXPENSE')
+      reloadSummary()
+    } catch (_) {
+      // silent
+    } finally {
+      setCreating(false)
+    }
+  }
+
+  const handleDelete = async (id, type) => {
+    try {
+      await axiosInstance.delete(`/finance/transactions/${id}`)
+      if (type === 'INCOME') fetchTransactions('INCOME'); else fetchTransactions('EXPENSE')
+      reloadSummary()
+    } catch (_) {}
+  }
+
+  // Reports data
+  const fetchAllTransactions = async () => {
+    setLoadingReports(true)
+    try {
+      const [inc, exp] = await Promise.all([
+        axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }),
+        axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }),
+      ])
+      setAllTransactions([...(inc.data||[]), ...(exp.data||[])])
+    } catch { setAllTransactions([]) } finally { setLoadingReports(false) }
+  }
+
+  const buildMonthlyBuckets = () => {
+    const now = new Date()
+    const labels = []
+    const incomeSeries = []
+    const expenseSeries = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
+      const monthIncome = allTransactions.filter(t => t.type==='INCOME' && new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s + Number(t.amount||0),0)
+      const monthExpense = allTransactions.filter(t => t.type==='EXPENSE' && new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s + Number(t.amount||0),0)
+      incomeSeries.push(monthIncome)
+      expenseSeries.push(monthExpense)
+    }
+    return { labels, incomeSeries, expenseSeries }
+  }
+
+  const downloadCSV = () => {
+    const headers = ['Date','Type','Category','Source','Description','Amount']
+    const rows = allTransactions
+      .sort((a,b)=>new Date(b.date)-new Date(a.date))
+      .map(t=>[
+        new Date(t.date).toISOString().slice(0,10),
+        t.type,
+        t.category||'',
+        t.source||'',
+        (t.description||'').replace(/\n/g,' '),
+        String(t.type==='INCOME' ? Number(t.amount||0) : -Number(t.amount||0))
+      ])
+    const csv = [headers, ...rows].map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `agrolink-finance-${new Date().toISOString().slice(0,10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const downloadPDF = async () => {
+    try {
+      const pdf = new jsPDF('p','mm','a4')
+      // simple header with logo
+      try {
+        const tempDiv = document.createElement('div')
+        tempDiv.style.position = 'absolute'; tempDiv.style.left = '-9999px'; tempDiv.style.top='-9999px'; tempDiv.style.width='60px'; tempDiv.style.height='60px'; tempDiv.style.display='flex'; tempDiv.style.alignItems='center'; tempDiv.style.justifyContent='center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width:100%;max-height:100%;object-fit:contain;" />`
+        document.body.appendChild(tempDiv)
+        const canvas = await html2canvas(tempDiv, { width:60, height:60, backgroundColor:null, scale:2 })
+        document.body.removeChild(tempDiv)
+        const logoDataURL = canvas.toDataURL('image/png')
+        pdf.addImage(logoDataURL,'PNG',15,10,14,14)
+      } catch {}
+      pdf.setFont('helvetica','bold'); pdf.setFontSize(16); pdf.text('Finance Report', 35, 18)
+      pdf.setFont('helvetica','normal'); pdf.setFontSize(10); pdf.text(`Generated on ${new Date().toLocaleString()}`, 35, 24)
+
+      const tableRows = allTransactions.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(t=>[
+        new Date(t.date).toLocaleDateString(), t.type, t.category||'—', t.source||'—', t.description||'—', (t.type==='INCOME'?'+':'-') + ' LKR ' + Number(t.amount||0).toLocaleString()
+      ])
+      autoTable(pdf, {
+        head: [[ 'Date','Type','Category','Source','Description','Amount' ]],
+        body: tableRows,
+        startY: 32,
+        theme: 'striped',
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [34,197,94] },
+        columnStyles: { 4: { cellWidth: 70 } }
+      })
+      pdf.save(`agrolink-finance-${new Date().toISOString().slice(0,10)}.pdf`)
+    } catch {}
+  }
+
+  // Budgets
+  const fetchBudgets = async () => {
+    setLoadingBudgets(true)
+    try {
+      const res = await axiosInstance.get('/finance/budgets')
+      setBudgets(res.data || [])
+      const util = await axiosInstance.get('/finance/budgets/utilization')
+      setUtilization(util.data || [])
+    } catch { setBudgets([]) } finally { setLoadingBudgets(false) }
+  }
+  const createBudget = async () => {
+    try {
+      const payload = {
+        ...budgetForm,
+        amount: Number(budgetForm.amount || 0),
+        alertThreshold: Number(budgetForm.alertThreshold || 0.8),
+        categories: (budgetForm.categories || '').split(',').map(s=>s.trim()).filter(Boolean)
+      }
+      await axiosInstance.post('/finance/budgets', payload)
+      setBudgetForm({ name: '', period: 'MONTHLY', amount: '', categories: '', alertThreshold: '0.8', notifyEmail: '' })
+      fetchBudgets()
+    } catch {}
+  }
+  const deleteBudget = async (id) => { try { await axiosInstance.delete(`/finance/budgets/${id}`); fetchBudgets() } catch {} }
+
+  // Goals
+  const fetchGoals = async () => {
+    setLoadingGoals(true)
+    try { const res = await axiosInstance.get('/finance/goals'); setGoals(res.data || []) } catch { setGoals([]) } finally { setLoadingGoals(false) }
+  }
+  const createGoal = async () => {
+    try {
+      const payload = { ...goalForm, targetAmount: Number(goalForm.targetAmount || 0) }
+      await axiosInstance.post('/finance/goals', payload)
+      setGoalForm({ title: '', targetAmount: '', dueDate: '' })
+      fetchGoals()
+    } catch {}
+  }
+  const deleteGoal = async (id) => { try { await axiosInstance.delete(`/finance/goals/${id}`); fetchGoals() } catch {} }
+
+  // Debts
+  const fetchDebts = async () => {
+    setLoadingDebts(true)
+    try { const res = await axiosInstance.get('/finance/debts'); setDebts(res.data || []) } catch { setDebts([]) } finally { setLoadingDebts(false) }
+  }
+  const createDebt = async () => {
+    try {
+      const payload = { ...debtForm, principal: Number(debtForm.principal || 0), interestRate: Number(debtForm.interestRate || 0) }
+      await axiosInstance.post('/finance/debts', payload)
+      setDebtForm({ type: 'BORROWED', party: '', principal: '', interestRate: '', dueDate: '' })
+      fetchDebts()
+    } catch {}
+  }
+  const deleteDebt = async (id) => { try { await axiosInstance.delete(`/finance/debts/${id}`); fetchDebts() } catch {} }
+
+  // Recurring
+  const fetchRecurring = async () => {
+    setLoadingRecurring(true)
+    try { const res = await axiosInstance.get('/finance/recurring'); setRecurrings(res.data || []) } catch { setRecurrings([]) } finally { setLoadingRecurring(false) }
+  }
+  const createRecurring = async () => {
+    try {
+      const payload = { ...recurringForm, amount: Number(recurringForm.amount || 0) }
+      await axiosInstance.post('/finance/recurring', payload)
+      setRecurringForm({ title: '', type: 'EXPENSE', amount: '', cadence: 'MONTHLY', nextRunAt: '', category: '' })
+      fetchRecurring()
+    } catch {}
+  }
+  const deleteRecurring = async (id) => { try { await axiosInstance.delete(`/finance/recurring/${id}`); fetchRecurring() } catch {} }
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -95,10 +356,10 @@ const AdminFinance = () => {
                 {activeTab === 'overview' && (
                   <div className='space-y-6'>
                     <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
-                      <StatCard icon={Wallet} title='Total Balance' value='$12,450.78' trend='+4.1% MoM' positive />
-                      <StatCard icon={TrendingUp} title='Income' value='$6,200.00' trend='+2.3% MoM' positive />
-                      <StatCard icon={Receipt} title='Expenses' value='$3,980.50' trend='-1.4% MoM' positive={false} />
-                      <StatCard icon={Target} title='Savings Progress' value='62%' trend='+$450 this month' positive />
+                      <StatCard icon={Wallet} title='Total Balance' value={loadingSummary ? '—' : `LKR ${summary.balance.toLocaleString()}`} trend='' positive={summary.balance >= 0} />
+                      <StatCard icon={TrendingUp} title='Income' value={loadingSummary ? '—' : `LKR ${summary.income.toLocaleString()}`} trend='' positive />
+                      <StatCard icon={Receipt} title='Expenses' value={loadingSummary ? '—' : `LKR ${summary.expenses.toLocaleString()}`} trend='' positive={false} />
+                      <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
                     </div>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
                       <div className='lg:col-span-3 space-y-6'>
@@ -128,58 +389,398 @@ const AdminFinance = () => {
                 )}
                 {activeTab === 'income' && (
                   <div className='space-y-6'>
-                    <PlaceholderChart title='Income by Source' icon={BarChart3} />
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={TrendingUp} title='Income Records' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Add Income</button>} />
-                      <div className='text-sm text-gray-500'>No income records yet</div>
+                      <SectionHeader icon={TrendingUp} title='Add Income' />
+                      <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Amount' type='number' value={form.amount} onChange={e=>setForm(f=>({...f, amount:e.target.value, type:'INCOME'}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Date' type='date' value={form.date?.slice(0,10) || ''} onChange={e=>setForm(f=>({...f, date:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Category' value={form.category} onChange={e=>setForm(f=>({...f, category:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Source' value={form.source} onChange={e=>setForm(f=>({...f, source:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Description' value={form.description} onChange={e=>setForm(f=>({...f, description:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' type='file' accept='image/*' onChange={async e=>{ const file=e.target.files?.[0]; if(file){ const b64 = await onFileToBase64(file); setForm(f=>({...f, receiptBase64:b64})) }}} />
+                      </div>
+                      <div className='mt-3'>
+                        <button disabled={creating} onClick={handleCreate} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700 disabled:opacity-50'>Save Income</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={TrendingUp} title='Income Records' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Date</th>
+                              <th className='py-3 px-5'>Category</th>
+                              <th className='py-3 px-5'>Source</th>
+                              <th className='py-3 px-5'>Description</th>
+                              <th className='py-3 px-5'>Amount</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingIncome ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={6}>Loading…</td></tr>
+                            ) : incomeItems.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={6}>No income records yet</td></tr>
+                            ) : incomeItems.map((row) => (
+                              <tr key={row._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{new Date(row.date).toLocaleDateString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.category || '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.source || '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.description || '—'}</td>
+                                <td className='py-3 px-5 font-medium text-green-700'>+ LKR {Number(row.amount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>handleDelete(row._id,'INCOME')} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
                 {activeTab === 'expenses' && (
                   <div className='space-y-6'>
-                    <PlaceholderChart title='Expense Breakdown' icon={PieChart} />
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={Receipt} title='Expenses' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Log Expense</button>} />
-                      <div className='text-sm text-gray-500'>No expenses yet</div>
+                      <SectionHeader icon={Receipt} title='Log Expense' />
+                      <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Amount' type='number' value={form.amount} onChange={e=>setForm(f=>({...f, amount:e.target.value, type:'EXPENSE'}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Date' type='date' value={form.date?.slice(0,10) || ''} onChange={e=>setForm(f=>({...f, date:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Category' value={form.category} onChange={e=>setForm(f=>({...f, category:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Description' value={form.description} onChange={e=>setForm(f=>({...f, description:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' type='file' accept='image/*' onChange={async e=>{ const file=e.target.files?.[0]; if(file){ const b64 = await onFileToBase64(file); setForm(f=>({...f, receiptBase64:b64})) }}} />
+                      </div>
+                      <div className='mt-3'>
+                        <button disabled={creating} onClick={handleCreate} className='px-3 py-2 text-sm rounded-lg bg-gray-900 text-white hover:bg-black disabled:opacity-50'>Save Expense</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={Receipt} title='Expenses' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Date</th>
+                              <th className='py-3 px-5'>Category</th>
+                              <th className='py-3 px-5'>Description</th>
+                              <th className='py-3 px-5'>Amount</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingExpenses ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>Loading…</td></tr>
+                            ) : expenseItems.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>No expenses yet</td></tr>
+                            ) : expenseItems.map((row) => (
+                              <tr key={row._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{new Date(row.date).toLocaleDateString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.category || '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.description || '—'}</td>
+                                <td className='py-3 px-5 font-medium text-red-700'>- LKR {Number(row.amount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>handleDelete(row._id,'EXPENSE')} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
                 {activeTab === 'budgets' && (
                   <div className='space-y-6'>
-                    <PlaceholderChart title='Budget Utilization' icon={LineChart} />
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={Target} title='Budgets & Limits' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Create Budget</button>} />
-                      <div className='text-sm text-gray-500'>No budgets configured</div>
+                      <SectionHeader icon={Target} title='Create Budget' />
+                      <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Name' value={budgetForm.name} onChange={e=>setBudgetForm(f=>({...f, name:e.target.value}))} />
+                        <select className='border rounded-md px-3 py-2 md:col-span-1' value={budgetForm.period} onChange={e=>setBudgetForm(f=>({...f, period:e.target.value}))}>
+                          <option value='MONTHLY'>Monthly</option>
+                          <option value='WEEKLY'>Weekly</option>
+                        </select>
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Amount' type='number' value={budgetForm.amount} onChange={e=>setBudgetForm(f=>({...f, amount:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Categories (comma separated)' value={budgetForm.categories} onChange={e=>setBudgetForm(f=>({...f, categories:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Alert threshold (e.g. 0.8)' type='number' step='0.05' min='0' max='1' value={budgetForm.alertThreshold} onChange={e=>setBudgetForm(f=>({...f, alertThreshold:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Notify email (optional)' type='email' value={budgetForm.notifyEmail} onChange={e=>setBudgetForm(f=>({...f, notifyEmail:e.target.value}))} />
+                      </div>
+                      <div className='mt-3'>
+                        <button onClick={createBudget} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Save Budget</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={Target} title='Budgets & Limits' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Name</th>
+                              <th className='py-3 px-5'>Period</th>
+                              <th className='py-3 px-5'>Amount</th>
+                              <th className='py-3 px-5'>Categories</th>
+                              <th className='py-3 px-5'>Utilization</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingBudgets ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>Loading…</td></tr>
+                            ) : budgets.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>No budgets configured</td></tr>
+                            ) : budgets.map(b => {
+                              const util = utilization.find(u => u.id === b._id)
+                              const ratio = util ? util.utilization : 0
+                              const percent = Math.round(ratio * 100)
+                              const nearLimit = util ? ratio >= (util.alertThreshold || 0.8) : false
+                              return (
+                              <tr key={b._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{b.name}</td>
+                                <td className='py-3 px-5 text-gray-700'>{b.period}</td>
+                                <td className='py-3 px-5 text-gray-900 font-medium'>LKR {Number(b.amount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{Array.isArray(b.categories)? b.categories.join(', ') : '—'}</td>
+                                <td className='py-3 px-5'>
+                                  <div className='w-40'>
+                                    <div className={`h-2 rounded-full ${nearLimit ? 'bg-red-200' : 'bg-gray-200'}`}>
+                                      <div className={`${nearLimit ? 'bg-red-600' : 'bg-green-600'} h-2 rounded-full`} style={{ width: `${Math.min(100, percent)}%` }} />
+                                    </div>
+                                    <div className={`text-xs mt-1 ${nearLimit ? 'text-red-700' : 'text-gray-600'}`}>{percent}% used{nearLimit ? ' • Near/over limit' : ''}</div>
+                                  </div>
+                                </td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>deleteBudget(b._id)} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            )})}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
                 {activeTab === 'reports' && (
                   <div className='space-y-6'>
-                    <PlaceholderChart title='Income vs Expenses' icon={BarChart3} />
-                    <PlaceholderChart title='Trends Over Time' icon={LineChart} />
+                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                      <div className='flex items-center justify-between mb-4'>
+                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                          <BarChart3 className='size-5 text-gray-500' />
+                          <span>Income vs Expenses (last 6 months)</span>
+                        </div>
+                      </div>
+                      {loadingReports ? (
+                        <div className='h-56 grid place-items-center text-gray-500'>Loading…</div>
+                      ) : (
+                        <Chart type='bar' height={260} options={{
+                          chart:{ toolbar:{ show:false }},
+                          plotOptions:{ bar:{ columnWidth:'40%', borderRadius:4 }},
+                          grid:{ borderColor:'#eee' },
+                          xaxis:{ categories: buildMonthlyBuckets().labels, labels:{ style:{ colors:'#9ca3af' } } },
+                          yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                          colors:['#22c55e','#ef4444'],
+                          legend:{ position:'top' }
+                        }} series={[
+                          { name:'Income', data: buildMonthlyBuckets().incomeSeries },
+                          { name:'Expenses', data: buildMonthlyBuckets().expenseSeries },
+                        ]} />
+                      )}
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                      <div className='flex items-center justify-between mb-4'>
+                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                          <LineChart className='size-5 text-gray-500' />
+                          <span>Balance Trend</span>
+                        </div>
+                      </div>
+                      {loadingReports ? (
+                        <div className='h-56 grid place-items-center text-gray-500'>Loading…</div>
+                      ) : (
+                        <Chart type='line' height={260} options={{
+                          chart:{ toolbar:{ show:false }},
+                          stroke:{ width:3, curve:'smooth' },
+                          grid:{ borderColor:'#eee' },
+                          xaxis:{ categories: buildMonthlyBuckets().labels, labels:{ style:{ colors:'#9ca3af' } } },
+                          yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                          colors:['#111827'], legend:{ show:false }
+                        }} series={[{ name:'Balance', data: buildMonthlyBuckets().incomeSeries.map((v,i)=>v - buildMonthlyBuckets().expenseSeries[i]) }]} />
+                      )}
+                    </div>
                   </div>
                 )}
                 {activeTab === 'goals' && (
                   <div className='space-y-6'>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={Target} title='Savings & Goals' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Add Goal</button>} />
-                      <div className='text-sm text-gray-500'>No goals yet</div>
+                      <SectionHeader icon={Target} title='Add Goal' />
+                      <div className='grid grid-cols-1 md:grid-cols-5 gap-3 text-sm'>
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Title' value={goalForm.title} onChange={e=>setGoalForm(f=>({...f, title:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Target Amount' type='number' value={goalForm.targetAmount} onChange={e=>setGoalForm(f=>({...f, targetAmount:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Due Date' type='date' value={goalForm.dueDate?.slice(0,10) || ''} onChange={e=>setGoalForm(f=>({...f, dueDate:e.target.value}))} />
+                      </div>
+                      <div className='mt-3'>
+                        <button onClick={createGoal} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Save Goal</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={Target} title='Savings & Goals' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Title</th>
+                              <th className='py-3 px-5'>Target</th>
+                              <th className='py-3 px-5'>Current</th>
+                              <th className='py-3 px-5'>Due</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingGoals ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>Loading…</td></tr>
+                            ) : goals.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>No goals yet</td></tr>
+                            ) : goals.map(g => (
+                              <tr key={g._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{g.title}</td>
+                                <td className='py-3 px-5 text-gray-900 font-medium'>LKR {Number(g.targetAmount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(g.currentAmount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{g.dueDate ? new Date(g.dueDate).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>deleteGoal(g._id)} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
                 {activeTab === 'debts' && (
                   <div className='space-y-6'>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={Wallet} title='Debts & Loans' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Record Loan</button>} />
-                      <div className='text-sm text-gray-500'>No debt records</div>
+                      <SectionHeader icon={Wallet} title='Record Debt/Loan' />
+                      <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
+                        <select className='border rounded-md px-3 py-2 md:col-span-1' value={debtForm.type} onChange={e=>setDebtForm(f=>({...f, type:e.target.value}))}>
+                          <option value='BORROWED'>Borrowed</option>
+                          <option value='LENT'>Lent</option>
+                        </select>
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Party' value={debtForm.party} onChange={e=>setDebtForm(f=>({...f, party:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Principal' type='number' value={debtForm.principal} onChange={e=>setDebtForm(f=>({...f, principal:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Interest %' type='number' value={debtForm.interestRate} onChange={e=>setDebtForm(f=>({...f, interestRate:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Due Date' type='date' value={debtForm.dueDate?.slice(0,10) || ''} onChange={e=>setDebtForm(f=>({...f, dueDate:e.target.value}))} />
+                      </div>
+                      <div className='mt-3'>
+                        <button onClick={createDebt} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Save Debt</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={Wallet} title='Debts & Loans' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Type</th>
+                              <th className='py-3 px-5'>Party</th>
+                              <th className='py-3 px-5'>Principal</th>
+                              <th className='py-3 px-5'>Interest %</th>
+                              <th className='py-3 px-5'>Due</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingDebts ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={6}>Loading…</td></tr>
+                            ) : debts.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={6}>No debts</td></tr>
+                            ) : debts.map(d => (
+                              <tr key={d._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{d.type}</td>
+                                <td className='py-3 px-5 text-gray-700'>{d.party}</td>
+                                <td className='py-3 px-5 text-gray-900 font-medium'>LKR {Number(d.principal||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{Number(d.interestRate||0)}%</td>
+                                <td className='py-3 px-5 text-gray-700'>{d.dueDate ? new Date(d.dueDate).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>deleteDebt(d._id)} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
                 {activeTab === 'recurring' && (
                   <div className='space-y-6'>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <SectionHeader icon={Repeat} title='Recurring Transactions' action={<button className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Add Recurring</button>} />
-                      <div className='text-sm text-gray-500'>No recurring items</div>
+                      <SectionHeader icon={Repeat} title='Add Recurring' />
+                      <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Title' value={recurringForm.title} onChange={e=>setRecurringForm(f=>({...f, title:e.target.value}))} />
+                        <select className='border rounded-md px-3 py-2 md:col-span-1' value={recurringForm.type} onChange={e=>setRecurringForm(f=>({...f, type:e.target.value}))}>
+                          <option value='EXPENSE'>Expense</option>
+                          <option value='INCOME'>Income</option>
+                        </select>
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Amount' type='number' value={recurringForm.amount} onChange={e=>setRecurringForm(f=>({...f, amount:e.target.value}))} />
+                        <select className='border rounded-md px-3 py-2 md:col-span-1' value={recurringForm.cadence} onChange={e=>setRecurringForm(f=>({...f, cadence:e.target.value}))}>
+                          <option value='DAILY'>Daily</option>
+                          <option value='WEEKLY'>Weekly</option>
+                          <option value='MONTHLY'>Monthly</option>
+                          <option value='YEARLY'>Yearly</option>
+                        </select>
+                        <input className='border rounded-md px-3 py-2 md:col-span-1' placeholder='Next Run' type='date' value={recurringForm.nextRunAt?.slice(0,10) || ''} onChange={e=>setRecurringForm(f=>({...f, nextRunAt:e.target.value}))} />
+                        <input className='border rounded-md px-3 py-2 md:col-span-2' placeholder='Category' value={recurringForm.category} onChange={e=>setRecurringForm(f=>({...f, category:e.target.value}))} />
+                      </div>
+                      <div className='mt-3'>
+                        <button onClick={createRecurring} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Save Recurring</button>
+                      </div>
+                    </div>
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={Repeat} title='Recurring Transactions' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Title</th>
+                              <th className='py-3 px-5'>Type</th>
+                              <th className='py-3 px-5'>Amount</th>
+                              <th className='py-3 px-5'>Cadence</th>
+                              <th className='py-3 px-5'>Next</th>
+                              <th className='py-3 px-5'>Category</th>
+                              <th className='py-3 px-5 text-right'>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {loadingRecurring ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>Loading…</td></tr>
+                            ) : recurrings.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No recurring items</td></tr>
+                            ) : recurrings.map(r => (
+                              <tr key={r._id} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.type}</td>
+                                <td className='py-3 px-5 text-gray-900 font-medium'>LKR {Number(r.amount||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.cadence}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.nextRunAt ? new Date(r.nextRunAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.category || '—'}</td>
+                                <td className='py-3 px-5 text-right'>
+                                  <button onClick={()=>deleteRecurring(r._id)} className='text-xs px-2 py-1 rounded-lg border border-gray-200 hover:bg-gray-50'>Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -188,8 +789,8 @@ const AdminFinance = () => {
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={FileDown} title='Export & Backup' action={<></>} />
                       <div className='flex items-center gap-2'>
-                        <button className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Export CSV</button>
-                        <button className='px-3 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50'>Export PDF</button>
+                        <button onClick={downloadCSV} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Export CSV</button>
+                        <button onClick={downloadPDF} className='px-3 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50'>Export PDF</button>
                       </div>
                     </div>
                   </div>
