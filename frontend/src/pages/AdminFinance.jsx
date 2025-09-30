@@ -53,12 +53,7 @@ const TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'income', label: 'Income' },
   { key: 'expenses', label: 'Expenses' },
-  { key: 'budgets', label: 'Budgets' },
   { key: 'reports', label: 'Reports' },
-  { key: 'goals', label: 'Savings & Goals' },
-  { key: 'debts', label: 'Debts & Loans' },
-  { key: 'recurring', label: 'Recurring' },
-  { key: 'export', label: 'Export' },
 ]
 
 const AdminFinance = () => {
@@ -73,6 +68,8 @@ const AdminFinance = () => {
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
+  const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
+  const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [selectedIncome, setSelectedIncome] = React.useState(null)
@@ -93,10 +90,13 @@ const AdminFinance = () => {
   const [loadingReports, setLoadingReports] = React.useState(false)
   const [driverRange, setDriverRange] = React.useState('month')
   const [farmerRange, setFarmerRange] = React.useState('month')
-  const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [] })
+  const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
+  const [driverPaid, setDriverPaid] = React.useState({})
+  const [showDriverPayments, setShowDriverPayments] = React.useState(true)
   const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 0 })
   const [driverRate, setDriverRate] = React.useState({ type: 'flat', value: '0' })
   const [farmerCommission, setFarmerCommission] = React.useState('0')
+  const [showFarmerPayments, setShowFarmerPayments] = React.useState(true)
 
   React.useEffect(() => {
     const load = async () => {
@@ -138,10 +138,10 @@ const AdminFinance = () => {
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange, farmerCommission) }
-    if (activeTab === 'budgets') fetchBudgets()
-    if (activeTab === 'goals') fetchGoals()
-    if (activeTab === 'debts') fetchDebts()
-    if (activeTab === 'recurring') fetchRecurring()
+    if (activeTab === 'overview') {
+      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
+      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+    }
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
   }, [activeTab])
 
@@ -430,25 +430,99 @@ const AdminFinance = () => {
                     </div>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
                       <div className='lg:col-span-3 space-y-6'>
-                        <PlaceholderChart title='Income vs Expenses' icon={BarChart3} />
-                        <PlaceholderChart title='Monthly Trend' icon={LineChart} />
+                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <BarChart3 className='size-5 text-gray-500' />
+                              <span>Income vs Expenses (last 6 months)</span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const now = new Date()
+                            const labels = []
+                            const incomeSeries = []
+                            const expenseSeries = []
+                            for (let i = 5; i >= 0; i--) {
+                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
+                              const monthIncome = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
+                              const monthExpense = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
+                              incomeSeries.push(monthIncome)
+                              expenseSeries.push(monthExpense)
+                            }
+                            return (
+                              <Chart type='bar' height={260} options={{
+                                chart:{ toolbar:{ show:false }},
+                                plotOptions:{ bar:{ columnWidth:'40%', borderRadius:4 }},
+                                grid:{ borderColor:'#eee' },
+                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
+                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                                colors:['#22c55e','#ef4444'], legend:{ position:'top' }
+                              }} series={[ { name:'Income', data: incomeSeries }, { name:'Expenses', data: expenseSeries } ]} />
+                            )
+                          })()}
+                        </div>
+                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <LineChart className='size-5 text-gray-500' />
+                              <span>Monthly Balance Trend</span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const now = new Date()
+                            const labels = []
+                            const values = []
+                            for (let i = 5; i >= 0; i--) {
+                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
+                              const inc = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
+                              const exp = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
+                              values.push(inc - exp)
+                            }
+                            return (
+                              <Chart type='line' height={260} options={{
+                                chart:{ toolbar:{ show:false }},
+                                stroke:{ width:3, curve:'smooth' },
+                                grid:{ borderColor:'#eee' },
+                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
+                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                                colors:['#111827'], legend:{ show:false }
+                              }} series={[ { name:'Balance', data: values } ]} />
+                            )
+                          })()}
+                        </div>
                       </div>
                       <div className='lg:col-span-2 space-y-6'>
-                        <PlaceholderChart title='Expense Categories' icon={PieChart} />
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <SectionHeader icon={Repeat} title='Recurring Transactions' action={<button className='text-xs px-2 py-1 rounded-lg bg-gray-900 text-white'>Manage</button>} />
-                          <div className='divide-y'>
-                            {[
-                              { title: 'Rent', amount: '$900', cadence: 'Monthly', next: 'Oct 01' },
-                              { title: 'Internet', amount: '$45', cadence: 'Monthly', next: 'Oct 03' },
-                              { title: 'Gym', amount: '$25', cadence: 'Monthly', next: 'Oct 10' },
-                            ].map((t) => (
-                              <div key={t.title} className='py-3 flex items-center justify-between text-sm'>
-                                <div className='text-gray-700'>{t.title} <span className='text-gray-400'>• {t.cadence}</span></div>
-                                <div className='text-gray-900 font-medium'>{t.amount} <span className='text-gray-400 font-normal'>on {t.next}</span></div>
-                              </div>
-                            ))}
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <PieChart className='size-5 text-gray-500' />
+                              <span>Expense Categories (this month)</span>
+                            </div>
                           </div>
+                          {(() => {
+                            const now = new Date()
+                            const start = new Date(now.getFullYear(), now.getMonth(), 1)
+                            const catMap = new Map()
+                            for (const t of (overviewExpenseTx||[])) {
+                              const dt = new Date(t.date)
+                              if (dt < start) continue
+                              const key = t.category || 'Other'
+                              catMap.set(key, (catMap.get(key)||0) + Number(t.amount||0))
+                            }
+                            const labels = Array.from(catMap.keys())
+                            const series = labels.map(l=>catMap.get(l))
+                            return labels.length === 0 ? (
+                              <div className='text-sm text-gray-500'>No expenses this month</div>
+                            ) : (
+                              <Chart type='donut' height={260} options={{
+                                chart:{ toolbar:{ show:false }}, labels,
+                                legend:{ show:false }, dataLabels:{ enabled:false },
+                                colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#14b8a6', '#eab308']
+                              }} series={series} />
+                            )
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -475,6 +549,7 @@ const AdminFinance = () => {
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listing||0).toLocaleString()}</div>
                       </div>
                     </div>
+                    {/* removed charts from Income; moved to Overview */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
                       <div className='p-5'>
                         <SectionHeader
@@ -592,51 +667,77 @@ const AdminFinance = () => {
                 )}
                 {activeTab === 'expenses' && (
                   <div className='space-y-6'>
+                    <div className='flex items-center gap-2'>
+                      <button onClick={()=>{ setDriverRange('day'); setFarmerRange('day') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
+                      <button onClick={()=>{ setDriverRange('week'); setFarmerRange('week') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
+                      <button onClick={()=>{ setDriverRange('month'); setFarmerRange('month') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='month' && farmerRange==='month' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                    </div>
+                    <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                      <StatCard icon={Receipt} title='Driver Payments' value={`LKR ${((driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)).toLocaleString()}`} trend='' positive={false} />
+                      <StatCard icon={Wallet} title='Farmer Payments' value={`LKR ${Number(farmerPayouts.total||0).toLocaleString()}`} trend='' positive={false} />
+                    </div>
                     {/* Driver payouts */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
                       <div className='p-5 flex items-center justify-between'>
                         <div className='flex items-center gap-3'>
                           <SectionHeader icon={Receipt} title='Driver Payments' />
-                          <div className='text-sm text-gray-600'>Total: <span className='font-semibold'>LKR {Number(driverPayouts.total||0).toLocaleString()}</span> ({driverPayouts.count} deliveries)</div>
                         </div>
-                        <div className='flex items-center gap-2'>
-                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRange} onChange={e=>setDriverRange(e.target.value)}>
-                            <option value='day'>Last 24h</option>
-                            <option value='week'>Last 7 days</option>
-                            <option value='month'>This Month</option>
-                          </select>
-                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRate.type} onChange={e=>setDriverRate(r=>({...r, type:e.target.value}))}>
-                            <option value='flat'>Flat</option>
-                            <option value='percent'>Percent of delivery fee</option>
-                          </select>
-                          <input className='border rounded-md px-2 py-1.5 text-sm w-24' placeholder='Value' type='number' value={driverRate.value} onChange={e=>setDriverRate(r=>({...r, value:e.target.value}))} />
+                        <div>
+                          <button onClick={()=>setShowDriverPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showDriverPayments ? '' : '-rotate-90'}`} />
+                          </button>
                         </div>
                       </div>
+                      
+                      {showDriverPayments && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
                             <tr className='text-left text-gray-500 border-t border-b'>
-                              <th className='py-3 px-5'>Delivery</th>
-                              <th className='py-3 px-5'>Order</th>
-                              <th className='py-3 px-5'>Date</th>
-                              <th className='py-3 px-5'>Delivery Fee</th>
-                              <th className='py-3 px-5'>Payout</th>
+                              <th className='py-3 px-5'>Driver</th>
+                              <th className='py-3 px-5'>Completed Orders</th>
+                              <th className='py-3 px-5'>Payout per Delivery</th>
+                              <th className='py-3 px-5'>Total Payout</th>
+                              <th className='py-3 px-5'>Paid</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {driverPayouts.items.length === 0 ? (
+                            {driverPayouts.totalsByDriver?.length === 0 ? (
                               <tr><td className='py-4 px-5 text-gray-500' colSpan={5}>No payouts</td></tr>
-                            ) : driverPayouts.items.map((d, i) => (
+                            ) : driverPayouts.totalsByDriver.map((d, i) => (
                               <tr key={i} className='border-b last:border-b-0'>
-                                <td className='py-3 px-5 text-gray-700'>{d.deliveryId}</td>
-                                <td className='py-3 px-5 text-gray-700'>{d.orderNumber || '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>LKR {Number(d.deliveryFee||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(d.payout||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div className='font-medium'>{d.driverName || '—'}</div>
+                                  {d.driverEmail && <div className='text-xs text-gray-500'>{d.driverEmail}</div>}
+                                </td>
+                                <td className='py-3 px-5 text-gray-700'>{d.deliveries}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR 300</td>
+                                <td className='py-3 px-5 font-medium text-red-700'>LKR {(Number(d.deliveries||0)*300).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <input type='checkbox' checked={Boolean(driverPaid[d.driverId])} onChange={e=>setDriverPaid(p=>({ ...p, [d.driverId]: e.target.checked }))} />
+                                </td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
+                      </div>
+                      )}
+
+                      {/* Bar chart: deliveries completed by driver */}
+                      <div className='p-5'>
+                        <div className='bg-white rounded-xl border border-gray-200'>
+                          <div className='p-4 text-sm font-medium text-gray-700'>Deliveries by Driver · {Number(driverPayouts.count||0)} completed</div>
+                          <div className='px-4 pb-4'>
+                            <Chart type='bar' height={260} options={{
+                              chart:{ toolbar:{ show:false }},
+                              grid:{ borderColor:'#eee' },
+                              plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
+                              xaxis:{ categories: (driverPayouts.totalsByDriver||[]).map(d=>d.driverName||'—'), labels:{ style:{ colors:'#9ca3af' } } },
+                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                              colors:['#3b82f6']
+                            }} series={[{ name:'Completed', data: (driverPayouts.totalsByDriver||[]).map(d=>Number(d.deliveries||0)) }]} />
+                          </div>
+                        </div>
                       </div>
                     </div>
 
@@ -654,8 +755,12 @@ const AdminFinance = () => {
                             <option value='month'>This Month</option>
                           </select>
                           <input className='border rounded-md px-2 py-1.5 text-sm w-32' placeholder='Commission %' type='number' value={farmerCommission} onChange={e=>setFarmerCommission(e.target.value)} />
+                          <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
+                          </button>
                         </div>
                       </div>
+                      {showFarmerPayments && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -686,6 +791,7 @@ const AdminFinance = () => {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={Receipt} title='Log Expense' />
@@ -1032,8 +1138,8 @@ const AdminFinance = () => {
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={FileDown} title='Export & Backup' action={<></>} />
                       <div className='flex items-center gap-2'>
-                        <button onClick={downloadCSV} className='px-3 py-2 text-sm rounded-lg bg-primary-600 text-white hover:bg-green-700'>Export CSV</button>
-                        <button onClick={downloadPDF} className='px-3 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50'>Export PDF</button>
+                        <button onClick={downloadCSV} className='px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900'><FileDown className='inline w-4 h-4 mr-1'/> Export CSV</button>
+                        <button onClick={downloadPDF} className='px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900'><FileDown className='inline w-4 h-4 mr-1'/> Export</button>
                       </div>
                     </div>
                   </div>

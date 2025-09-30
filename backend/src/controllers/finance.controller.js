@@ -1,8 +1,5 @@
 import FinanceTransaction from '../models/financeTransaction.model.js'
-import FinanceBudget from '../models/financeBudget.model.js'
-import FinanceGoal from '../models/financeGoal.model.js'
-import FinanceDebt from '../models/financeDebt.model.js'
-import FinanceRecurring from '../models/financeRecurring.model.js'
+// Removed budgets/goals/debts/recurring for simplified company finance
 import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
 import Order from '../models/order.model.js'
@@ -147,74 +144,6 @@ export const deleteBudget = async (req, res) => {
   try { await FinanceBudget.findByIdAndDelete(req.params.id); return res.json({ success: true }) } catch { return res.status(400).json({ error: 'Failed to delete budget' }) }
 }
 
-export const getBudgetUtilization = async (req, res) => {
-  try {
-    const budgets = await FinanceBudget.find()
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfWeek = new Date(now)
-    startOfWeek.setDate(now.getDate() - now.getDay())
-    const results = []
-    for (const b of budgets) {
-      const periodStart = b.period === 'WEEKLY' ? startOfWeek : startOfMonth
-      const matchCategories = Array.isArray(b.categories) && b.categories.length > 0
-        ? { category: { $in: b.categories } }
-        : {}
-      const [agg] = await FinanceTransaction.aggregate([
-        { $match: { type: 'EXPENSE', date: { $gte: periodStart }, ...matchCategories } },
-        { $group: { _id: null, sum: { $sum: '$amount' } } },
-      ])
-      const spent = agg?.sum || 0
-      const utilization = b.amount > 0 ? spent / b.amount : 0
-      results.push({ id: String(b._id), name: b.name, period: b.period, amount: b.amount, categories: b.categories, spent, utilization, alertThreshold: b.alertThreshold })
-    }
-    return res.json(results)
-  } catch (e) {
-    return res.status(500).json({ error: 'Failed to compute utilization' })
-  }
-}
-
-// Goals
-export const listGoals = async (_req, res) => {
-  try { const docs = await FinanceGoal.find().sort({ createdAt: -1 }); return res.json(docs) } catch { return res.status(500).json({ error: 'Failed to list goals' }) }
-}
-export const createGoal = async (req, res) => {
-  try { const doc = await FinanceGoal.create({ ...req.body, createdBy: req.user?._id }); return res.status(201).json(doc) } catch { return res.status(400).json({ error: 'Failed to create goal' }) }
-}
-export const updateGoal = async (req, res) => {
-  try { const doc = await FinanceGoal.findByIdAndUpdate(req.params.id, req.body, { new: true }); if (!doc) return res.status(404).json({ error: 'Not found' }); return res.json(doc) } catch { return res.status(400).json({ error: 'Failed to update goal' }) }
-}
-export const deleteGoal = async (req, res) => {
-  try { await FinanceGoal.findByIdAndDelete(req.params.id); return res.json({ success: true }) } catch { return res.status(400).json({ error: 'Failed to delete goal' }) }
-}
-
-// Debts
-export const listDebts = async (_req, res) => {
-  try { const docs = await FinanceDebt.find().sort({ createdAt: -1 }); return res.json(docs) } catch { return res.status(500).json({ error: 'Failed to list debts' }) }
-}
-export const createDebt = async (req, res) => {
-  try { const doc = await FinanceDebt.create({ ...req.body, createdBy: req.user?._id }); return res.status(201).json(doc) } catch { return res.status(400).json({ error: 'Failed to create debt' }) }
-}
-export const updateDebt = async (req, res) => {
-  try { const doc = await FinanceDebt.findByIdAndUpdate(req.params.id, req.body, { new: true }); if (!doc) return res.status(404).json({ error: 'Not found' }); return res.json(doc) } catch { return res.status(400).json({ error: 'Failed to update debt' }) }
-}
-export const deleteDebt = async (req, res) => {
-  try { await FinanceDebt.findByIdAndDelete(req.params.id); return res.json({ success: true }) } catch { return res.status(400).json({ error: 'Failed to delete debt' }) }
-}
-
-// Recurring
-export const listRecurring = async (_req, res) => {
-  try { const docs = await FinanceRecurring.find().sort({ createdAt: -1 }); return res.json(docs) } catch { return res.status(500).json({ error: 'Failed to list recurring' }) }
-}
-export const createRecurring = async (req, res) => {
-  try { const doc = await FinanceRecurring.create({ ...req.body, createdBy: req.user?._id }); return res.status(201).json(doc) } catch { return res.status(400).json({ error: 'Failed to create recurring' }) }
-}
-export const updateRecurring = async (req, res) => {
-  try { const doc = await FinanceRecurring.findByIdAndUpdate(req.params.id, req.body, { new: true }); if (!doc) return res.status(404).json({ error: 'Not found' }); return res.json(doc) } catch { return res.status(400).json({ error: 'Failed to update recurring' }) }
-}
-export const deleteRecurring = async (req, res) => {
-  try { await FinanceRecurring.findByIdAndDelete(req.params.id); return res.json({ success: true }) } catch { return res.status(400).json({ error: 'Failed to delete recurring' }) }
-}
 
 // Company income from orders (inventory, rental, listing)
 export const getIncomeFromOrders = async (req, res) => {
@@ -284,10 +213,11 @@ export const getDriverPayouts = async (req, res) => {
       if (from) filter.createdAt.$gte = new Date(from)
       if (to) filter.createdAt.$lte = new Date(to)
     }
-    const deliveries = await Delivery.find(filter).populate('order').lean()
+    const deliveries = await Delivery.find(filter).populate('order').populate('driver', 'fullName email').lean()
     const rate = Number(rateValue) || 0
     const items = []
     let total = 0
+    const byDriver = new Map()
     for (const d of deliveries) {
       const deliveryFee = Number(d?.order?.deliveryFee || 0)
       const payout = rateType === 'percent' ? (deliveryFee * rate) / 100 : rate
@@ -298,10 +228,17 @@ export const getDriverPayouts = async (req, res) => {
         createdAt: d.createdAt,
         deliveryFee,
         payout,
-        driver: d.driver || null,
+        driverId: d.driver?._id || d.driver || null,
+        driverName: d.driver?.fullName || '—',
+        driverEmail: d.driver?.email || '',
       })
+      const key = String(d.driver?._id || d.driver || 'unknown')
+      const prev = byDriver.get(key) || { driverId: key, driverName: d.driver?.fullName || '—', driverEmail: d.driver?.email || '', deliveries: 0, totalPayout: 0 }
+      prev.deliveries += 1
+      prev.totalPayout += payout
+      byDriver.set(key, prev)
     }
-    return res.json({ total, count: deliveries.length, items })
+    return res.json({ total, count: deliveries.length, items, totalsByDriver: Array.from(byDriver.values()) })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute driver payouts' })
   }

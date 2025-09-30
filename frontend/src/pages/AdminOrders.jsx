@@ -471,11 +471,8 @@ const AdminOrders = () => {
       <div className="max-w-none mx-0 w-full px-8 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-3xl font-semibold ml-2">Orders Management</h1>
-          <button
-            onClick={downloadPDF}
-            className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white hover:bg-green-700"
-          >
-            <FileDown className="w-4 h-4 inline-block mr-1" /> Download PDF
+          <button onClick={downloadPDF} className="px-4 py-2 rounded-lg font-medium bg-black text-white hover:bg-gray-900">
+            <FileDown className="w-4 h-4 inline-block mr-1" /> Export
           </button>
         </div>
 
