@@ -1,20 +1,8 @@
- feat/harvest-management-modifications
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { Camera, Send, ArrowLeft, MessageSquare, Calendar } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
-
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-
-const Card = ({ children, className = '' }) => (
-  <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
-    {children}
-  </div>
-)
- main
 
 const HarvestReport = () => {
   const navigate = useNavigate();
@@ -161,21 +149,6 @@ const HarvestReport = () => {
   };
 
   return (
- feat/harvest-management-modifications
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <button 
-            onClick={() => navigate('/harvest-dashboard')}
-            className="flex items-center text-gray-600 hover:text-gray-900 mb-4 transition-colors"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Dashboard
-          </button>
-          <h1 className="text-3xl font-bold text-gray-900">Crop Problem Reports</h1>
-          <p className="mt-2 text-gray-600">Report crop diseases and problems to get expert advice</p>
-
     <div className='min-h-screen bg-gray-50'>
       <div className='max-w-none mx-0 w-full px-8 py-6'>
         {/* Top bar */}
@@ -194,7 +167,6 @@ const HarvestReport = () => {
               <p className='text-gray-600'>Report crop diseases and get expert advice</p>
             </div>
           </div>
- main
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

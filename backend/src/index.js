@@ -13,12 +13,9 @@ import { connectDB } from './lib/db.js'
 import cookieParser from 'cookie-parser'
 import cors from 'cors'
 import harvestRoutes from "./routes/harvest.route.js";
- feat/harvest-management-modifications
 import harvestReportRoutes from "./routes/harvestReport.route.js";
-
 import deliveryReviewRoutes from "./routes/deliveryReview.route.js";
 import financeRoutes from './routes/finance.route.js'
- main
 
 
 const app = express();
@@ -47,12 +44,9 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/email-verification", emailVerificationRoutes);
 app.use("/api/harvest", harvestRoutes);
- feat/harvest-management-modifications
 app.use("/api/harvest-reports", harvestReportRoutes);
-
 app.use("/api/delivery-reviews", deliveryReviewRoutes);
 app.use('/api/finance', financeRoutes);
- main
 
 
 
