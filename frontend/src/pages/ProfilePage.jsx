@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut } from 'lucide-react'
+import { Camera, Mail, User, Phone, MapPin, ShieldCheck, CalendarDays, PieChart, Settings, Edit3, HelpCircle, LogOut, ArrowLeft, ArrowRight, Lock, Eye, EyeOff, AlertTriangle, Trash2, CheckCircle, XCircle, Clock, Monitor, Smartphone, Globe, Key, MailCheck } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import toast from 'react-hot-toast'
 
 const ProfilePage = () => {
+  const location = useLocation()
   const [me, setMe] = useState(null)
   const [error, setError] = useState(null)
   const [fullName, setFullName] = useState('')
@@ -17,10 +18,92 @@ const ProfilePage = () => {
   const [bio, setBio] = useState('')
   const [touched, setTouched] = useState({ fullName: false, phone: false, address: false, bio: false })
   const [errors, setErrors] = useState({ fullName: '', phone: '', address: '', bio: '' })
-  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity'
+  const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity' | 'security'
   const [isEditing, setIsEditing] = useState(false)
+  const [activities, setActivities] = useState([])
+  const [activitiesLoading, setActivitiesLoading] = useState(false)
+  const [lastActivityCheck, setLastActivityCheck] = useState(null)
   const navigate = useNavigate()
   const { logout, checkAuth } = useAuthStore()
+
+  const loadActivities = async (showLoading = true) => {
+    if (!me?.role) return
+    
+    if (showLoading) setActivitiesLoading(true)
+    try {
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        setActivities(merged)
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        setActivities(res.data)
+      }
+      setLastActivityCheck(new Date())
+    } catch (error) {
+      console.error('Error loading activities:', error)
+      setActivities([])
+    } finally {
+      if (showLoading) setActivitiesLoading(false)
+    }
+  }
+
+  const checkForNewActivities = async () => {
+    if (!me?.role || !lastActivityCheck) return
+    
+    try {
+      let newActivities = []
+      if (me.role === 'FARMER') {
+        const [farmerRes, buyerRes] = await Promise.all([
+          axiosInstance.get('/orders/activities/farmer?limit=10'),
+          axiosInstance.get('/orders/activities/buyer?limit=10'),
+        ])
+        const merged = [...(farmerRes.data || []), ...(buyerRes.data || [])]
+        merged.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt))
+        newActivities = merged
+      } else {
+        const res = await axiosInstance.get('/orders/activities/buyer?limit=10')
+        newActivities = res.data
+      }
+      
+      // Check if there are new activities by comparing the first activity's timestamp
+      if (newActivities.length > 0 && activities.length > 0) {
+        const latestActivity = newActivities[0]
+        const currentLatest = activities[0]
+        
+        if (latestActivity._id !== currentLatest._id) {
+          // New activities found, update the list
+          setActivities(newActivities)
+          setLastActivityCheck(new Date())
+        }
+      } else if (newActivities.length > 0 && activities.length === 0) {
+        // First load
+        setActivities(newActivities)
+        setLastActivityCheck(new Date())
+      }
+    } catch (error) {
+      console.error('Error checking for new activities:', error)
+    }
+  }
+
+  // Function to refresh activities immediately (can be called from other components)
+  const refreshActivities = () => {
+    if (me?.role) {
+      loadActivities(false) // Don't show loading spinner for background refresh
+    }
+  }
+
+  // Expose refresh function globally for other components to use
+  React.useEffect(() => {
+    window.refreshFarmerActivities = refreshActivities
+    return () => {
+      delete window.refreshFarmerActivities
+    }
+  }, [me?.role])
 
   useEffect(() => {
     const load = async () => {
@@ -37,6 +120,40 @@ const ProfilePage = () => {
     }
     load()
   }, [])
+
+  useEffect(() => {
+    if (me?.role) {
+      loadActivities()
+    }
+  }, [me?.role])
+
+  // Handle URL parameters for tab switching
+  useEffect(() => {
+    const urlParams = new URLSearchParams(location.search)
+    const tab = urlParams.get('tab')
+    if (tab && ['overview', 'activity', 'security'].includes(tab)) {
+      setActiveTab(tab)
+    }
+  }, [location.search])
+
+  // Load activities when switching to activity tab
+  useEffect(() => {
+    if (activeTab === 'activity' && me?.role && activities.length === 0) {
+      loadActivities()
+    }
+  }, [activeTab, me?.role])
+
+  // Poll for new activities when on activity tab
+  useEffect(() => {
+    if (activeTab === 'activity' && me?.role) {
+      // Check for new activities every 30 seconds
+      const interval = setInterval(() => {
+        checkForNewActivities()
+      }, 30000) // 30 seconds
+
+      return () => clearInterval(interval)
+    }
+  }, [activeTab, me?.role, lastActivityCheck])
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
@@ -141,6 +258,15 @@ const ProfilePage = () => {
         >
           <div className='absolute inset-0 rounded-2xl bg-gradient-to-r from-primary-500/60 to-accent-500/40'></div>
         </div>
+        <div className='absolute left-3 top-3 z-20'>
+          <button 
+            onClick={() => navigate('/')}
+            className='flex items-center gap-1.5 px-3 py-1.5 bg-white/90 border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-white'
+          >
+            <ArrowLeft className='w-3.5 h-3.5' />
+            <span className='text-xs'>Back</span>
+          </button>
+        </div>
         <div className='absolute right-3 top-3 z-20 flex items-center gap-2'>
           <button
             type='button'
@@ -194,116 +320,206 @@ const ProfilePage = () => {
       </div>
 
       {/* Top Tabs Navigation */}
-      <div className='mt-6 flex items-center gap-2 justify-center'>
-        <button onClick={() => setActiveTab('overview')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'overview' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Overview</button>
-        <button onClick={() => setActiveTab('activity')} className={`px-4 py-1.5 rounded-full text-sm ${activeTab === 'activity' ? 'bg-primary-500 text-white shadow' : 'border hover:bg-gray-50'}`}>Activity</button>
+      <div className='mt-6 flex justify-center'>
+        <div className='flex bg-gray-100 rounded-lg p-1 shadow-sm'>
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'overview'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <div className='flex items-center gap-1.5'>
+              <User className='w-3.5 h-3.5' />
+              Overview
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'activity'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <div className='flex items-center gap-1.5'>
+              <CalendarDays className='w-3.5 h-3.5' />
+              Activity
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('security')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
+              activeTab === 'security'
+                ? 'bg-white text-gray-900 shadow-md transform scale-105'
+                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+            }`}
+          >
+            <div className='flex items-center gap-1.5'>
+              <ShieldCheck className='w-3.5 h-3.5' />
+              Security
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* Profile Info Card (Overview) */}
+      {/* Profile Overview - Enhanced UI */}
       {(activeTab === 'overview') && (
-        <div className='card max-w-4xl mx-auto mt-6'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
-            <div>
-              <label className='form-label'><User className='inline mr-2 w-4 h-4 text-gray-400' />Full Name</label>
-              <input
-                className='input-field'
-                value={fullName}
-                onChange={(e) => {
-                  const val = e.target.value
-                  setFullName(val)
-                  if (touched.fullName) setErrors((er) => ({ ...er, fullName: validateFullName(val) }))
-                }}
-                onBlur={() => { setTouched((t) => ({ ...t, fullName: true })); setErrors((er) => ({ ...er, fullName: validateFullName(fullName) })) }}
-                disabled={!isEditing}
-              />
-              {touched.fullName && errors.fullName && (
-                <p className='mt-1 text-xs text-red-600'>{errors.fullName}</p>
-              )}
+        <div className='max-w-6xl mx-auto mt-6 space-y-6'>
+          
+
+          {/* Profile Information Grid */}
+          <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
+            {/* Personal Information */}
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center gap-3 mb-6'>
+                <div className='p-2 bg-blue-100 rounded-lg'>
+                  <User className='w-5 h-5 text-blue-600' />
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>Personal Information</h3>
+              </div>
+              
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Full Name</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    value={fullName}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setFullName(val)
+                      if (touched.fullName) setErrors((er) => ({ ...er, fullName: validateFullName(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, fullName: true })); setErrors((er) => ({ ...er, fullName: validateFullName(fullName) })) }}
+                    disabled={!isEditing}
+                  />
+                  {touched.fullName && errors.fullName && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.fullName}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Phone Number</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    value={phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
+                      setPhone(val)
+                      if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
+                    placeholder='0712345678'
+                    inputMode='numeric'
+                    pattern='^0\d{9}$'
+                    maxLength={10}
+                    disabled={!isEditing}
+                  />
+                  {touched.phone && errors.phone && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Email Address</label>
+                  <input
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600'
+                    value={me.email}
+                    disabled
+                  />
+                  <p className='mt-1 text-xs text-gray-500'>Email cannot be changed here. Use Security tab to change email.</p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className='form-label'><Phone className='inline mr-2 w-4 h-4 text-gray-400' />Phone Number</label>
-              <input
-                className='input-field'
-                value={phone}
-                onChange={(e) => {
-                  // allow only digits, limit to 10
-                  const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                  setPhone(val)
-                  if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
-                }}
-                onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
-                placeholder='0712345678'
-                inputMode='numeric'
-                pattern='^0\d{9}$'
-                maxLength={10}
-                disabled={!isEditing}
-              />
-              {touched.phone && errors.phone && (
-                <p className='mt-1 text-xs text-red-600'>{errors.phone}</p>
-              )}
+
+            {/* Location & Bio */}
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center gap-3 mb-6'>
+                <div className='p-2 bg-green-100 rounded-lg'>
+                  <MapPin className='w-5 h-5 text-green-600' />
+                </div>
+                <h3 className='text-lg font-semibold text-gray-900'>Location & Bio</h3>
+              </div>
+              
+              <div className='space-y-4'>
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Address</label>
+                  <textarea
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200'
+                    rows={3}
+                    value={address}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setAddress(val)
+                      if (touched.address) setErrors((er) => ({ ...er, address: validateAddress(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, address: true })); setErrors((er) => ({ ...er, address: validateAddress(address) })) }}
+                    placeholder='Street, City, State, ZIP'
+                    disabled={!isEditing}
+                  />
+                  {touched.address && errors.address && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.address}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-2'>Bio / About</label>
+                  <textarea
+                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200'
+                    rows={3}
+                    value={bio}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setBio(val)
+                      if (touched.bio) setErrors((er) => ({ ...er, bio: validateBio(val) }))
+                    }}
+                    onBlur={() => { setTouched((t) => ({ ...t, bio: true })); setErrors((er) => ({ ...er, bio: validateBio(bio) })) }}
+                    placeholder='Tell others about you...'
+                    disabled={!isEditing}
+                  />
+                  {touched.bio && errors.bio && (
+                    <p className='mt-1 text-sm text-red-600'>{errors.bio}</p>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <div className='mt-4'>
-            <label className='form-label'><Mail className='inline mr-2 w-4 h-4 text-gray-400' />Email</label>
-            <input className='input-field' value={me.email} disabled />
-          </div>
-          <div className='mt-4'>
-            <label className='form-label'><MapPin className='inline mr-2 w-4 h-4 text-gray-400' />Address</label>
-            <textarea
-              className='input-field'
-              rows={3}
-              value={address}
-              onChange={(e) => {
-                const val = e.target.value
-                setAddress(val)
-                if (touched.address) setErrors((er) => ({ ...er, address: validateAddress(val) }))
-              }}
-              onBlur={() => { setTouched((t) => ({ ...t, address: true })); setErrors((er) => ({ ...er, address: validateAddress(address) })) }}
-              placeholder='Street, City, State, ZIP'
-              disabled={!isEditing}
-            />
-            {touched.address && errors.address && (
-              <p className='mt-1 text-xs text-red-600'>{errors.address}</p>
-            )}
-          </div>
-          <div className='mt-4'>
-            <label className='form-label'>Bio / About</label>
-            <textarea
-              className='input-field'
-              rows={3}
-              value={bio}
-              onChange={(e) => {
-                const val = e.target.value
-                setBio(val)
-                if (touched.bio) setErrors((er) => ({ ...er, bio: validateBio(val) }))
-              }}
-              onBlur={() => { setTouched((t) => ({ ...t, bio: true })); setErrors((er) => ({ ...er, bio: validateBio(bio) })) }}
-              placeholder='Tell others about you'
-              disabled={!isEditing}
-            />
-            {touched.bio && errors.bio && (
-              <p className='mt-1 text-xs text-red-600'>{errors.bio}</p>
-            )}
-          </div>
-          {me.verified && (
-            <div className='mt-4'>
-              <span className='inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs bg-green-50 text-green-700 border border-green-200'>
-                <ShieldCheck className='w-3 h-3' /> Verified
-              </span>
-            </div>
-          )}
+
+          {/* Action Buttons */}
           {isEditing && (
-            <div className='mt-6 flex gap-3 justify-end'>
-              <button
-                type='button'
-                className='border px-4 py-2 rounded-lg'
-                onClick={() => { setFullName(me.fullName || ''); setPhone(me.phone || ''); setAddress(me.address || ''); setProfilePic('') }}
-              >
-                Cancel
-              </button>
-              <button disabled={saving || !isChanged || !isFormValid} onClick={handleSave} className='btn-primary disabled:opacity-60 disabled:cursor-not-allowed'>
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
+            <div className='bg-white rounded-2xl p-6 border border-gray-200 shadow-sm'>
+              <div className='flex items-center justify-between'>
+                <div className='text-sm text-gray-600'>
+                  <p className='font-medium'>Ready to save your changes?</p>
+                  <p>Make sure all information is correct before saving.</p>
+                </div>
+                <div className='flex gap-3'>
+                  <button
+                    type='button'
+                    className='px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors'
+                    onClick={() => { 
+                      setFullName(me.fullName || ''); 
+                      setPhone(me.phone || ''); 
+                      setAddress(me.address || ''); 
+                      setBio(me.bio || '');
+                      setProfilePic('');
+                      setIsEditing(false);
+                      setTouched({ fullName: false, phone: false, address: false, bio: false });
+                      setErrors({ fullName: '', phone: '', address: '', bio: '' });
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    disabled={saving || !isChanged || !isFormValid} 
+                    onClick={handleSave} 
+                    className='px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none'
+                  >
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -315,18 +531,20 @@ const ProfilePage = () => {
 
       {/* Activity Content */}
       {activeTab === 'activity' && (
-        <div className='mt-6 card'>
-          <div className='font-medium mb-3'>Recent Activity</div>
-          <ul className='space-y-3 text-sm'>
-            <li className='flex items-start gap-3'>
-              <span className='mt-1 w-2 h-2 rounded-full bg-primary-500'></span>
-              <div>
-                <div className='text-gray-800'>No recent activity to show</div>
-                <div className='text-xs text-gray-500'>Your latest actions will appear here.</div>
-              </div>
-            </li>
-          </ul>
-        </div>
+        <ActivitySection 
+          activities={activities}
+          activitiesLoading={activitiesLoading}
+          loadActivities={loadActivities}
+          userRole={me?.role}
+        />
+      )}
+
+      {/* Security Content */}
+      {activeTab === 'security' && (
+        <SecuritySection 
+          user={me}
+          onUserUpdate={setMe}
+        />
       )}
 
       {/* Footer Section */}
@@ -342,6 +560,291 @@ const ProfilePage = () => {
   )
 }
 
+// Helper functions for activity display
+const groupActivitiesByDate = (activities) => {
+  const groups = {}
+  
+  activities.forEach(activity => {
+    const date = new Date(activity.createdAt)
+    const dateKey = date.toDateString() // e.g., "Mon Dec 25 2023"
+    
+    if (!groups[dateKey]) {
+      groups[dateKey] = {
+        date: date,
+        activities: []
+      }
+    }
+    
+    groups[dateKey].activities.push(activity)
+  })
+  
+  // Convert to array and sort by date (newest first)
+  return Object.values(groups).sort((a, b) => b.date - a.date)
+}
+
+const formatDateHeader = (date) => {
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+  
+  const activityDate = new Date(date)
+  
+  // Reset time to compare only dates
+  const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+  const yesterdayDate = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate())
+  const activityDateOnly = new Date(activityDate.getFullYear(), activityDate.getMonth(), activityDate.getDate())
+  
+  if (activityDateOnly.getTime() === todayDate.getTime()) {
+    return 'Today'
+  } else if (activityDateOnly.getTime() === yesterdayDate.getTime()) {
+    return 'Yesterday'
+  } else {
+    return activityDate.toLocaleDateString('en-US', { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    })
+  }
+}
+
+const formatTimeOnly = (dateString) => {
+  const date = new Date(dateString)
+  return date.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  })
+}
+
+// Security Section Component
+const SecuritySection = ({ user, onUserUpdate }) => {
+  const navigate = useNavigate()
+
+  const securityOptions = [
+    {
+      id: 'email',
+      title: 'Email Management',
+      description: 'Change your email address and manage verification',
+      icon: Mail,
+      color: 'blue',
+      gradient: 'from-blue-50 to-indigo-50',
+      borderColor: 'border-blue-100',
+      iconBg: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+      buttonGradient: 'from-blue-600 to-indigo-600',
+      buttonHover: 'hover:from-blue-700 hover:to-indigo-700',
+      path: '/security/email'
+    },
+    {
+      id: 'password',
+      title: 'Password Security',
+      description: 'Update your password and security settings',
+      icon: Lock,
+      color: 'green',
+      gradient: 'from-green-50 to-emerald-50',
+      borderColor: 'border-green-100',
+      iconBg: 'bg-green-100',
+      iconColor: 'text-green-600',
+      buttonGradient: 'from-green-600 to-emerald-600',
+      buttonHover: 'hover:from-green-700 hover:to-emerald-700',
+      path: '/security/password'
+    },
+    {
+      id: 'history',
+      title: 'Login History',
+      description: 'View recent login attempts and active sessions',
+      icon: Clock,
+      color: 'purple',
+      gradient: 'from-purple-50 to-violet-50',
+      borderColor: 'border-purple-100',
+      iconBg: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+      buttonGradient: 'from-purple-600 to-violet-600',
+      buttonHover: 'hover:from-purple-700 hover:to-violet-700',
+      path: '/security/history'
+    },
+    {
+      id: 'deletion',
+      title: 'Account Deletion',
+      description: 'Permanently delete your account and all data',
+      icon: AlertTriangle,
+      color: 'red',
+      gradient: 'from-red-50 to-rose-50',
+      borderColor: 'border-red-100',
+      iconBg: 'bg-red-100',
+      iconColor: 'text-red-600',
+      buttonGradient: 'from-red-600 to-rose-600',
+      buttonHover: 'hover:from-red-700 hover:to-rose-700',
+      path: '/security/deletion'
+    }
+  ]
+
+  return (
+    <div className='max-w-6xl mx-auto mt-6'>
+      {/* Security Header */}
+      <div className='text-center mb-8'>
+        <div className='inline-flex items-center gap-3 mb-4 -ml-14'>
+          <div className='p-3 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl'>
+            <ShieldCheck className='w-6 h-6 text-indigo-600' />
+          </div>
+          <div>
+            <h2 className='text-2xl font-bold text-gray-900'>Security Center</h2>
+            <p className='text-gray-600'>Manage your account security and privacy settings</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Security Options Grid */}
+      <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+        {securityOptions.map((option) => {
+          const IconComponent = option.icon
+          return (
+            <div
+              key={option.id}
+              className={`bg-gradient-to-br ${option.gradient} rounded-2xl p-6 border ${option.borderColor} shadow-lg hover:shadow-md transition-all duration-200 cursor-pointer group`}
+              onClick={() => navigate(option.path)}
+            >
+              <div className='flex items-start gap-4'>
+                <div className={`p-3 ${option.iconBg} rounded-xl transition-transform duration-200`}>
+                  <IconComponent className={`w-6 h-6 ${option.iconColor}`} />
+                </div>
+                <div className='flex-1'>
+                  <h3 className='text-lg font-semibold text-gray-900 mb-2 transition-colors duration-200'>
+                    {option.title}
+                  </h3>
+                  <p className='text-sm text-gray-600 mb-4 leading-relaxed'>
+                    {option.description}
+                  </p>
+                  <div className={`inline-flex items-center gap-2 px-4 py-2 bg-white/70 rounded-lg text-sm font-medium text-gray-700 transition-all duration-200`}>
+                    <span>Manage</span>
+                    <svg className='w-4 h-4' fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Security Tips */}
+      <div className='mt-8 bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-6 border border-gray-200'>
+        <div className='flex items-start gap-4'>
+          <div className='p-2 bg-blue-100 rounded-lg'>
+            <Key className='w-5 h-5 text-blue-600' />
+          </div>
+          <div>
+            <h3 className='text-lg font-semibold text-gray-900 mb-2'>Security Tips</h3>
+            <ul className='text-sm text-gray-600 space-y-2'>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Use a strong, unique password for your account
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Keep your email address up to date for security notifications
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Regularly review your login history for suspicious activity
+              </li>
+              <li className='flex items-center gap-2'>
+                <CheckCircle className='w-4 h-4 text-green-500' />
+                Log out from devices you no longer use
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Activity Section Component
+const ActivitySection = ({ activities, activitiesLoading, loadActivities, userRole }) => {
+
+  return (
+    <div className='mt-6 card'>
+      <div className='flex items-center justify-between mb-4'>
+        <div className='flex items-center gap-2'>
+          <div className='font-medium'>Recent Activity</div>
+          <div className='text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full'>
+            Auto-refreshes every 30s
+          </div>
+        </div>
+        <button 
+          onClick={() => loadActivities(true)}
+          disabled={activitiesLoading}
+          className='flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 disabled:opacity-50'
+        >
+          <svg className={`w-4 h-4 ${activitiesLoading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          {activitiesLoading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      
+      {activitiesLoading ? (
+        <div className='text-center py-4 text-gray-500'>Loading activities...</div>
+      ) : activities.length === 0 ? (
+        <div className='text-center py-4 text-gray-500'>No recent activity to show</div>
+      ) : (
+        <div className='space-y-6'>
+          {groupActivitiesByDate(activities).map((dayGroup, dayIndex) => (
+            <div key={dayIndex}>
+              {/* Date Header */}
+              <div className='sticky top-0 bg-white py-2 mb-3 border-b border-gray-200'>
+                <h3 className='text-sm font-semibold text-gray-700'>
+                  {formatDateHeader(dayGroup.date)}
+                </h3>
+              </div>
+              
+              {/* Activities for this day */}
+              <div className='space-y-3'>
+                {dayGroup.activities.map((activity, index) => (
+                  <div 
+                    key={activity._id || index} 
+                    className={`flex items-start gap-3 p-4 rounded-lg ${
+                      activity.type === 'LISTING_ADDED' ? 'bg-green-50 border-l-4 border-green-400' :
+                      activity.type === 'ITEM_SOLD' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                      activity.type === 'ITEM_EXPIRED' ? 'bg-orange-50 border-l-4 border-orange-400' :
+                      activity.type === 'LISTING_UPDATED' ? 'bg-purple-50 border-l-4 border-purple-400' :
+                      activity.type === 'LISTING_REMOVED' ? 'bg-red-50 border-l-4 border-red-400' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-50 border-l-4 border-blue-400' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-50 border-l-4 border-red-400' :
+                      'bg-gray-50 border-l-4 border-gray-400'
+                    }`}
+                  >
+                    <div className={`mt-1 w-3 h-3 rounded-full ${
+                      activity.type === 'LISTING_ADDED' ? 'bg-green-500' :
+                      activity.type === 'ITEM_SOLD' ? 'bg-blue-500' :
+                      activity.type === 'ITEM_EXPIRED' ? 'bg-orange-500' :
+                      activity.type === 'LISTING_UPDATED' ? 'bg-purple-500' :
+                      activity.type === 'LISTING_REMOVED' ? 'bg-red-500' :
+                      activity.type === 'ORDER_PLACED' ? 'bg-blue-500' :
+                      activity.type === 'ORDER_CANCELLED' ? 'bg-red-500' :
+                      'bg-gray-500'
+                    }`}></div>
+                    <div className='flex-1'>
+                      <div className='text-gray-800 font-medium'>{activity.title}</div>
+                      <div className='text-sm text-gray-600 mt-1'>{activity.description}</div>
+                      <div className='text-xs text-gray-500 mt-2'>
+                        {formatTimeOnly(activity.createdAt)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default ProfilePage
 
 // Inline Stats component to show real counts
@@ -350,53 +853,92 @@ const StatsSection = ({ me }) => {
   const [listingsCount, setListingsCount] = React.useState(null)
   const [farmerMonthRevenue, setFarmerMonthRevenue] = React.useState(null)
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
-  React.useEffect(() => {
-    let cancelled = false
-    const load = async () => {
-      try {
-        // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
-        const ordersRes = await axiosInstance.get('/orders/me')
-        if (!cancelled) setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
-      } catch {
-        if (!cancelled) setOrdersCount(0)
-      }
+  const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
+  const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
+  const [loading, setLoading] = React.useState(false)
+  const loadStats = async () => {
+    setLoading(true)
+    try {
+      // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
+      const ordersRes = await axiosInstance.get('/orders/me')
+      setOrdersCount(Array.isArray(ordersRes.data) ? ordersRes.data.length : 0)
 
-      try {
-        if (me.role === 'FARMER') {
-          const [listingsRes, farmerStats] = await Promise.all([
-            axiosInstance.get('/listings/mine'),
-            axiosInstance.get('/orders/stats/farmer')
-          ])
-          if (!cancelled) {
-            setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
-            setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
-            setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
-          }
-        } else {
-          if (!cancelled) setListingsCount(0)
-        }
-      } catch {
-        if (!cancelled) setListingsCount(0)
+      // Buyer: compute total spent in last 30 days
+      if (me.role !== 'FARMER' && Array.isArray(ordersRes.data)) {
+        const now = new Date()
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000))
+        const total = ordersRes.data
+          .filter(o => new Date(o.createdAt) >= thirtyDaysAgo && o.status !== 'CANCELLED')
+          .reduce((sum, o) => sum + (Number(o.total) || 0), 0)
+        setBuyerTotalSpent30(total)
+      } else if (me.role !== 'FARMER') {
+        setBuyerTotalSpent30(0)
       }
+    } catch {
+      setOrdersCount(0)
+      if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
     }
-    load()
-    return () => { cancelled = true }
+
+    try {
+      if (me.role === 'FARMER') {
+        const [listingsRes, farmerStats] = await Promise.all([
+          axiosInstance.get('/listings/mine'),
+          axiosInstance.get('/orders/stats/farmer')
+        ])
+        console.log('Farmer stats response:', farmerStats.data)
+        setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
+        setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
+        setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
+        setFarmerTotalSales(farmerStats.data?.totalSalesCount ?? 0)
+      } else {
+        setListingsCount(0)
+      }
+    } catch (error) {
+      console.error('Error loading farmer stats:', error)
+      setListingsCount(0)
+      setFarmerMonthRevenue(0)
+      setFarmerLastMonthDelivered(0)
+      setFarmerTotalSales(0)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  React.useEffect(() => {
+    loadStats()
   }, [me?.role])
 
   if (me.role === 'FARMER') {
     return (
-      <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4'>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Available Listings</div>
-          <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+      <div className='mt-6'>
+        <div className='flex items-center justify-between mb-4'>
+          <h3 className='text-lg font-semibold text-gray-800'>Farm Statistics</h3>
+          <button 
+            onClick={loadStats}
+            disabled={loading}
+            className='flex items-center gap-2 px-3 py-1.5 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 disabled:opacity-50'
+          >
+            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            {loading ? 'Refreshing...' : 'Refresh Stats'}
+          </button>
         </div>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Revenue (This Month)</div>
-          <div className='text-2xl font-semibold'>{farmerMonthRevenue == null ? '—' : `LKR ${Number(farmerMonthRevenue).toLocaleString()}`}</div>
-        </div>
-        <div className='card text-center'>
-          <div className='text-xs text-gray-500'>Delivered Orders (Last Month)</div>
-          <div className='text-2xl font-semibold'>{farmerLastMonthDelivered == null ? '—' : farmerLastMonthDelivered}</div>
+        <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Available Listings</div>
+            <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+          </div>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Revenue (Last 30 Days)</div>
+            <div className='text-2xl font-semibold'>{farmerMonthRevenue == null ? '—' : `LKR ${Number(farmerMonthRevenue).toLocaleString()}`}</div>
+            <div className='text-xs text-gray-400 mt-1'>All sales (COD, PAID, etc.)</div>
+          </div>
+          <div className='card text-center'>
+            <div className='text-xs text-gray-500'>Total Sales (Last 30 Days)</div>
+            <div className='text-2xl font-semibold'>{farmerTotalSales == null ? '—' : farmerTotalSales}</div>
+            <div className='text-xs text-gray-400 mt-1'>Orders placed</div>
+          </div>
         </div>
       </div>
     )
@@ -413,8 +955,8 @@ const StatsSection = ({ me }) => {
         <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
       </div>
       <div className='card text-center'>
-        <div className='text-xs text-gray-500'>Products Listed</div>
-        <div className='text-2xl font-semibold'>{listingsCount == null ? '—' : listingsCount}</div>
+        <div className='text-xs text-gray-500'>Total Spent (Last 30 Days)</div>
+        <div className='text-2xl font-semibold'>{buyerTotalSpent30 == null ? '—' : `LKR ${Number(buyerTotalSpent30).toLocaleString()}`}</div>
       </div>
     </div>
   )

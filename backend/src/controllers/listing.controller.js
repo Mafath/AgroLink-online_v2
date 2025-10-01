@@ -1,10 +1,31 @@
 import Listing from "../models/listing.model.js";
+import { logListingAdded, logItemExpired } from "../lib/activityService.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // Auto-expire listings that have passed their best-before date and still have capacity
 async function autoExpireListings(extraFilter = {}) {
   try {
+    // First find the listings that will be expired
+    const expiredListings = await Listing.find({
+      status: 'AVAILABLE',
+      capacityKg: { $gt: 0 },
+      expireAfterDays: { $type: 'number', $gt: 0 },
+      ...extraFilter,
+      $expr: {
+        $lt: [
+          { $add: [ '$harvestedAt', { $multiply: [ '$expireAfterDays', MS_PER_DAY ] } ] },
+          new Date()
+        ]
+      }
+    });
+
+    // Log activity for each expired listing
+    for (const listing of expiredListings) {
+      await logItemExpired(listing);
+    }
+
+    // Then update their status
     await Listing.updateMany(
       {
         status: 'AVAILABLE',
@@ -109,19 +130,41 @@ export const createListing = async (req, res) => {
     let imageUrls = [];
     if (Array.isArray(images) && images.length) {
       const limited = images.slice(0, 4);
+      
+      // Validate images before upload
+      const validImages = limited.filter(img => {
+        if (!img || typeof img !== 'string') return false;
+        // Check if it's a valid base64 data URL
+        if (!img.startsWith('data:image/')) return false;
+        // Check file size (base64 is ~33% larger than binary, so 5MB limit = ~6.7MB base64)
+        const sizeInBytes = (img.length * 3) / 4;
+        if (sizeInBytes > 5 * 1024 * 1024) {
+          console.log('Image too large, skipping:', sizeInBytes / 1024 / 1024, 'MB');
+          return false;
+        }
+        return true;
+      });
+      
       try {
         const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
         if (haveCloudinary) {
           const { v2: cloudinary } = await import('cloudinary');
           const uploads = await Promise.all(
-            limited.map((img) => cloudinary.uploader.upload(img))
+            validImages.map((img) => cloudinary.uploader.upload(img, {
+              resource_type: 'image',
+              transformation: [
+                { width: 1200, height: 1200, crop: 'limit' }, // Resize large images
+                { quality: 'auto' } // Optimize quality
+              ]
+            }))
           );
           imageUrls = uploads.map(u => u.secure_url);
         } else {
-          imageUrls = limited;
+          imageUrls = validImages;
         }
       } catch (e) {
-        console.log('Image upload error:', e.message);
+        console.log('Image upload error:', e.message || e.toString() || 'Unknown error');
+        console.log('Full error object:', e);
         // continue without images instead of failing
         imageUrls = [];
       }
@@ -138,6 +181,9 @@ export const createListing = async (req, res) => {
       images: imageUrls,
       status: 'AVAILABLE',
     });
+
+    // Log activity for listing creation
+    await logListingAdded(listing);
 
     return res.status(201).json(listing);
   } catch (error) {
@@ -203,19 +249,41 @@ export const updateListing = async (req, res) => {
     if (Array.isArray(images)) {
       const limited = images.slice(0, 4);
       let imageUrls = [];
+      
+      // Validate images before upload
+      const validImages = limited.filter(img => {
+        if (!img || typeof img !== 'string') return false;
+        // Check if it's a valid base64 data URL
+        if (!img.startsWith('data:image/')) return false;
+        // Check file size (base64 is ~33% larger than binary, so 5MB limit = ~6.7MB base64)
+        const sizeInBytes = (img.length * 3) / 4;
+        if (sizeInBytes > 5 * 1024 * 1024) {
+          console.log('Image too large, skipping:', sizeInBytes / 1024 / 1024, 'MB');
+          return false;
+        }
+        return true;
+      });
+      
       try {
         const haveCloudinary = Boolean(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET);
         if (haveCloudinary) {
           const { v2: cloudinary } = await import('cloudinary');
           const uploads = await Promise.all(
-            limited.map((img) => cloudinary.uploader.upload(img))
+            validImages.map((img) => cloudinary.uploader.upload(img, {
+              resource_type: 'image',
+              transformation: [
+                { width: 1200, height: 1200, crop: 'limit' }, // Resize large images
+                { quality: 'auto' } // Optimize quality
+              ]
+            }))
           );
           imageUrls = uploads.map(u => u.secure_url);
         } else {
-          imageUrls = limited;
+          imageUrls = validImages;
         }
       } catch (e) {
-        console.log('Image upload error:', e.message);
+        console.log('Image upload error:', e.message || e.toString() || 'Unknown error');
+        console.log('Full error object:', e);
       }
       if (imageUrls.length) listing.images = imageUrls;
     }

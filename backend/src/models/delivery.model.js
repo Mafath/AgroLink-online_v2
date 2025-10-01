@@ -42,6 +42,7 @@ const deliverySchema = new mongoose.Schema(
     status: { type: String, enum: STATUS, default: 'PENDING', index: true },
     driver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     statusHistory: { type: [statusHistorySchema], default: [] },
+    review: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryReview', default: null },
   },
   { timestamps: true }
 );

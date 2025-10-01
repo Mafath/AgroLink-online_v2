@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, Truck, Package, Trash2, Plus, Minus, Check } from 'lucide-react';
+import { ShoppingCart, Truck, Package, Trash2, Plus, Minus, Check, ArrowLeft } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import { 
@@ -122,7 +122,15 @@ const CartPage = () => {
   };
 
   const calculateSubtotal = () => {
-    return getSelectedCartItems().reduce((total, item) => total + (item.price * item.quantity), 0);
+    return getSelectedCartItems().reduce((total, item) => {
+      if (item.itemType === 'rental') {
+        const startDate = new Date(item.rentalStartDate);
+        const endDate = new Date(item.rentalEndDate);
+        const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+        return total + (item.rentalPerDay * days * item.quantity);
+      }
+      return total + (item.price * item.quantity);
+    }, 0);
   };
 
   const calculateDeliveryFee = () => {
@@ -172,10 +180,22 @@ const CartPage = () => {
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center mb-8">
-          <ShoppingCart className="w-8 h-8 text-primary-600 mr-3" />
-          <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className='flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50'
+            >
+              <ArrowLeft className='w-3.5 h-3.5' />
+              <span className='text-xs'>Back</span>
+            </button>
+            <div className="flex items-center">
+              <ShoppingCart className="w-8 h-8 text-primary-600 mr-3" />
+              <h1 className="text-3xl font-bold text-gray-900">Shopping Cart</h1>
+            </div>
+          </div>
         </div>
+
 
         {cart.length === 0 ? (
           <div className="text-center py-12">
@@ -244,7 +264,18 @@ const CartPage = () => {
                         />
                         <div className="flex-1">
                           <h3 className="font-medium text-gray-900">{item.title}</h3>
-                          <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} per {item.unit}</p>
+                          {item.itemType === 'rental' ? (
+                            <div className="text-sm text-gray-600">
+                              <p>LKR {item.rentalPerDay?.toFixed(2)} / day</p>
+                              {item.rentalStartDate && item.rentalEndDate && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  {new Date(item.rentalStartDate).toLocaleDateString()} - {new Date(item.rentalEndDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          ) : (
+                            <p className="text-sm text-gray-600">LKR {item.price.toFixed(2)} per {item.unit}</p>
+                          )}
                           {item.maxQuantity && (
                             <p className="text-xs text-gray-500">
                               Available: {item.maxQuantity} {item.unit}
@@ -268,8 +299,28 @@ const CartPage = () => {
                         </div>
                         <div className="text-right">
                           <p className="font-medium text-gray-900">
-                            LKR {(item.price * item.quantity).toFixed(2)}
+                            {item.itemType === 'rental' ? (
+                              (() => {
+                                const startDate = new Date(item.rentalStartDate);
+                                const endDate = new Date(item.rentalEndDate);
+                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                                const totalPrice = item.rentalPerDay * days * item.quantity;
+                                return `LKR ${totalPrice.toFixed(2)}`;
+                              })()
+                            ) : (
+                              `LKR ${(item.price * item.quantity).toFixed(2)}`
+                            )}
                           </p>
+                          {item.itemType === 'rental' && (
+                            <p className="text-xs text-gray-500">
+                              {(() => {
+                                const startDate = new Date(item.rentalStartDate);
+                                const endDate = new Date(item.rentalEndDate);
+                                const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+                                return `${days} days × ${item.quantity} items`;
+                              })()}
+                            </p>
+                          )}
                         </div>
                         <button
                           onClick={() => removeItem(index)}

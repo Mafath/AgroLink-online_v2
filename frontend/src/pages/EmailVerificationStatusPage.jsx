@@ -97,10 +97,10 @@ const EmailVerificationStatusPage = () => {
         <div className="flex items-center mb-6">
           <button
             onClick={() => navigate('/login')}
-            className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-emerald-700 text-emerald-700 rounded-full transition-colors hover:bg-emerald-50"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Login
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span className="text-xs">Back</span>
           </button>
         </div>
 

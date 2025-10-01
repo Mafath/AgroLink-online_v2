@@ -50,10 +50,11 @@ export const clearUserCart = async (userId) => {
  * @param {string} userId - The user's ID (not used in API call, handled by auth token)
  * @param {Object} item - Item to add to cart
  * @param {number} quantity - Quantity to add
+ * @param {Object} rentalData - Rental-specific data (startDate, endDate) for rental items
  * @returns {Promise<boolean>} - Success status
  */
-export const addToUserCart = async (userId, item, quantity = 1) => {
-  console.log('addToUserCart called with:', { userId, item, quantity });
+export const addToUserCart = async (userId, item, quantity = 1, rentalData = null) => {
+  console.log('addToUserCart called with:', { userId, item, quantity, rentalData });
   
   if (!item || !item._id) {
     console.error('Invalid parameters for addToUserCart:', { userId, item });
@@ -61,20 +62,27 @@ export const addToUserCart = async (userId, item, quantity = 1) => {
   }
   
   try {
-    // Determine if this is an inventory item or listing item
+    // Determine if this is an inventory item, listing item, or rental item
     const isInventoryItem = item.name && item.price && item.stockQuantity !== undefined;
     const isListingItem = item.cropName && item.pricePerKg && item.capacityKg !== undefined;
+    const isRentalItem = item.productName && item.rentalPerDay !== undefined;
     
-    if (!isInventoryItem && !isListingItem) {
+    if (!isInventoryItem && !isListingItem && !isRentalItem) {
       console.error('Invalid item structure:', item);
       return false;
     }
     
     const requestData = {
       itemId: item._id,
-      itemType: isInventoryItem ? 'inventory' : 'listing',
+      itemType: isInventoryItem ? 'inventory' : (isListingItem ? 'listing' : 'rental'),
       quantity: quantity
     };
+
+    // Add rental-specific data if it's a rental item
+    if (isRentalItem && rentalData) {
+      requestData.rentalStartDate = rentalData.startDate;
+      requestData.rentalEndDate = rentalData.endDate;
+    }
     
     console.log('Adding item to cart via API:', requestData);
     const response = await axiosInstance.post('/cart/add', requestData);

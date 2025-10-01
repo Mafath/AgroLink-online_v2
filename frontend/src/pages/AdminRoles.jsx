@@ -39,16 +39,16 @@ const AdminRoles = () => {
                 <table className='min-w-full text-sm'>
                   <thead>
                     <tr className='text-left text-gray-500'>
-                      <th className='py-2 pr-4'>Role</th>
-                      {perms.map(p => <th key={p} className='py-2 pr-4'>{p}</th>)}
+                      <th className='py-3 pr-4 font-normal'>Role</th>
+                      {perms.map(p => <th key={p} className='py-3 pr-4 font-normal'>{p}</th>)}
                     </tr>
                   </thead>
                   <tbody>
                     {roles.map(role => (
                       <tr key={role} className='border-t'>
-                        <td className='py-2 pr-4 font-medium'>{role}</td>
+                        <td className='py-3 pr-4 font-medium'>{role}</td>
                         {perms.map(p => (
-                          <td key={p} className='py-2 pr-4'>
+                          <td key={p} className='py-3 pr-4'>
                             <label className='inline-flex items-center gap-2'>
                               <input type='checkbox' checked={!!matrix[role][p]} onChange={() => toggle(role, p)} />
                             </label>

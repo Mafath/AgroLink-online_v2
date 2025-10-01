@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react'
+import { ShoppingCart, User as UserIcon, Settings as SettingsIcon, LogOut, MessageSquare } from 'lucide-react'
 import defaultAvatar from '../assets/User Avatar.jpg'
 import logoImg from '../assets/AgroLink logo3.png'
 import { getUserCartCount } from '../lib/cartUtils'
@@ -72,7 +72,7 @@ const Navbar = () => {
   }, [isUserMenuOpen]);
 
   return (
-    <nav className="bg-white shadow-soft border-b border-gray-100 fixed w-full top-0 z-40">
+    <nav className="bg-white shadow-lg border-b border-gray-200 fixed w-full top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           {/* Logo */}
@@ -115,7 +115,7 @@ const Navbar = () => {
                     to="/harvest-dashboard"
                     className={`${isActive('/harvest-dashboard') ? 'bg-black text-white' : 'text-gray-700 hover:text-primary-500'} text-sm font-medium px-3 py-1 rounded-full`}
                   >
-                    HarvestTrack
+                    Track Harvest
                   </Link>
                 )}
 
@@ -173,6 +173,15 @@ const Navbar = () => {
                       <SettingsIcon className="w-4 h-4 mr-2" />
                       Settings
                     </button>
+                    {!isAdmin && !isDriver && !isAgronomist && (
+                      <button
+                        onClick={() => handleNavigation('/my-delivery-reviews')}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        My Reviews
+                      </button>
+                    )}
                     <button
                       onClick={handleLogout}
                       className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors"

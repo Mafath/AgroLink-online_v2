@@ -12,6 +12,8 @@ const AdminSidebar = ({ activePage = 'dashboard' }) => {
     { key: 'consultants', label: 'Agronomist Management', href: '/admin/consultants' },
     { key: 'logistics', label: 'Logistics', href: '/admin/logistics' },
     { key: 'orders', label: 'Orders', href: '/admin/orders' },
+    { key: 'delivery-reviews', label: 'Delivery Reviews', href: '/admin/delivery-reviews' },
+    { key: 'finance', label: 'Finance Tracker', href: '/admin/finance' },
   ]
 
   return (

@@ -12,11 +12,14 @@ import AdminUsers from './pages/AdminUsers';
 import AdminDrivers from './pages/AdminDrivers';
 import AdminConsultants from './pages/AdminConsultants';
 import AdminLogistics from './pages/AdminLogistics';
+import AdminDeliveryReviews from './pages/AdminDeliveryReviews';
 import AdminRoles from './pages/AdminRoles';
 import AdminInventory from './pages/AdminInventory';
 import AdminListings from './pages/AdminListings';
 import AdminRentals from './pages/AdminRentals';
 import AdminHarvest from './pages/AdminHarvest';
+import AdminFinance from './pages/AdminFinance';
+import MyDeliveryReviews from './pages/MyDeliveryReviews';
 import SignupPage from './pages/SignUpPage';
 import LoginPage from './pages/LoginPage';
 import SettingsPage from './pages/SettingsPage';
@@ -38,6 +41,13 @@ import CreateHarvestSchedule from './pages/CreateHarvestSchedule';
 
 import EmailVerificationPage from './pages/EmailVerificationPage';
 import EmailVerificationStatusPage from './pages/EmailVerificationStatusPage';
+
+// Security pages
+import EmailChangePage from './pages/EmailChangePage';
+import EmailChangeVerificationPage from './pages/EmailChangeVerificationPage';
+import PasswordChangePage from './pages/PasswordChangePage';
+import LoginHistoryPage from './pages/LoginHistoryPage';
+import AccountDeletionPage from './pages/AccountDeletionPage';
 
 
 {/* Delete after testing */}
@@ -90,7 +100,10 @@ const App = () => {
           <Route path="/admin/drivers" element={authUser && authUser.role === 'ADMIN' ? <AdminDrivers /> : <Navigate to="/" />} />
           <Route path="/admin/consultants" element={authUser && authUser.role === 'ADMIN' ? <AdminConsultants /> : <Navigate to="/" />} />
           <Route path="/admin/logistics" element={authUser && authUser.role === 'ADMIN' ? <AdminLogistics /> : <Navigate to="/" />} />
+          <Route path="/admin/delivery-reviews" element={authUser && authUser.role === 'ADMIN' ? <AdminDeliveryReviews /> : <Navigate to="/" />} />
+          <Route path="/admin/finance" element={authUser && authUser.role === 'ADMIN' ? <AdminFinance /> : <Navigate to="/" />} />
           <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
+          <Route path="/my-delivery-reviews" element={authUser ? <MyDeliveryReviews /> : <Navigate to="/login" />} />
           <Route path="/marketplace" element={authUser ? <Marketplace /> : <Navigate to="/login" />} />
           <Route path="/delivery" element={authUser ? <DeliveryPage /> : <Navigate to="/login" />} />
           <Route path="/my-listings" element={authUser && authUser.role === 'FARMER' ? <MyListings /> : <Navigate to="/" />} />
@@ -105,6 +118,13 @@ const App = () => {
           <Route path="/harvest-track" element={authUser ? <HarvestTrack /> : <Navigate to="/login" />} />
           <Route path="/harvest-report" element={authUser ? <HarvestReport /> : <Navigate to="/login" />} />
           <Route path="/create-schedule/:harvestId" element={authUser && authUser.role === 'AGRONOMIST' ? <CreateHarvestSchedule /> : <Navigate to="/" />} />
+
+          {/* Security pages */}
+          <Route path="/security/email" element={authUser ? <EmailChangePage /> : <Navigate to="/login" />} />
+          <Route path="/verify-email-change/:token" element={<EmailChangeVerificationPage />} />
+          <Route path="/security/password" element={authUser ? <PasswordChangePage /> : <Navigate to="/login" />} />
+          <Route path="/security/history" element={authUser ? <LoginHistoryPage /> : <Navigate to="/login" />} />
+          <Route path="/security/deletion" element={authUser ? <AccountDeletionPage /> : <Navigate to="/login" />} />
 
         </Routes>
       </main>

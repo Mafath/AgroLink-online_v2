@@ -20,11 +20,6 @@ const rentalItemSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    rentalPerWeek: {
-      type: Number,
-      required: true,
-      min: 0,
-    },
     images: {
       type: [String],
       default: [],
