@@ -38,25 +38,34 @@ const HarvestDashboard = () => {
     navigate(path);
   };
 
-  // Fetch real metrics data
+  // Fetch real metrics data from dashboard components
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
         setLoading(true);
         
-        // Fetch all harvest requests to get total schedules
-        const harvestResponse = await axiosInstance.get('/harvest/requests');
-        const allHarvests = harvestResponse.data?.requests || [];
-        
-        // Count different statuses
-        const totalSchedules = allHarvests.length;
-        const ongoingHarvests = allHarvests.filter(h => 
-          h.status === 'ACCEPTED' || h.status === 'SCHEDULED' || h.status === 'IN_PROGRESS'
+        // Fetch harvest schedules data (same as HarvestSchedule component)
+        const schedulesResponse = await axiosInstance.get('/harvest/schedules');
+        const allSchedules = schedulesResponse.data?.harvests || [];
+        // Filter out cancelled/abandoned harvests (same logic as HarvestSchedule)
+        const totalSchedules = allSchedules.filter(schedule => 
+          schedule.status !== 'CANCELLED' && 
+          schedule.harvestSchedule?.scheduleStatus !== 'Cancelled'
         ).length;
         
-        // For issues reported, we'll use a placeholder since we don't have a reports API yet
-        // You can replace this with actual API call when available
-        const issuesReported = 0; // Placeholder - replace with actual API call
+        // Fetch harvest schedules for ongoing harvests (same as HarvestTrack component)
+        const trackResponse = await axiosInstance.get('/harvest/schedules');
+        const allTrackSchedules = trackResponse.data?.harvests || [];
+        // Filter for ongoing schedules only (same logic as HarvestTrack)
+        const ongoingHarvests = allTrackSchedules.filter(schedule => 
+          ['Published', 'In Progress'].includes(schedule.harvestSchedule?.scheduleStatus) &&
+          schedule.status !== 'CANCELLED' &&
+          schedule.harvestSchedule?.scheduleStatus !== 'Cancelled'
+        ).length;
+        
+        // Fetch reports data to get issues reported count
+        const reportsResponse = await axiosInstance.get('/reports/stats');
+        const issuesReported = reportsResponse.data?.totalReports || 0;
         
         setMetrics({
           totalSchedules,
