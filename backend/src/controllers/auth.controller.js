@@ -458,3 +458,21 @@ export const adminCreateUser = async (req, res) => {
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
   }
 };
+
+// Public endpoint to fetch agronomists (for harvest reports)
+export const getAgronomists = async (req, res) => {
+  try {
+    const agronomists = await User.find({ 
+      role: 'AGRONOMIST',
+      isEmailVerified: true,
+      status: { $ne: 'SUSPENDED' }
+    })
+    .select('_id fullName expertise availability profilePic')
+    .sort({ fullName: 1 });
+
+    return res.status(200).json({ data: agronomists });
+  } catch (error) {
+    console.error('Error in getAgronomists: ', error.message);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};

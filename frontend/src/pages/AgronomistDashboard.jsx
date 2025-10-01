@@ -2,20 +2,27 @@ import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { axiosInstance } from '../lib/axios'
-import { Clock, User, CheckCircle, AlertCircle, Calendar, FileText, MapPin, Sprout, RefreshCw, MessageSquare } from 'lucide-react'
+import { Clock, User, CheckCircle, AlertCircle, Calendar, FileText, MapPin, Sprout, RefreshCw, MessageSquare, Bug, Reply, Download } from 'lucide-react'
 import { toast } from 'react-hot-toast'
+import jsPDF from 'jspdf'
 
 const AgronomistDashboard = () => {
   const navigate = useNavigate();
   const { authUser } = useAuthStore();
   const [assignedHarvests, setAssignedHarvests] = useState([]);
+  const [harvestReports, setHarvestReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('harvests'); // 'harvests' or 'reports'
 
   useEffect(() => {
     fetchAssignedHarvests();
+    fetchHarvestReports();
     // Set up auto-refresh every 30 seconds to see farmer updates
-    const interval = setInterval(fetchAssignedHarvests, 30000);
+    const interval = setInterval(() => {
+      fetchAssignedHarvests();
+      fetchHarvestReports();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -28,6 +35,16 @@ const AgronomistDashboard = () => {
       toast.error('Failed to load assigned harvests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchHarvestReports = async () => {
+    try {
+      const response = await axiosInstance.get('/harvest-reports/agronomist/reports');
+      setHarvestReports(response.data.data || []);
+    } catch (error) {
+      console.error('Failed to fetch harvest reports:', error);
+      toast.error('Failed to load harvest reports');
     }
   };
 
@@ -64,6 +81,257 @@ const AgronomistDashboard = () => {
     } catch (error) {
       console.error('Failed to hide harvest:', error);
       toast.error('Failed to hide harvest');
+    }
+  };
+
+  const handleReplyToReport = async (reportId, reply) => {
+    try {
+      await axiosInstance.put(`/harvest-reports/${reportId}/reply`, { reply });
+      toast.success('Reply submitted successfully');
+      fetchHarvestReports();
+    } catch (error) {
+      console.error('Failed to reply to report:', error);
+      toast.error('Failed to submit reply');
+    }
+  };
+
+  const handleResolveReport = async (reportId) => {
+    try {
+      await axiosInstance.put(`/harvest-reports/${reportId}/resolve`);
+      toast.success('Report marked as resolved');
+      fetchHarvestReports();
+    } catch (error) {
+      console.error('Failed to resolve report:', error);
+      toast.error('Failed to resolve report');
+    }
+  };
+
+  const handleDownloadPDF = () => {
+    try {
+      // Create a new PDF document
+      const doc = new jsPDF();
+      let yPosition = 20;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      
+      // Helper function to add text with word wrapping
+      const addText = (text, fontSize = 10, isBold = false, color = [0, 0, 0]) => {
+        doc.setFontSize(fontSize);
+        doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+        doc.setTextColor(color[0], color[1], color[2]);
+        
+        const lines = doc.splitTextToSize(text, contentWidth);
+        doc.text(lines, margin, yPosition);
+        yPosition += lines.length * (fontSize * 0.4) + 5;
+        
+        // Check if we need a new page
+        if (yPosition > doc.internal.pageSize.getHeight() - 20) {
+          doc.addPage();
+          yPosition = 20;
+        }
+      };
+      
+      // Helper function to add a line separator
+      const addLine = () => {
+        doc.setDrawColor(200, 200, 200);
+        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 10;
+      };
+      
+      // Title
+      addText('AGRONOMIST WORK SUMMARY REPORT', 16, true, [0, 0, 0]);
+      addLine();
+      
+      // Header Information
+      const currentDate = new Date().toLocaleDateString();
+      const agronomistName = authUser?.fullName || 'Agronomist';
+      const expertise = authUser?.expertise || 'General Agriculture';
+      
+      addText(`Agronomist: ${agronomistName}`, 12, true);
+      addText(`Expertise: ${expertise}`, 12);
+      addText(`Report Date: ${currentDate}`, 12);
+      addText(`Generated: ${new Date().toLocaleString()}`, 12);
+      addLine();
+      
+      // Calculate statistics
+      const harvestStats = {
+        total: assignedHarvests.length,
+        assigned: assignedHarvests.filter(h => h.status === 'ASSIGNED').length,
+        accepted: assignedHarvests.filter(h => h.status === 'ACCEPTED').length,
+        completed: assignedHarvests.filter(h => h.status === 'COMPLETED').length,
+        cancelled: assignedHarvests.filter(h => h.status === 'CANCELLED').length
+      };
+
+      const reportStats = {
+        total: harvestReports.length,
+        assigned: harvestReports.filter(r => r.status === 'assigned').length,
+        replied: harvestReports.filter(r => r.status === 'replied').length,
+        resolved: harvestReports.filter(r => r.status === 'resolved').length,
+        urgent: harvestReports.filter(r => r.priority === 'urgent').length
+      };
+      
+      // Harvest Schedules Summary
+      addText('HARVEST SCHEDULES SUMMARY', 14, true, [0, 100, 0]);
+      addText(`Total Harvest Schedules: ${harvestStats.total}`, 12, true);
+      addText(`• Assigned: ${harvestStats.assigned}`, 10);
+      addText(`• Accepted: ${harvestStats.accepted}`, 10);
+      addText(`• Completed: ${harvestStats.completed}`, 10);
+      addText(`• Cancelled: ${harvestStats.cancelled}`, 10);
+      
+      const successRate = harvestStats.total > 0 ? ((harvestStats.completed / harvestStats.total) * 100).toFixed(1) : 0;
+      addText(`Success Rate: ${successRate}%`, 12, true, [0, 150, 0]);
+      addLine();
+      
+      // Detailed Harvest Schedules
+      if (assignedHarvests.length > 0) {
+        addText('DETAILED HARVEST SCHEDULES:', 12, true);
+        assignedHarvests.forEach((harvest, index) => {
+          addText(`${index + 1}. ${harvest.crop} Harvest`, 11, true);
+          addText(`   Farmer: ${harvest.farmerName || 'Unknown'}`, 10);
+          addText(`   Status: ${harvest.status}`, 10);
+          addText(`   Expected Yield: ${harvest.expectedYield || 'Not specified'} kg`, 10);
+          addText(`   Farm Size: ${harvest.personalizedData?.farmSize || 'Not specified'}`, 10);
+          addText(`   Created: ${harvest.createdAt ? new Date(harvest.createdAt).toLocaleDateString() : 'Unknown'}`, 10);
+          if (harvest.notes) {
+            addText(`   Notes: ${harvest.notes}`, 10);
+          }
+          yPosition += 5; // Extra space between items
+        });
+      } else {
+        addText('No harvest schedules assigned yet.', 10, false, [100, 100, 100]);
+      }
+      addLine();
+      
+      // Crop Reports Summary
+      addText('CROP REPORTS SUMMARY', 14, true, [0, 100, 0]);
+      addText(`Total Crop Reports: ${reportStats.total}`, 12, true);
+      addText(`• Assigned: ${reportStats.assigned}`, 10);
+      addText(`• Replied: ${reportStats.replied}`, 10);
+      addText(`• Resolved: ${reportStats.resolved}`, 10);
+      addText(`• Urgent Priority: ${reportStats.urgent}`, 10);
+      
+      const responseRate = reportStats.total > 0 ? ((reportStats.replied / reportStats.total) * 100).toFixed(1) : 0;
+      const resolutionRate = reportStats.total > 0 ? ((reportStats.resolved / reportStats.total) * 100).toFixed(1) : 0;
+      addText(`Response Rate: ${responseRate}%`, 12, true, [0, 150, 0]);
+      addText(`Resolution Rate: ${resolutionRate}%`, 12, true, [0, 150, 0]);
+      addLine();
+      
+      // Detailed Crop Reports
+      if (harvestReports.length > 0) {
+        addText('DETAILED CROP REPORTS:', 12, true);
+        harvestReports.forEach((report, index) => {
+          addText(`${index + 1}. ${report.crop} Problem Report`, 11, true);
+          addText(`   Farmer: ${report.farmer?.fullName || 'Unknown'}`, 10);
+          addText(`   Status: ${report.status}`, 10);
+          addText(`   Priority: ${report.priority}`, 10);
+          addText(`   Problem: ${report.problem}`, 10);
+          if (report.reply) {
+            addText(`   Response: ${report.reply}`, 10);
+          } else {
+            addText(`   Response: No response yet`, 10, false, [150, 0, 0]);
+          }
+          addText(`   Created: ${report.createdAt ? new Date(report.createdAt).toLocaleDateString() : 'Unknown'}`, 10);
+          if (report.repliedAt) {
+            addText(`   Replied: ${new Date(report.repliedAt).toLocaleDateString()}`, 10);
+          }
+          yPosition += 5; // Extra space between items
+        });
+      } else {
+        addText('No crop reports assigned yet.', 10, false, [100, 100, 100]);
+      }
+      addLine();
+      
+      // Performance Insights
+      addText('PERFORMANCE INSIGHTS', 14, true, [0, 100, 0]);
+      
+      // Most Common Crop Issues
+      const cropIssues = getMostCommonCropIssues();
+      addText('Most Common Crop Issues:', 12, true);
+      addText(cropIssues, 10);
+      
+      // Most Common Harvest Challenges
+      const harvestChallenges = getMostCommonHarvestChallenges();
+      addText('Most Common Harvest Challenges:', 12, true);
+      addText(harvestChallenges, 10);
+      
+      // Average Response Time
+      const avgResponseTime = calculateAverageResponseTime();
+      addText(`Average Response Time: ${avgResponseTime}`, 12, true);
+      
+      // Recommendations
+      addText('Recommendations:', 12, true);
+      addText('• Continue providing expert advice on crop problems', 10);
+      addText('• Maintain high response rates for urgent issues', 10);
+      addText('• Focus on completing harvest schedules on time', 10);
+      addText('• Document best practices for future reference', 10);
+      addLine();
+      
+      // Footer
+      addText('This report was generated automatically by the AgroLink system.', 8, false, [100, 100, 100]);
+      addText('For questions or support, please contact the system administrator.', 8, false, [100, 100, 100]);
+      
+      // Save the PDF
+      const fileName = `Agronomist_Summary_${authUser?.fullName?.replace(/\s+/g, '_') || 'Agronomist'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+      
+      toast.success('PDF summary downloaded successfully!');
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      toast.error('Failed to generate PDF summary');
+    }
+  };
+
+
+  const getMostCommonCropIssues = () => {
+    const issues = harvestReports.map(r => r.crop).filter(Boolean);
+    const counts = issues.reduce((acc, crop) => {
+      acc[crop] = (acc[crop] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const sorted = Object.entries(counts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3);
+    
+    return sorted.length > 0 
+      ? sorted.map(([crop, count]) => `- ${crop}: ${count} reports`).join('\n')
+      : 'No crop issues reported yet';
+  };
+
+  const getMostCommonHarvestChallenges = () => {
+    const challenges = assignedHarvests.map(h => h.crop).filter(Boolean);
+    const counts = challenges.reduce((acc, crop) => {
+      acc[crop] = (acc[crop] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const sorted = Object.entries(counts)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 3);
+    
+    return sorted.length > 0 
+      ? sorted.map(([crop, count]) => `- ${crop}: ${count} schedules`).join('\n')
+      : 'No harvest challenges yet';
+  };
+
+  const calculateAverageResponseTime = () => {
+    const reportsWithReplies = harvestReports.filter(r => r.repliedAt && r.createdAt);
+    if (reportsWithReplies.length === 0) return 'No responses yet';
+    
+    const totalTime = reportsWithReplies.reduce((sum, r) => {
+      const created = new Date(r.createdAt);
+      const replied = new Date(r.repliedAt);
+      return sum + (replied - created);
+    }, 0);
+    
+    const avgTimeMs = totalTime / reportsWithReplies.length;
+    const avgHours = avgTimeMs / (1000 * 60 * 60);
+    
+    if (avgHours < 24) {
+      return `${avgHours.toFixed(1)} hours`;
+    } else {
+      return `${(avgHours / 24).toFixed(1)} days`;
     }
   };
 
@@ -154,14 +422,60 @@ const AgronomistDashboard = () => {
             <h1 className="text-3xl font-semibold">Agronomist Dashboard</h1>
             <p className="text-gray-600">Welcome back, {authUser?.fullName || 'Agronomist'}</p>
           </div>
-          <button
-            onClick={fetchAssignedHarvests}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              <Download className="w-4 h-4" />
+              Download Summary
+            </button>
+            <button
+              onClick={() => {
+                fetchAssignedHarvests();
+                fetchHarvestReports();
+              }}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveTab('harvests')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'harvests'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Sprout className="w-4 h-4" />
+                  Harvest Schedules ({assignedHarvests.length})
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('reports')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'reports'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Bug className="w-4 h-4" />
+                  Crop Reports ({harvestReports.length})
+                </div>
+              </button>
+            </nav>
+          </div>
         </div>
 
         {/* Availability toggle */}
@@ -172,105 +486,175 @@ const AgronomistDashboard = () => {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {assignedHarvests.filter(h => h.status === 'ASSIGNED').length}
-                </div>
-                <div className="text-sm text-gray-600">Assigned</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {assignedHarvests.filter(h => h.status === 'ACCEPTED').length}
-                </div>
-                <div className="text-sm text-gray-600">Accepted</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <Sprout className="w-6 h-6 text-orange-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {assignedHarvests.filter(h => h.status === 'IN_PROGRESS').length}
-                </div>
-                <div className="text-sm text-gray-600">In Progress</div>
-              </div>
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="ml-4">
-                <div className="text-2xl font-bold text-gray-900">
-                  {assignedHarvests.filter(h => h.status === 'COMPLETED').length}
-                </div>
-                <div className="text-sm text-gray-600">Completed</div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Filter */}
-        <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
-          <div className="flex items-center space-x-4">
-            <label className="text-sm font-medium text-gray-700">Filter by status:</label>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2"
-            >
-              <option value="all">All Statuses</option>
-              <option value="ASSIGNED">Assigned</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="SCHEDULED">Scheduled</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="CANCELLED">Cancelled</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Harvests List */}
-        <div className="space-y-4">
-          {filteredHarvests.length === 0 ? (
-            <div className="text-center py-12">
-              <Sprout className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold text-gray-900 mb-2">No assigned harvests</h2>
-              <p className="text-gray-600">You don't have any assigned harvest schedules yet.</p>
+        {/* Content based on active tab */}
+        {activeTab === 'harvests' ? (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <User className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {assignedHarvests.filter(h => h.status === 'ASSIGNED').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Assigned</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {assignedHarvests.filter(h => h.status === 'ACCEPTED').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Accepted</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {assignedHarvests.filter(h => h.status === 'COMPLETED').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Completed</div>
+                  </div>
+                </div>
+              </div>
             </div>
-          ) : (
-            filteredHarvests.map((harvest) => (
-              <HarvestCard
-                key={harvest._id}
-                harvest={harvest}
-                onAccept={handleAcceptHarvest}
-                onAddNotes={handleAddNotes}
-                onHide={handleHideHarvest}
-                getStatusIcon={getStatusIcon}
-                getStatusText={getStatusText}
-                getStatusColor={getStatusColor}
-              />
-            ))
-          )}
-        </div>
+
+            {/* Filter */}
+            <div className="bg-white rounded-lg shadow-sm border p-4 mb-6">
+              <div className="flex items-center space-x-4">
+                <label className="text-sm font-medium text-gray-700">Filter by status:</label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="ASSIGNED">Assigned</option>
+                  <option value="ACCEPTED">Accepted</option>
+                  <option value="SCHEDULED">Scheduled</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Harvests List */}
+            <div className="space-y-4">
+              {filteredHarvests.length === 0 ? (
+                <div className="text-center py-12">
+                  <Sprout className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">No assigned harvests</h2>
+                  <p className="text-gray-600">You don't have any assigned harvest schedules yet.</p>
+                </div>
+              ) : (
+                filteredHarvests.map((harvest) => (
+                  <HarvestCard
+                    key={harvest._id}
+                    harvest={harvest}
+                    onAccept={handleAcceptHarvest}
+                    onAddNotes={handleAddNotes}
+                    onHide={handleHideHarvest}
+                    getStatusIcon={getStatusIcon}
+                    getStatusText={getStatusText}
+                    getStatusColor={getStatusColor}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Harvest Reports Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Bug className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {harvestReports.filter(r => r.status === 'assigned').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Assigned</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <Reply className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {harvestReports.filter(r => r.status === 'replied').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Replied</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-gray-100 rounded-lg">
+                    <CheckCircle className="w-6 h-6 text-gray-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {harvestReports.filter(r => r.status === 'resolved').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Resolved</div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div className="ml-4">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {harvestReports.filter(r => r.priority === 'urgent').length}
+                    </div>
+                    <div className="text-sm text-gray-600">Urgent</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Harvest Reports List */}
+            <div className="space-y-4">
+              {harvestReports.length === 0 ? (
+                <div className="text-center py-12">
+                  <Bug className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                  <h2 className="text-xl font-semibold text-gray-900 mb-2">No crop reports</h2>
+                  <p className="text-gray-600">You don't have any assigned crop problem reports yet.</p>
+                </div>
+              ) : (
+                harvestReports.map((report) => (
+                  <HarvestReportCard
+                    key={report._id}
+                    report={report}
+                    onReply={handleReplyToReport}
+                    onResolve={handleResolveReport}
+                  />
+                ))
+              )}
+            </div>
+          </>
+        )}
         <AvailabilityPrompt />
       </div>
     </div>
@@ -684,6 +1068,193 @@ const AvailabilityPrompt = () => {
         </div>
       </div>
 
+    </div>
+  );
+};
+
+const HarvestReportCard = ({ report, onReply, onResolve }) => {
+  const [showReplyModal, setShowReplyModal] = useState(false);
+  const [reply, setReply] = useState('');
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'assigned': return 'bg-blue-100 text-blue-800';
+      case 'replied': return 'bg-green-100 text-green-800';
+      case 'resolved': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-yellow-100 text-yellow-800';
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'low': return 'bg-green-100 text-green-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const handleReply = () => {
+    if (reply.trim()) {
+      onReply(report._id, reply.trim());
+      setReply('');
+      setShowReplyModal(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{report.crop}</h3>
+          <p className="text-sm text-gray-600">From: {report.farmer?.fullName || 'Unknown Farmer'}</p>
+          <p className="text-xs text-gray-500">
+            Submitted: {new Date(report.createdAt).toLocaleDateString()}
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(report.status)}`}>
+            {report.status}
+          </span>
+          <span className={`px-2 py-1 text-xs font-medium rounded-full ${getPriorityColor(report.priority)}`}>
+            {report.priority}
+          </span>
+        </div>
+      </div>
+
+      {/* Problem Description */}
+      <div className="mb-4">
+        <h4 className="font-medium text-gray-900 mb-2">Problem Description</h4>
+        <p className="text-gray-700 bg-gray-50 p-3 rounded-lg">{report.problem}</p>
+      </div>
+
+      {/* Images */}
+      {report.images && report.images.length > 0 && (
+        <div className="mb-4">
+          <h4 className="font-medium text-gray-900 mb-2">Images</h4>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {report.images.map((image, index) => (
+              <img
+                key={index}
+                src={image}
+                alt={`Report image ${index + 1}`}
+                className="w-full h-24 object-cover rounded border"
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Conversation Thread */}
+      {report.conversation && report.conversation.length > 0 && (
+        <div className="mb-4">
+          <h4 className="font-medium text-gray-900 mb-3">Conversation</h4>
+          <div className="space-y-3 max-h-64 overflow-y-auto">
+            {report.conversation
+              .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt))
+              .map((message, index) => (
+              <div key={index} className={`flex ${message.sender === 'agronomist' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg ${
+                  message.sender === 'agronomist' 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-50 border border-blue-200 text-blue-800'
+                }`}>
+                  <p className="text-sm">{message.message}</p>
+                  <p className={`text-xs mt-1 ${
+                    message.sender === 'agronomist' ? 'text-green-100' : 'text-blue-600'
+                  }`}>
+                    {message.sender === 'agronomist' ? 'You' : message.senderId?.fullName || 'Farmer'} • {new Date(message.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legacy reply display (for backward compatibility) */}
+      {report.reply && (!report.conversation || report.conversation.length === 0) && (
+        <div className="mb-4">
+          <h4 className="font-medium text-gray-900 mb-2">Your Reply</h4>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p className="text-green-800">{report.reply}</p>
+            {report.repliedAt && (
+              <p className="text-xs text-green-600 mt-2">
+                Replied: {new Date(report.repliedAt).toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        {report.status === 'assigned' && (
+          <button
+            onClick={() => setShowReplyModal(true)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+          >
+            <Reply className="w-4 h-4" />
+            Reply
+          </button>
+        )}
+        {report.status === 'replied' && (
+          <button
+            onClick={() => onResolve(report._id)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+          >
+            <CheckCircle className="w-4 h-4" />
+            Mark as Resolved
+          </button>
+        )}
+      </div>
+
+      {/* Reply Modal */}
+      {showReplyModal && (
+        <div className="fixed inset-0 bg-black/40 grid place-items-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Reply to Report</h2>
+              <button 
+                onClick={() => setShowReplyModal(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Expert Advice
+                </label>
+                <textarea
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Provide your expert advice and recommendations..."
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowReplyModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReply}
+                  disabled={!reply.trim()}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Send Reply
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

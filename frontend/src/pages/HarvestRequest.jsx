@@ -62,34 +62,31 @@ const HarvestRequest = () => {
 
   // Check if required fields are filled
   const isFormValid = () => {
-    const basicValidation = formData.farmerName.trim() !== "" && 
-           formData.cropType !== "" && 
-           formData.expectedYield !== "" &&
-           formData.expectedHarvestPeriod !== "";
+    // Farmer Information - all required
+    const farmerInfoValid = formData.farmerName.trim() !== "" && 
+                           formData.farmLocation.trim() !== "" && 
+                           formData.contactInfo.trim() !== "";
+    
+    // Crop & Farm Details - all required
+    const cropDetailsValid = formData.cropType !== "" && 
+                            formData.variety.trim() !== "" && 
+                            formData.plantingDate !== "" &&
+                            formData.farmSize.trim() !== "" &&
+                            formData.expectedYield !== "" &&
+                            formData.expectedHarvestPeriod !== "";
+    
+    // Growing Conditions - all required
+    const growingConditionsValid = formData.soilType !== "" && 
+                                  formData.irrigationMethod !== "" && 
+                                  formData.fertilizerUsed !== "" && 
+                                  formData.pestDiseaseIssues.trim() !== "" && 
+                                  formData.weatherConditions.trim() !== "";
     
     // Check date validation
     const dateValidation = !formData.plantingDate || !formData.expectedHarvestPeriod || 
            new Date(formData.expectedHarvestPeriod) >= new Date(formData.plantingDate);
     
-    const isValid = basicValidation && dateValidation;
-    
-    // Debug logging to help identify the issue
-    if (!isValid) {
-      console.log('Form validation failed:', {
-        farmerName: formData.farmerName,
-        farmerNameTrimmed: formData.farmerName.trim(),
-        farmerNameValid: formData.farmerName.trim() !== "",
-        cropType: formData.cropType,
-        cropTypeValid: formData.cropType !== "",
-        expectedYield: formData.expectedYield,
-        expectedYieldValid: formData.expectedYield !== "",
-        expectedHarvestPeriod: formData.expectedHarvestPeriod,
-        expectedHarvestPeriodValid: formData.expectedHarvestPeriod !== "",
-        dateValidation: dateValidation,
-        plantingDate: formData.plantingDate,
-        harvestDate: formData.expectedHarvestPeriod
-      });
-    }
+    const isValid = farmerInfoValid && cropDetailsValid && growingConditionsValid && dateValidation;
     
     return isValid;
   };
@@ -111,10 +108,26 @@ const HarvestRequest = () => {
     // Check required fields
     if (!isFormValid()) {
       const missingFields = [];
+      
+      // Farmer Information
       if (formData.farmerName.trim() === "") missingFields.push("Farmer Name");
+      if (formData.farmLocation.trim() === "") missingFields.push("Farm Location");
+      if (formData.contactInfo.trim() === "") missingFields.push("Contact Info");
+      
+      // Crop & Farm Details
       if (formData.cropType === "") missingFields.push("Crop Type");
+      if (formData.variety.trim() === "") missingFields.push("Variety/Seed Type");
+      if (formData.plantingDate === "") missingFields.push("Planting Date");
+      if (formData.farmSize.trim() === "") missingFields.push("Farm Size");
       if (formData.expectedYield === "") missingFields.push("Expected Yield");
       if (formData.expectedHarvestPeriod === "") missingFields.push("Expected Harvest Period");
+      
+      // Growing Conditions
+      if (formData.soilType === "") missingFields.push("Soil Type");
+      if (formData.irrigationMethod === "") missingFields.push("Irrigation Method");
+      if (formData.fertilizerUsed === "") missingFields.push("Fertilizer Used");
+      if (formData.pestDiseaseIssues.trim() === "") missingFields.push("Pest/Disease Issues");
+      if (formData.weatherConditions.trim() === "") missingFields.push("Weather Conditions");
       
       // Check date validation
       if (formData.plantingDate && formData.expectedHarvestPeriod && 
@@ -123,7 +136,7 @@ const HarvestRequest = () => {
         return;
       }
       
-      toast.error(`Please fill in the required fields: ${missingFields.join(", ")}`);
+      toast.error(`Please fill in all required fields: ${missingFields.join(", ")}`);
       return;
     }
     
@@ -217,7 +230,7 @@ const HarvestRequest = () => {
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Farm Location
+                        Farm Location *
                       </label>
                       <input
                         type='text'
@@ -226,6 +239,21 @@ const HarvestRequest = () => {
                         onChange={handleChange}
                         className='input-field w-full'
                         placeholder='Enter farm location'
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className='block text-sm font-medium text-gray-700 mb-2'>
+                        Contact Info *
+                      </label>
+                      <input
+                        type='text'
+                        name='contactInfo'
+                        value={formData.contactInfo}
+                        onChange={handleChange}
+                        className='input-field w-full'
+                        placeholder='Phone number or email'
+                        required
                       />
                     </div>
                   </div>
@@ -260,7 +288,7 @@ const HarvestRequest = () => {
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Variety/Seed Type
+                        Variety/Seed Type *
                       </label>
                       <input
                         type='text'
@@ -269,11 +297,12 @@ const HarvestRequest = () => {
                         onChange={handleChange}
                         className='input-field w-full'
                         placeholder='e.g., Roma, Hybrid, Organic'
+                        required
                       />
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Planting Date
+                        Planting Date *
                       </label>
                       <input
                         type='date'
@@ -281,11 +310,12 @@ const HarvestRequest = () => {
                         value={formData.plantingDate}
                         onChange={handleChange}
                         className='input-field w-full'
+                        required
                       />
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Farm Size (acres/hectares)
+                        Farm Size (acres/hectares) *
                       </label>
                       <input
                         type='text'
@@ -294,6 +324,7 @@ const HarvestRequest = () => {
                         onChange={handleChange}
                         className='input-field w-full'
                         placeholder='e.g., 5 acres, 2 hectares'
+                        required
                       />
                     </div>
                     <div>
@@ -337,13 +368,14 @@ const HarvestRequest = () => {
                   <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Soil Type
+                        Soil Type *
                       </label>
                       <select
                         name='soilType'
                         value={formData.soilType}
                         onChange={handleChange}
                         className='input-field w-full'
+                        required
                       >
                         <option value=''>Select soil type</option>
                         <option value='Clay'>Clay</option>
@@ -356,13 +388,14 @@ const HarvestRequest = () => {
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Irrigation Method
+                        Irrigation Method *
                       </label>
                       <select
                         name='irrigationMethod'
                         value={formData.irrigationMethod}
                         onChange={handleChange}
                         className='input-field w-full'
+                        required
                       >
                         <option value=''>Select irrigation method</option>
                         <option value='Drip'>Drip Irrigation</option>
@@ -374,13 +407,14 @@ const HarvestRequest = () => {
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Fertilizer Used
+                        Fertilizer Used *
                       </label>
                       <select
                         name='fertilizerUsed'
                         value={formData.fertilizerUsed}
                         onChange={handleChange}
                         className='input-field w-full'
+                        required
                       >
                         <option value=''>Select fertilizer type</option>
                         <option value='Organic'>Organic</option>
@@ -391,7 +425,7 @@ const HarvestRequest = () => {
                     </div>
                     <div>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Current Pest/Disease Issues
+                        Current Pest/Disease Issues *
                       </label>
                       <input
                         type='text'
@@ -399,12 +433,13 @@ const HarvestRequest = () => {
                         value={formData.pestDiseaseIssues}
                         onChange={handleChange}
                         className='input-field w-full'
-                        placeholder='Describe any current issues'
+                        placeholder='Describe any current issues (or "None" if no issues)'
+                        required
                       />
                     </div>
                     <div className='md:col-span-2'>
                       <label className='block text-sm font-medium text-gray-700 mb-2'>
-                        Recent Weather Conditions
+                        Recent Weather Conditions *
                       </label>
                       <textarea
                         name='weatherConditions'
@@ -413,6 +448,7 @@ const HarvestRequest = () => {
                         rows='2'
                         className='input-field w-full'
                         placeholder='Describe recent weather patterns, rainfall, temperature, etc.'
+                        required
                       />
                     </div>
                   </div>
@@ -564,10 +600,27 @@ const HarvestRequest = () => {
                         <span className='text-sm font-medium text-yellow-800'>Required fields missing:</span>
                       </div>
                       <ul className='text-sm text-yellow-700 space-y-1'>
+                        {/* Farmer Information */}
                         {formData.farmerName.trim() === "" && <li>• Farmer Name is required</li>}
+                        {formData.farmLocation.trim() === "" && <li>• Farm Location is required</li>}
+                        {formData.contactInfo.trim() === "" && <li>• Contact Info is required</li>}
+                        
+                        {/* Crop & Farm Details */}
                         {formData.cropType === "" && <li>• Crop Type is required</li>}
+                        {formData.variety.trim() === "" && <li>• Variety/Seed Type is required</li>}
+                        {formData.plantingDate === "" && <li>• Planting Date is required</li>}
+                        {formData.farmSize.trim() === "" && <li>• Farm Size is required</li>}
                         {formData.expectedYield === "" && <li>• Expected Yield is required</li>}
                         {formData.expectedHarvestPeriod === "" && <li>• Expected Harvest Period is required</li>}
+                        
+                        {/* Growing Conditions */}
+                        {formData.soilType === "" && <li>• Soil Type is required</li>}
+                        {formData.irrigationMethod === "" && <li>• Irrigation Method is required</li>}
+                        {formData.fertilizerUsed === "" && <li>• Fertilizer Used is required</li>}
+                        {formData.pestDiseaseIssues.trim() === "" && <li>• Pest/Disease Issues is required</li>}
+                        {formData.weatherConditions.trim() === "" && <li>• Weather Conditions is required</li>}
+                        
+                        {/* Date validation */}
                         {formData.plantingDate && formData.expectedHarvestPeriod && new Date(formData.expectedHarvestPeriod) < new Date(formData.plantingDate) && (
                           <li>• Harvest date cannot be before planting date</li>
                         )}

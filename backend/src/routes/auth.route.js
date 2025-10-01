@@ -1,5 +1,5 @@
 import express from 'express'
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser } from '../controllers/auth.controller.js'
+import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, getAgronomists } from '../controllers/auth.controller.js'
 import { requireAuth, protectRoute, requireRole } from '../middleware/auth.middleware.js';
 
 
@@ -30,6 +30,9 @@ router.get("/admin/users", requireAuth, requireRole("ADMIN"), adminListUsers)
 router.post("/admin/users", requireAuth, requireRole("ADMIN"), adminCreateUser)
 router.put("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminUpdateUser)
 router.delete("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminDeleteUser)
+
+// Public endpoint to fetch agronomists (for harvest reports)
+router.get("/agronomists", requireAuth, getAgronomists)
 
 
 export default router;

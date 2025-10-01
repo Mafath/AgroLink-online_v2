@@ -161,13 +161,11 @@ const AdminHarvest = () => {
   const stats = useMemo(() => {
     const pending = requests.filter(r => r.status === 'REQUEST_PENDING').length
     const assigned = requests.filter(r => ['ASSIGNED', 'ACCEPTED', 'SCHEDULED', 'IN_PROGRESS'].includes(r.status)).length
-    const completed = requests.filter(r => r.status === 'COMPLETED').length
     const total = requests.length
     
     // Calculate percentages for charts
     const pendingPercent = total > 0 ? (pending / total) * 100 : 0
     const assignedPercent = total > 0 ? (assigned / total) * 100 : 0
-    const completedPercent = total > 0 ? (completed / total) * 100 : 0
     
     // Group by crop type for crop distribution chart
     const cropStats = requests.reduce((acc, r) => {
@@ -188,11 +186,9 @@ const AdminHarvest = () => {
     return { 
       pending, 
       assigned, 
-      completed, 
       total, 
       pendingPercent, 
       assignedPercent, 
-      completedPercent,
       cropStats,
       monthlyStats
     }
@@ -304,10 +300,6 @@ const AdminHarvest = () => {
                       onChange={e => setSearch(e.target.value)} 
                     />
                   </div>
-                  <button className='btn-primary whitespace-nowrap px-4 py-2 text-sm inline-flex items-center gap-2'>
-                    <Plus className='w-4 h-4' />
-                    Add Agronomist
-                  </button>
                 </div>
               </div>
               <div className='max-h-[400px] overflow-y-auto'>
@@ -418,7 +410,7 @@ const AdminHarvest = () => {
             </Card>
 
             {/* Statistics Cards */}
-            <div className='grid grid-cols-1 md:grid-cols-4 gap-4 mb-6'>
+            <div className='grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'>
               <Card className='p-4'>
                 <div className='flex items-center justify-between'>
                   <div>
@@ -460,20 +452,6 @@ const AdminHarvest = () => {
                   </div>
                 </div>
               </Card>
-
-              <Card className='p-4'>
-                <div className='flex items-center justify-between'>
-                  <div>
-                    <p className='text-sm font-medium text-gray-600'>Completed</p>
-                    <p className='text-2xl font-bold text-green-600'>{stats.completed}</p>
-                  </div>
-                  <div className='p-3 bg-green-100 rounded-full'>
-                    <svg className='w-6 h-6 text-green-600' fill='none' stroke='currentColor' viewBox='0 0 24 24'>
-                      <path strokeLinecap='round' strokeLinejoin='round' strokeWidth={2} d='M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' />
-                    </svg>
-                  </div>
-                </div>
-              </Card>
             </div>
 
             {/* Charts Section */}
@@ -495,12 +473,6 @@ const AdminHarvest = () => {
                       className='absolute inset-0 rounded-full border-8 border-blue-500'
                       style={{
                         clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos((stats.pendingPercent / 100) * 2 * Math.PI - Math.PI/2)}% ${50 + 50 * Math.sin((stats.pendingPercent / 100) * 2 * Math.PI - Math.PI/2)}%, ${50 + 50 * Math.cos(((stats.pendingPercent + stats.assignedPercent) / 100) * 2 * Math.PI - Math.PI/2)}% ${50 + 50 * Math.sin(((stats.pendingPercent + stats.assignedPercent) / 100) * 2 * Math.PI - Math.PI/2)}%)`
-                      }}
-                    ></div>
-                    <div 
-                      className='absolute inset-0 rounded-full border-8 border-green-500'
-                      style={{
-                        clipPath: `polygon(50% 50%, ${50 + 50 * Math.cos(((stats.pendingPercent + stats.assignedPercent) / 100) * 2 * Math.PI - Math.PI/2)}% ${50 + 50 * Math.sin(((stats.pendingPercent + stats.assignedPercent) / 100) * 2 * Math.PI - Math.PI/2)}%, 50% 0%)`
                       }}
                     ></div>
                     <div className='absolute inset-0 flex items-center justify-center'>
@@ -525,13 +497,6 @@ const AdminHarvest = () => {
                       <span className='text-sm text-gray-600'>Assigned/Ongoing</span>
                     </div>
                     <span className='text-sm font-medium'>{stats.assigned} ({stats.assignedPercent.toFixed(1)}%)</span>
-                  </div>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
-                      <div className='w-3 h-3 bg-green-500 rounded-full'></div>
-                      <span className='text-sm text-gray-600'>Completed</span>
-                    </div>
-                    <span className='text-sm font-medium'>{stats.completed} ({stats.completedPercent.toFixed(1)}%)</span>
                   </div>
                 </div>
               </Card>
