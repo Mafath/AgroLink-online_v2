@@ -532,7 +532,6 @@ export const adminCreateUser = async (req, res) => {
   }
 };
 
-feat/harvest-management-modifications
 // Public endpoint to fetch agronomists (for harvest reports)
 export const getAgronomists = async (req, res) => {
   try {
@@ -548,6 +547,8 @@ export const getAgronomists = async (req, res) => {
   } catch (error) {
     console.error('Error in getAgronomists: ', error.message);
     return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};
 
 // Security endpoints
 export const changeEmail = async (req, res) => {
@@ -869,6 +870,5 @@ export const deleteAccount = async (req, res) => {
     return res.status(500).json({ 
       error: { code: 'SERVER_ERROR', message: 'Failed to delete account' } 
     });
- main
   }
 };

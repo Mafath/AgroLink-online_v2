@@ -1,9 +1,5 @@
 import express from 'express'
- feat/harvest-management-modifications
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, getAgronomists } from '../controllers/auth.controller.js'
-
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, changeEmail, verifyEmailChange, changePassword, getLoginHistory, deleteAccount } from '../controllers/auth.controller.js'
- main
+import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, getAgronomists, changeEmail, verifyEmailChange, changePassword, getLoginHistory, deleteAccount } from '../controllers/auth.controller.js'
 import { requireAuth, protectRoute, requireRole } from '../middleware/auth.middleware.js';
 
 
@@ -35,10 +31,8 @@ router.post("/admin/users", requireAuth, requireRole("ADMIN"), adminCreateUser)
 router.put("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminUpdateUser)
 router.delete("/admin/users/:id", requireAuth, requireRole("ADMIN"), adminDeleteUser)
 
- feat/harvest-management-modifications
 // Public endpoint to fetch agronomists (for harvest reports)
 router.get("/agronomists", requireAuth, getAgronomists)
-
 
 // Security endpoints
 router.post("/change-email", requireAuth, changeEmail)
@@ -46,6 +40,5 @@ router.get("/verify-email-change/:token", verifyEmailChange)
 router.post("/change-password", requireAuth, changePassword)
 router.get("/login-history", requireAuth, getLoginHistory)
 router.delete("/delete-account", requireAuth, deleteAccount)
- main
 
 export default router;
