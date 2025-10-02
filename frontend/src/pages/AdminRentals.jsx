@@ -394,7 +394,7 @@ const AdminRentals = () => {
                     <option value='priceAsc'>Price: Low to High</option>
                     <option value='priceDesc'>Price: High to Low</option>
                   </select>
-                  <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
+                  <button className='bg-black text-white hover:bg-gray-900 transition-colors whitespace-nowrap px-4 py-2 rounded-full' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
                 </div>
               </div>
               <div className='h-[61vh] overflow-y-auto'>
