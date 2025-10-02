@@ -65,11 +65,7 @@ const handleInputChange = (e) => {
         setErrors(newErrors);
         return;
       }
-      if (cleanValue.length >= 2 && cleanValue[1] !== '7') {
-        newErrors.phone = 'Second digit must be 7';
-        setErrors(newErrors);
-        return;
-      }
+      
       if (!/^\d{0,10}$/.test(cleanValue)) {
         newErrors.phone = 'Only digits allowed, up to 10';
         setErrors(newErrors);
@@ -188,8 +184,8 @@ const handleInputChange = (e) => {
     const phone = formData.phone.trim();
     if (!phone) {
       newErrors.phone = 'Phone is required';
-    } else if (!/^07\d{8}$/.test(phone)) {
-      newErrors.phone = 'Phone must start with 07 and have exactly 10 digits';
+    } else if (!/^0\d{9}$/.test(phone)) {
+      newErrors.phone = 'Phone must start with 0 and have exactly 10 digits';
     }
 
     // Card details if CARD selected
@@ -490,7 +486,7 @@ const handleInputChange = (e) => {
                       className={`flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent ${
                         errors.phone ? 'border-red-500' : 'border-gray-300'
                       }`}
-                      placeholder="07X XXX XXXX"
+                      placeholder="0XX XXX XXXX"
                       maxLength="10"
                       required
                     />

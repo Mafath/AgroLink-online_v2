@@ -290,6 +290,37 @@ const AdminOrders = () => {
         pdf.text('AgroLink', 15, 25);
       }
       
+      // Company name with gradient effect (left to right like navbar)
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Create gradient effect by interpolating colors from left to right
+      const startColor = { r: 0, g: 128, b: 111 }; // #00806F (darker teal)
+      const endColor = { r: 139, g: 195, b: 75 }; // #8BC34B (lighter yellow-green)
+      const text = 'AgroLink';
+      const startX = 35;
+      
+      // Custom letter positions for better spacing
+      const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5]; // A-g-r-o-L-i-n-k
+      
+      for (let i = 0; i < text.length; i++) {
+        const progress = i / (text.length - 1); // 0 to 1
+        
+        // Interpolate colors
+        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        
+        pdf.setTextColor(r, g, b);
+        pdf.text(text[i], startX + letterPositions[i], 23); // Adjusted for space below top bar
+      }
+      
+      // Tagline
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Agricultural Technology Solutions', 35, 27); 
+
       // Company information
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
