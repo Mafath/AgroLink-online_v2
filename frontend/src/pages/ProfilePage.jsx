@@ -18,6 +18,7 @@ const ProfilePage = () => {
   const [bio, setBio] = useState('')
   const [touched, setTouched] = useState({ fullName: false, phone: false, address: false, bio: false })
   const [errors, setErrors] = useState({ fullName: '', phone: '', address: '', bio: '' })
+  const [phoneInputWarning, setPhoneInputWarning] = useState('')
   const [activeTab, setActiveTab] = useState('overview') // 'overview' | 'activity' | 'security'
   const [isEditing, setIsEditing] = useState(false)
   const [activities, setActivities] = useState([])
@@ -215,9 +216,16 @@ const ProfilePage = () => {
 
   const validatePhone = (value) => {
     const v = value.trim()
-    if (!v) return '' // optional
-    const phoneRegex = /^0\d{9}$/ // Exactly 10 digits, starting with 0
-    if (!phoneRegex.test(v)) return 'Phone must start with 0 and be exactly 10 digits'
+    if (!v) return '' // optional field
+    
+    // Remove any non-digit characters for validation
+    const digitsOnly = v.replace(/\D/g, '')
+    
+    if (digitsOnly.length === 0) return 'Phone number is required'
+    if (digitsOnly.length < 10) return 'Phone number must be at least 10 digits'
+    if (digitsOnly.length > 10) return 'Phone number must be exactly 10 digits'
+    if (!digitsOnly.startsWith('0')) return 'Phone number must start with 0'
+    
     return ''
   }
 
@@ -277,6 +285,7 @@ const ProfilePage = () => {
                 setPhone(me.phone || '')
                 setAddress(me.address || '')
                 setProfilePic('')
+                setPhoneInputWarning('')
               } else {
                 setIsEditing(true)
               }
@@ -402,14 +411,38 @@ const ProfilePage = () => {
                 <div>
                   <label className='block text-sm font-medium text-gray-700 mb-2'>Phone Number</label>
                   <input
-                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                      touched.phone && errors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                     value={phone}
                     onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10)
-                      setPhone(val)
-                      if (touched.phone) setErrors((er) => ({ ...er, phone: validatePhone(val) }))
+                      const originalValue = e.target.value
+                      
+                      // Check if user tried to enter non-numeric characters
+                      if (/[^0-9]/.test(originalValue)) {
+                        setPhoneInputWarning('Only numbers are allowed')
+                        return // Don't process further if non-numeric characters were entered
+                      }
+                      
+                      // Filter to only digits and limit to 10 characters
+                      const digitsOnly = originalValue.replace(/\D/g, '').slice(0, 10)
+                      
+                      // Check if user tried to start with a digit other than 0
+                      if (digitsOnly.length > 0 && !digitsOnly.startsWith('0')) {
+                        setPhoneInputWarning('Phone number must start with 0')
+                        // Don't update the phone state if it doesn't start with 0
+                        return
+                      }
+                      
+                      // Clear warning if input is valid (only digits and starts with 0 or is empty)
+                      setPhoneInputWarning('')
+                      setPhone(digitsOnly)
+                      // Don't show validation errors while typing, only on blur
                     }}
-                    onBlur={() => { setTouched((t) => ({ ...t, phone: true })); setErrors((er) => ({ ...er, phone: validatePhone(phone) })) }}
+                    onBlur={() => { 
+                      setTouched((t) => ({ ...t, phone: true }))
+                      setErrors((er) => ({ ...er, phone: validatePhone(phone) }))
+                    }}
                     placeholder='0712345678'
                     inputMode='numeric'
                     pattern='^0\d{9}$'
@@ -418,6 +451,12 @@ const ProfilePage = () => {
                   />
                   {touched.phone && errors.phone && (
                     <p className='mt-1 text-sm text-red-600'>{errors.phone}</p>
+                  )}
+                  {phoneInputWarning && (
+                    <p className='mt-1 text-sm text-red-600'>{phoneInputWarning}</p>
+                  )}
+                  {!errors.phone && !phoneInputWarning && phone && (
+                    <p className='mt-1 text-xs text-gray-500'>Format: 0xxxxxxxxx (10 digits starting with 0)</p>
                   )}
                 </div>
 
@@ -498,7 +537,7 @@ const ProfilePage = () => {
                   <button
                     type='button'
                     className='px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors'
-                    onClick={() => { 
+                    onClick={() => {
                       setFullName(me.fullName || ''); 
                       setPhone(me.phone || ''); 
                       setAddress(me.address || ''); 
@@ -507,6 +546,7 @@ const ProfilePage = () => {
                       setIsEditing(false);
                       setTouched({ fullName: false, phone: false, address: false, bio: false });
                       setErrors({ fullName: '', phone: '', address: '', bio: '' });
+                      setPhoneInputWarning('');
                     }}
                   >
                     Cancel
@@ -651,20 +691,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
       path: '/security/password'
     },
     {
-      id: 'history',
-      title: 'Login History',
-      description: 'View recent login attempts and active sessions',
-      icon: Clock,
-      color: 'purple',
-      gradient: 'from-purple-50 to-violet-50',
-      borderColor: 'border-purple-100',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
-      buttonGradient: 'from-purple-600 to-violet-600',
-      buttonHover: 'hover:from-purple-700 hover:to-violet-700',
-      path: '/security/history'
-    },
-    {
       id: 'deletion',
       title: 'Account Deletion',
       description: 'Permanently delete your account and all data',
@@ -745,10 +771,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
               <li className='flex items-center gap-2'>
                 <CheckCircle className='w-4 h-4 text-green-500' />
                 Keep your email address up to date for security notifications
-              </li>
-              <li className='flex items-center gap-2'>
-                <CheckCircle className='w-4 h-4 text-green-500' />
-                Regularly review your login history for suspicious activity
               </li>
               <li className='flex items-center gap-2'>
                 <CheckCircle className='w-4 h-4 text-green-500' />
@@ -857,7 +879,7 @@ const StatsSection = ({ me }) => {
   const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const loadStats = async () => {
-    setLoading(true)
+    setLoading(true)  
     try {
       // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
       const ordersRes = await axiosInstance.get('/orders/me')
@@ -879,6 +901,7 @@ const StatsSection = ({ me }) => {
       if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
     }
 
+
     try {
       if (me.role === 'FARMER') {
         const [listingsRes, farmerStats] = await Promise.all([
@@ -886,7 +909,11 @@ const StatsSection = ({ me }) => {
           axiosInstance.get('/orders/stats/farmer')
         ])
         console.log('Farmer stats response:', farmerStats.data)
-        setListingsCount(Array.isArray(listingsRes.data) ? listingsRes.data.length : 0)
+        // Count only listings with "AVAILABLE" status
+        const availableListings = Array.isArray(listingsRes.data) 
+          ? listingsRes.data.filter(listing => listing.status === 'AVAILABLE')
+          : []
+        setListingsCount(availableListings.length)
         setFarmerMonthRevenue(farmerStats.data?.monthRevenue ?? 0)
         setFarmerLastMonthDelivered(farmerStats.data?.lastMonthDeliveredOrders ?? 0)
         setFarmerTotalSales(farmerStats.data?.totalSalesCount ?? 0)
@@ -942,6 +969,11 @@ const StatsSection = ({ me }) => {
         </div>
       </div>
     )
+  }
+
+  // Don't show stats cards for ADMIN, DRIVER, and AGRONOMIST roles
+  if (me.role === 'ADMIN' || me.role === 'DRIVER' || me.role === 'AGRONOMIST') {
+    return null
   }
 
   return (

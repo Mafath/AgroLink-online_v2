@@ -63,9 +63,16 @@ const PasswordChangePage = () => {
   }
 
   const validateAll = (data) => {
+    let newPasswordError = validatePasswordStrength(data.newPassword)
+    
+    // Check if new password is same as current password
+    if (!newPasswordError && data.newPassword && data.currentPassword && data.newPassword === data.currentPassword) {
+      newPasswordError = "New password must be different from current password"
+    }
+    
     return {
       currentPassword: data.currentPassword ? "" : "Current password is required",
-      newPassword: validatePasswordStrength(data.newPassword),
+      newPassword: newPasswordError,
       confirmPassword: data.confirmPassword !== data.newPassword ? "Passwords do not match" : ""
     }
   }
@@ -102,7 +109,7 @@ const PasswordChangePage = () => {
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to change password'
       setErrors({ general: message })
-      toast.error(message)
+      // Removed toast.error to show only inline error
     } finally {
       setLoading(false)
     }
@@ -120,7 +127,12 @@ const PasswordChangePage = () => {
   const handleBlur = (field) => (e) => {
     setTouched((t) => ({ ...t, [field]: true }))
     if (field === "newPassword") {
-      setErrors((er) => ({ ...er, newPassword: validatePasswordStrength(e.target.value) }))
+      let newPasswordError = validatePasswordStrength(e.target.value)
+      // Check if new password is same as current password
+      if (!newPasswordError && e.target.value && formData.currentPassword && e.target.value === formData.currentPassword) {
+        newPasswordError = "New password must be different from current password"
+      }
+      setErrors((er) => ({ ...er, newPassword: newPasswordError }))
     } else if (field === "confirmPassword") {
       setErrors((er) => ({ ...er, confirmPassword: e.target.value !== formData.newPassword ? "Passwords do not match" : "" }))
     } else if (field === "currentPassword") {

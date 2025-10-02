@@ -1,5 +1,5 @@
 import express from 'express'
-import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, getAgronomists, changeEmail, verifyEmailChange, changePassword, getLoginHistory, deleteAccount } from '../controllers/auth.controller.js'
+import { signup, signin, login, logout, updateProfile, getCurrentUser, checkAuth, getAdminStats, adminListUsers, adminUpdateUser, adminDeleteUser, adminCreateUser, getAgronomists, changeEmail, verifyEmailChange, changePassword, deleteAccount } from '../controllers/auth.controller.js'
 import { requireAuth, protectRoute, requireRole } from '../middleware/auth.middleware.js';
 
 
@@ -38,7 +38,6 @@ router.get("/agronomists", requireAuth, getAgronomists)
 router.post("/change-email", requireAuth, changeEmail)
 router.get("/verify-email-change/:token", verifyEmailChange)
 router.post("/change-password", requireAuth, changePassword)
-router.get("/login-history", requireAuth, getLoginHistory)
 router.delete("/delete-account", requireAuth, deleteAccount)
 
 export default router;
