@@ -26,6 +26,7 @@ const SignUpPage = () => {
     email: "",
     password: "",
   });
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState("");
 
   const { signup, isSigningUp } = useAuthStore();
   const navigate = useNavigate();
@@ -33,7 +34,7 @@ const SignUpPage = () => {
   const validateFullName = (name) => {
     const trimmed = name.trim();
     if (!trimmed) return "Full name is required";
-    if (trimmed.length < 2) return "Full name must be at least 2 characters";
+    if (trimmed.length < 3) return "Full name must be at least 3 characters";
     if (!/^[A-Za-z ]+$/.test(trimmed)) return "Use letters and spaces only";
     return "";
   };
@@ -190,11 +191,18 @@ const SignUpPage = () => {
                   type="text"
                   value={formData.fullName}
                   onChange={(e) => {
-                    const value = e.target.value;
-                    setFormData({ ...formData, fullName: value });
-                    if (touched.fullName) {
-                      setErrors((er) => ({ ...er, fullName: validateFullName(value) }));
+                    const originalValue = e.target.value;
+                    const filteredValue = originalValue.replace(/[^A-Za-z ]/g, '');
+                    
+                    // Show warning if invalid characters were attempted
+                    if (originalValue !== filteredValue) {
+                      setInvalidCharacterWarning("Only letters are allowed");
+                      setTimeout(() => setInvalidCharacterWarning(""), 2000);
                     }
+                    
+                    // Update form data with filtered value only
+                    setFormData({ ...formData, fullName: filteredValue });
+                    // Don't show validation errors while typing, only on blur
                   }}
                   onBlur={handleBlur("fullName")}
                   className={`input-field`}
@@ -202,6 +210,11 @@ const SignUpPage = () => {
                 />
               </div>
               {touched.fullName && errors.fullName && errorText(errors.fullName)}
+              {invalidCharacterWarning && (
+                <p className="mt-1 text-xs text-red-600">
+                  {invalidCharacterWarning}
+                </p>
+              )}
             </div>
 
             {/* Email Field */}
