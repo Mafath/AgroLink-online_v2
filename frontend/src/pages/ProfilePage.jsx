@@ -895,9 +895,10 @@ const StatsSection = ({ me }) => {
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
   const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
   const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
+  const [secondLastLogin, setSecondLastLogin] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const loadStats = async () => {
-    setLoading(true)
+    setLoading(true)  
     try {
       // Orders count (for both FARMER/BUYER we use their customer orders endpoint)
       const ordersRes = await axiosInstance.get('/orders/me')
@@ -917,6 +918,22 @@ const StatsSection = ({ me }) => {
     } catch {
       setOrdersCount(0)
       if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
+    }
+
+    // Fetch second last login for non-FARMER roles
+    if (me.role !== 'FARMER') {
+      try {
+        const loginHistoryRes = await axiosInstance.get('/auth/login-history?limit=2')
+        if (Array.isArray(loginHistoryRes.data) && loginHistoryRes.data.length >= 2) {
+          // Get the second item (index 1) which is the second last login
+          const secondLast = loginHistoryRes.data[1]
+          setSecondLastLogin(secondLast.timestamp)
+        } else {
+          setSecondLastLogin(null)
+        }
+      } catch {
+        setSecondLastLogin(null)
+      }
     }
 
     try {
@@ -988,6 +1005,11 @@ const StatsSection = ({ me }) => {
     )
   }
 
+  // Don't show stats cards for ADMIN, DRIVER, and AGRONOMIST roles
+  if (me.role === 'ADMIN' || me.role === 'DRIVER' || me.role === 'AGRONOMIST') {
+    return null
+  }
+
   return (
     <div className='mt-6 grid grid-cols-1 sm:grid-cols-3 gap-4'>
       <div className='card text-center'>
@@ -995,8 +1017,8 @@ const StatsSection = ({ me }) => {
         <div className='text-2xl font-semibold'>{ordersCount == null ? '—' : ordersCount}</div>
       </div>
       <div className='card text-center'>
-        <div className='text-xs text-gray-500'>Last Login</div>
-        <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
+        <div className='text-xs text-gray-500'>Previous Login</div>
+        <div className='text-2xl font-semibold'>{secondLastLogin ? new Date(secondLastLogin).toLocaleDateString() : '—'}</div>
       </div>
       <div className='card text-center'>
         <div className='text-xs text-gray-500'>Total Spent (Last 30 Days)</div>
