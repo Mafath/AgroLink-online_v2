@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
 import jsPDF from 'jspdf'
@@ -88,6 +88,7 @@ const AdminUsers = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [viewingUser, setViewingUser] = useState(null)
   const [statsItems, setStatsItems] = useState([])
 
   const fetchUsers = async () => {
@@ -535,7 +536,7 @@ const AdminUsers = () => {
                       <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{capitalizeFirst(u.status)}</span>
                       </td>
                     <td className='py-3 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
-                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
+                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setViewingUser(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
                         </button>
@@ -692,13 +693,13 @@ const AdminUsers = () => {
                   {selected.phone && <div className='text-sm'>Phone: {selected.phone}</div>}
                   <div className='text-sm text-gray-500'>Member since {new Date(selected.createdAt).toLocaleDateString()}</div>
                 </div>
-                {/* Right: actions */}
+                {/* Right: view only info */}
                 <div className='space-y-3'>
                   <div>
-                    <label className='text-xs text-gray-500'>Change Role</label>
-                    <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchUsers(); setSelected(s => ({ ...s, role })); }}>
-                      {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    <label className='text-xs text-gray-500'>User Role</label>
+                    <div className='input-field mt-1 bg-gray-50 text-gray-700 cursor-not-allowed'>
+                      {selected.role}
+                    </div>
                   </div>
               <div className='grid grid-cols-2 gap-2 mt-4'>
                     {selected.status === 'ACTIVE' ? (
@@ -760,6 +761,134 @@ const AdminUsers = () => {
               </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* User Info Modal (View Only) */}
+      {viewingUser && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-lg w-full max-w-2xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h2 className='text-xl font-semibold text-gray-900'>User Information</h2>
+              <button onClick={() => setViewingUser(null)} className='text-gray-500 hover:text-gray-700'>
+                <XCircle className='w-5 h-5' />
+              </button>
+            </div>
+            
+            <div className='space-y-6'>
+              {/* Profile Section */}
+              <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg'>
+                <img
+                  src={viewingUser.profilePic || DefaultAvatar}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
+                  className='w-16 h-16 rounded-full object-cover border-2 border-gray-200'
+                  alt='User Avatar'
+                />
+                <div>
+                  <h3 className='text-lg font-medium text-gray-900'>{viewingUser.fullName || 'No name provided'}</h3>
+                  <p className='text-sm text-gray-600'>{viewingUser.role}</p>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                    viewingUser.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {viewingUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Details */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>{viewingUser.email}</p>
+                  </div>
+                  
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Phone Number</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.phone || 'Not provided'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.address || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Account Created</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {new Date(viewingUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Last Login</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.lastLogin 
+                        ? new Date(viewingUser.lastLogin).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'Never logged in'
+                      }
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Verified</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      viewingUser.isEmailVerified 
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-red-700 bg-red-50'
+                    }`}>
+                      {viewingUser.isEmailVerified ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio Section (if available) */}
+              {viewingUser.bio && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Bio</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className='flex justify-end gap-3 pt-4 border-t'>
+                <button 
+                  onClick={() => setViewingUser(null)}
+                  className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors'
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelected(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+                >
+                  Edit User
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
