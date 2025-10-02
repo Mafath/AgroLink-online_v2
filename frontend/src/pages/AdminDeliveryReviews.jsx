@@ -320,6 +320,9 @@ const AdminDeliveryReviews = () => {
                           <div className="text-xs text-gray-500">
                             {review.delivery?.status}
                           </div>
+                          <div className="text-xs text-gray-600 mt-1">
+                            Driver: {review.delivery?.driver?.fullName || 'Not Assigned'}
+                          </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">

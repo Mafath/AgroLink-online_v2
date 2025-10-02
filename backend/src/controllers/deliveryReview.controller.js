@@ -149,11 +149,17 @@ export const getAllDeliveryReviews = async (req, res) => {
     const reviews = await DeliveryReview.find(filter)
       .populate({
         path: 'delivery',
-        select: 'order requester status',
-        populate: {
-          path: 'order',
-          select: 'orderNumber total status'
-        }
+        select: 'order requester status driver',
+        populate: [
+          {
+            path: 'order',
+            select: 'orderNumber total status'
+          },
+          {
+            path: 'driver',
+            select: 'fullName email phone'
+          }
+        ]
       })
       .populate('reviewer', 'fullName email role')
       .populate('adminReply.repliedBy', 'fullName email')
