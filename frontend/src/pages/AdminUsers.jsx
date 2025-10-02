@@ -508,7 +508,7 @@ const AdminUsers = () => {
                     setShowPassword(false)
                     setIsCreatingAdmin(false)
                   }}
-                  className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-black transition-colors whitespace-nowrap'
+                  className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-full hover:bg-black transition-colors whitespace-nowrap'
                   title='Add Admin'
                 >
                   Add Admin +
