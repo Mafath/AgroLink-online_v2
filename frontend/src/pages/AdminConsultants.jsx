@@ -86,6 +86,7 @@ const AdminConsultants = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', expertise: '' })
   const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, expertise: false })
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState('')
 
   // Validation functions
   const validateFullName = (name) => {
@@ -155,6 +156,12 @@ const AdminConsultants = () => {
   }
 
   const handleFormFieldBlur = (field) => {
+    // Handle email field - convert to lowercase when leaving the field
+    if (field === 'email') {
+      const lowercaseEmail = createForm.email.toLowerCase();
+      setCreateForm(prev => ({ ...prev, email: lowercaseEmail }));
+    }
+    
     setFormTouched(prev => ({ ...prev, [field]: true }))
   }
 
@@ -163,6 +170,7 @@ const AdminConsultants = () => {
     setFormErrors({ fullName: '', email: '', password: '', expertise: '' })
     setFormTouched({ fullName: false, email: false, password: false, expertise: false })
     setShowPassword(false)
+    setInvalidCharacterWarning('')
   }
 
   const downloadAgronomistsPDF = async () => {
@@ -712,9 +720,12 @@ const AdminConsultants = () => {
                   value={createForm.fullName} 
                   onChange={e => handleFormFieldChange('fullName', e.target.value)}
                   onBlur={() => handleFormFieldBlur('fullName')}
-                  placeholder='John Doe' 
+                  placeholder='Agronomist Name' 
                 />
-                {formTouched.fullName && formErrors.fullName && (
+                {invalidCharacterWarning && (
+                  <p className='text-xs text-red-600 mt-1'>{invalidCharacterWarning}</p>
+                )}
+                {formTouched.fullName && formErrors.fullName && !invalidCharacterWarning && (
                   <p className='mt-1 text-xs text-red-600'>{formErrors.fullName}</p>
                 )}
               </div>

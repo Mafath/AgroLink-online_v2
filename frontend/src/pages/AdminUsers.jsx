@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle, Eye, EyeOff, Loader2, CheckCircle2, Circle } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
 import jsPDF from 'jspdf'
@@ -94,6 +94,7 @@ const AdminUsers = () => {
   const [touched, setTouched] = useState({})
   const [showPassword, setShowPassword] = useState(false)
   const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState('')
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -141,6 +142,21 @@ const AdminUsers = () => {
     
     return "";
   };
+
+  const passwordCriteria = useMemo(() => {
+    const pwd = (selected?.password || "");
+    return {
+      length: pwd.length >= 8,
+      upper: /[A-Z]/.test(pwd),
+      lower: /[a-z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      symbol: /[^A-Za-z0-9]/.test(pwd),
+    };
+  }, [selected?.password]);
+
+  const allPasswordCriteriaMet = useMemo(() => {
+    return passwordCriteria.length && passwordCriteria.upper && passwordCriteria.lower && passwordCriteria.number && passwordCriteria.symbol;
+  }, [passwordCriteria]);
 
   useEffect(() => { fetchUsers() }, [query.role, query.status])
 
@@ -507,6 +523,7 @@ const AdminUsers = () => {
                     setTouched({})
                     setShowPassword(false)
                     setIsCreatingAdmin(false)
+                    setInvalidCharacterWarning('')
                   }}
                   className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-full hover:bg-black transition-colors whitespace-nowrap'
                   title='Add Admin'
@@ -764,15 +781,27 @@ const AdminUsers = () => {
                       placeholder='Admin name' 
                       value={selected.fullName} 
                       onChange={e => {
-                        const value = e.target.value.replace(/[^A-Za-z ]/g, '');
-                        setSelected(s => ({ ...s, fullName: value }));
+                        const originalValue = e.target.value;
+                        const filteredValue = originalValue.replace(/[^A-Za-z ]/g, '');
+                        
+                        // Check if invalid characters were removed
+                        if (originalValue !== filteredValue) {
+                          setInvalidCharacterWarning('Only letters and spaces are allowed');
+                        } else {
+                          setInvalidCharacterWarning('');
+                        }
+                        
+                        setSelected(s => ({ ...s, fullName: filteredValue }));
                       }}
                       onBlur={() => {
                         setTouched(prev => ({ ...prev, fullName: true }));
                         setFormErrors(prev => ({ ...prev, fullName: validateFullName(selected.fullName) }));
                       }}
                     />
-                    {touched.fullName && formErrors.fullName && (
+                    {invalidCharacterWarning && (
+                      <p className='text-xs text-red-600 mt-1'>{invalidCharacterWarning}</p>
+                    )}
+                    {touched.fullName && formErrors.fullName && !invalidCharacterWarning && (
                       <p className='text-xs text-red-600 mt-1'>{formErrors.fullName}</p>
                     )}
                   </div>
@@ -785,8 +814,12 @@ const AdminUsers = () => {
                       value={selected.email} 
                       onChange={e => setSelected(s => ({ ...s, email: e.target.value }))}
                       onBlur={() => {
+                        // Convert email to lowercase when leaving the field
+                        const lowercaseEmail = selected.email.toLowerCase();
+                        setSelected(s => ({ ...s, email: lowercaseEmail }));
+                        
                         setTouched(prev => ({ ...prev, email: true }));
-                        setFormErrors(prev => ({ ...prev, email: validateEmail(selected.email) }));
+                        setFormErrors(prev => ({ ...prev, email: validateEmail(lowercaseEmail) }));
                       }}
                     />
                     {touched.email && formErrors.email && (
@@ -817,6 +850,35 @@ const AdminUsers = () => {
                     </div>
                     {touched.password && formErrors.password && (
                       <p className='text-xs text-red-600 mt-1'>{formErrors.password}</p>
+                    )}
+                    {/* Password Requirements Checklist */}
+                    {selected?.password && (
+                      <div className="mt-2 space-y-1">
+                        {[{
+                          key: 'length',
+                          label: 'At least 8 characters'
+                        }, {
+                          key: 'upper',
+                          label: 'At least one uppercase letter (A-Z)'
+                        }, {
+                          key: 'lower',
+                          label: 'At least one lowercase letter (a-z)'
+                        }, {
+                          key: 'number',
+                          label: 'At least one number (0-9)'
+                        }, {
+                          key: 'symbol',
+                          label: 'At least one symbol (!@#$% etc.)'
+                        }].map((item) => {
+                          const ok = passwordCriteria[item.key];
+                          return (
+                            <div key={item.key} className={`flex items-center text-xs ${ok ? 'text-green-600' : 'text-gray-500'}`}>
+                              {ok ? <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> : <Circle className="w-3.5 h-3.5 mr-2" />}
+                              <span>{item.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
