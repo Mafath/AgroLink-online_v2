@@ -50,7 +50,18 @@ const SignUpPage = () => {
 
   const validatePassword = (password) => {
     if (!password) return "Password is required";
-    if (password.length < 8) return "Password must be at least 8 characters";
+    if (password.length < 8) return "Password is weak";
+    
+    const pwd = password;
+    const hasUpper = /[A-Z]/.test(pwd);
+    const hasLower = /[a-z]/.test(pwd);
+    const hasNumber = /[0-9]/.test(pwd);
+    const hasSymbol = /[^A-Za-z0-9]/.test(pwd);
+    
+    if (!hasUpper || !hasLower || !hasNumber || !hasSymbol) {
+      return "Password is weak";
+    }
+    
     return "";
   };
 
@@ -255,9 +266,7 @@ const SignUpPage = () => {
                   onChange={(e) => {
                     const value = e.target.value;
                     setFormData({ ...formData, password: value });
-                    if (touched.password) {
-                      setErrors((er) => ({ ...er, password: validatePassword(value) }));
-                    }
+                    // Don't show validation errors while typing, only on blur
                   }}
                   onBlur={handleBlur("password")}
                   className={`input-field pr-10`}
