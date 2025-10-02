@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff, FileDown } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff, FileDown, XCircle } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import toast from 'react-hot-toast'
 import AdminSidebar from '../components/AdminSidebar'
@@ -80,11 +80,13 @@ const AdminDrivers = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [viewingUser, setViewingUser] = useState(null)
   const [creating, setCreating] = useState(false)
   const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', service_area: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', service_area: '' })
   const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, service_area: false })
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState('')
 
   // Validation functions
   const validateFullName = (name) => {
@@ -131,22 +133,41 @@ const AdminDrivers = () => {
   }
 
   const handleFormFieldChange = (field, value) => {
-    setCreateForm(prev => ({ ...prev, [field]: value }))
+    let processedValue = value;
+    
+    // Handle fullName field - filter out non-letter characters and spaces
+    if (field === 'fullName') {
+      const filteredValue = value.replace(/[^A-Za-z ]/g, '');
+      
+      // Check if invalid characters were removed
+      if (value !== filteredValue) {
+        setInvalidCharacterWarning('Only letters and spaces are allowed');
+      } else {
+        setInvalidCharacterWarning('');
+      }
+      
+      processedValue = filteredValue;
+    } else {
+      // Clear warning when not editing fullName
+      setInvalidCharacterWarning('');
+    }
+    
+    setCreateForm(prev => ({ ...prev, [field]: processedValue }))
     
     // Validate the field immediately
     let error = ''
     switch (field) {
       case 'fullName':
-        error = validateFullName(value)
+        error = validateFullName(processedValue)
         break
       case 'email':
-        error = validateEmail(value)
+        error = validateEmail(processedValue)
         break
       case 'password':
-        error = validatePassword(value)
+        error = validatePassword(processedValue)
         break
       case 'service_area':
-        error = validateServiceArea(value)
+        error = validateServiceArea(processedValue)
         break
     }
     
@@ -154,6 +175,12 @@ const AdminDrivers = () => {
   }
 
   const handleFormFieldBlur = (field) => {
+    // Handle email field - convert to lowercase when leaving the field
+    if (field === 'email') {
+      const lowercaseEmail = createForm.email.toLowerCase();
+      setCreateForm(prev => ({ ...prev, email: lowercaseEmail }));
+    }
+    
     setFormTouched(prev => ({ ...prev, [field]: true }))
   }
 
@@ -162,6 +189,7 @@ const AdminDrivers = () => {
     setFormErrors({ fullName: '', email: '', password: '', service_area: '' })
     setFormTouched({ fullName: false, email: false, password: false, service_area: false })
     setShowPassword(false)
+    setInvalidCharacterWarning('')
   }
 
   const fetchDrivers = async () => {
@@ -555,11 +583,11 @@ const AdminDrivers = () => {
                   <option value='UNAVAILABLE'>Unavailable</option>
                 </select>
                 <button
-                  className='btn-primary h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 hover:opacity-95 active:opacity-90 focus:ring-2 focus:ring-green-300 whitespace-nowrap'
+                  className='bg-black text-white hover:bg-gray-900 transition-colors h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap'
                   onClick={() => setCreating(true)}
                 >
-                  <Plus className='w-3.5 h-3.5' />
                   Add Driver
+                  <Plus className='w-3.5 h-3.5' />
                 </button>
               </div>
             </div>
@@ -611,7 +639,7 @@ const AdminDrivers = () => {
                       </td>
                     <td className='py-3 px-3 text-center align-middle'>
                         <div className='flex items-center justify-center gap-2'>
-                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
+                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setViewingUser(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
                         </button>
@@ -710,9 +738,12 @@ const AdminDrivers = () => {
                   value={createForm.fullName} 
                   onChange={e => handleFormFieldChange('fullName', e.target.value)}
                   onBlur={() => handleFormFieldBlur('fullName')}
-                  placeholder='John Doe' 
+                  placeholder='Driver Name' 
                 />
-                {formTouched.fullName && formErrors.fullName && (
+                {invalidCharacterWarning && (
+                  <p className='text-xs text-red-600 mt-1'>{invalidCharacterWarning}</p>
+                )}
+                {formTouched.fullName && formErrors.fullName && !invalidCharacterWarning && (
                   <p className='mt-1 text-xs text-red-600'>{formErrors.fullName}</p>
                 )}
               </div>
@@ -835,12 +866,147 @@ const AdminDrivers = () => {
         </div>
       )}
 
-      {/* Details modal */}
+      {/* View Driver Info modal (Read-only) */}
+      {viewingUser && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-lg w-full max-w-2xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h2 className='text-xl font-semibold text-gray-900'>Driver Information</h2>
+              <button onClick={() => setViewingUser(null)} className='text-gray-500 hover:text-gray-700'>
+                <XCircle className='w-5 h-5' />
+              </button>
+            </div>
+            
+            <div className='space-y-6'>
+              {/* Profile Section */}
+              <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg'>
+                <img
+                  src={viewingUser.profilePic || DefaultAvatar}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
+                  className='w-16 h-16 rounded-full object-cover border-2 border-gray-200'
+                  alt='User Avatar'
+                />
+                <div>
+                  <h3 className='text-lg font-medium text-gray-900'>{viewingUser.fullName || 'No name provided'}</h3>
+                  <p className='text-sm text-gray-600'>{viewingUser.role}</p>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                    viewingUser.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {viewingUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Details */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>{viewingUser.email}</p>
+                  </div>
+                  
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Phone Number</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.phone || 'Not provided'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Service Area</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.service_area || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Account Created</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {new Date(viewingUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Availability</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      String(viewingUser.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-gray-700 bg-gray-50'
+                    }`}>
+                      {(viewingUser.availability||'AVAILABLE').charAt(0) + String(viewingUser.availability||'AVAILABLE').slice(1).toLowerCase()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Verified</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      viewingUser.isEmailVerified 
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-red-700 bg-red-50'
+                    }`}>
+                      {viewingUser.isEmailVerified ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section (if available) */}
+              {viewingUser.address && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Address</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.address}
+                  </p>
+                </div>
+              )}
+
+              {/* Expertise Section (if available) */}
+              {viewingUser.expertise && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Expertise</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.expertise}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className='flex justify-end gap-3 pt-4 border-t'>
+                <button 
+                  onClick={() => setViewingUser(null)}
+                  className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors'
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelected(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+                >
+                  Edit Driver
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Driver modal */}
       {selected && (
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-3xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Driver Details</h2>
+              <h2 className='text-lg font-semibold'>Edit Driver</h2>
               <button onClick={() => setSelected(null)} className='text-gray-500'>Close</button>
             </div>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -864,6 +1030,13 @@ const AdminDrivers = () => {
               </div>
               {/* Right: actions */}
               <div className='space-y-3'>
+                <div>
+                  <label className='text-xs text-gray-500'>Role</label>
+                  <div className='mt-1 p-2 bg-gray-50 border border-gray-200 rounded-md'>
+                    <span className='text-sm text-gray-700'>{selected.role}</span>
+                    <p className='text-xs text-gray-500 mt-1'>Role cannot be changed</p>
+                  </div>
+                </div>
                 <div>
                   <label className='text-xs text-gray-500'>Service Area</label>
                   <select

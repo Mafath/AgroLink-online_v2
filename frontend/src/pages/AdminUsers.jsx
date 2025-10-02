@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle, Eye, EyeOff, Loader2, CheckCircle2, Circle } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
 import jsPDF from 'jspdf'
@@ -88,7 +88,13 @@ const AdminUsers = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [viewingUser, setViewingUser] = useState(null)
   const [statsItems, setStatsItems] = useState([])
+  const [formErrors, setFormErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState('')
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -103,6 +109,54 @@ const AdminUsers = () => {
       setLoading(false)
     }
   }
+
+  // Validation functions (from signup page)
+  const validateFullName = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return "Full name is required";
+    if (trimmed.length < 3) return "Full name must be at least 3 characters";
+    if (!/^[A-Za-z ]+$/.test(trimmed)) return "Use letters and spaces only";
+    return "";
+  };
+
+  const validateEmail = (email) => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return "Email is required";
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(normalized)) return "Enter a valid email address";
+    return "";
+  };
+
+  const validatePassword = (password) => {
+    if (!password) return "Password is required";
+    if (password.length < 8) return "Password is weak";
+    
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[^A-Za-z0-9]/.test(password);
+    
+    if (!hasUpper || !hasLower || !hasNumber || !hasSymbol) {
+      return "Password is weak";
+    }
+    
+    return "";
+  };
+
+  const passwordCriteria = useMemo(() => {
+    const pwd = (selected?.password || "");
+    return {
+      length: pwd.length >= 8,
+      upper: /[A-Z]/.test(pwd),
+      lower: /[a-z]/.test(pwd),
+      number: /[0-9]/.test(pwd),
+      symbol: /[^A-Za-z0-9]/.test(pwd),
+    };
+  }, [selected?.password]);
+
+  const allPasswordCriteriaMet = useMemo(() => {
+    return passwordCriteria.length && passwordCriteria.upper && passwordCriteria.lower && passwordCriteria.number && passwordCriteria.symbol;
+  }, [passwordCriteria]);
 
   useEffect(() => { fetchUsers() }, [query.role, query.status])
 
@@ -463,8 +517,15 @@ const AdminUsers = () => {
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button
-                  onClick={() => setSelected({ _id: null, fullName: '', email: '', password: '', phone: '', role: 'ADMIN', status: 'ACTIVE' })}
-                  className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-black transition-colors whitespace-nowrap'
+                  onClick={() => {
+                    setSelected({ _id: null, fullName: '', email: '', password: '', role: 'ADMIN', status: 'ACTIVE' })
+                    setFormErrors({})
+                    setTouched({})
+                    setShowPassword(false)
+                    setIsCreatingAdmin(false)
+                    setInvalidCharacterWarning('')
+                  }}
+                  className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-full hover:bg-black transition-colors whitespace-nowrap'
                   title='Add Admin'
                 >
                   Add Admin +
@@ -535,7 +596,7 @@ const AdminUsers = () => {
                       <span className={`px-2 py-0.5 text-xs ${u.status === 'ACTIVE' ? 'bg-yellow-100 text-yellow-700 rounded-full' : 'bg-red-100 text-red-700 rounded-full'}`}>{capitalizeFirst(u.status)}</span>
                       </td>
                     <td className='py-3 px-3 flex items-center justify-center gap-3 mt-2 align-middle'>
-                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
+                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setViewingUser(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
                         </button>
@@ -692,13 +753,13 @@ const AdminUsers = () => {
                   {selected.phone && <div className='text-sm'>Phone: {selected.phone}</div>}
                   <div className='text-sm text-gray-500'>Member since {new Date(selected.createdAt).toLocaleDateString()}</div>
                 </div>
-                {/* Right: actions */}
+                {/* Right: view only info */}
                 <div className='space-y-3'>
                   <div>
-                    <label className='text-xs text-gray-500'>Change Role</label>
-                    <select className='input-field mt-1' value={selected.role} onChange={async (e) => { const role = e.target.value; await axiosInstance.put(`auth/admin/users/${selected._id}`, { role }); fetchUsers(); setSelected(s => ({ ...s, role })); }}>
-                      {roles.map(r => <option key={r} value={r}>{r}</option>)}
-                    </select>
+                    <label className='text-xs text-gray-500'>User Role</label>
+                    <div className='input-field mt-1 bg-gray-50 text-gray-700 cursor-not-allowed'>
+                      {selected.role}
+                    </div>
                   </div>
               <div className='grid grid-cols-2 gap-2 mt-4'>
                     {selected.status === 'ACTIVE' ? (
@@ -715,19 +776,110 @@ const AdminUsers = () => {
                 <div className='space-y-3'>
                   <div>
                     <label className='text-xs text-gray-500'>Full name</label>
-                    <input className='input-field mt-1' placeholder='Admin name' value={selected.fullName} onChange={e=>setSelected(s=>({ ...s, fullName: e.target.value }))} />
+                    <input 
+                      className='input-field mt-1' 
+                      placeholder='Admin name' 
+                      value={selected.fullName} 
+                      onChange={e => {
+                        const originalValue = e.target.value;
+                        const filteredValue = originalValue.replace(/[^A-Za-z ]/g, '');
+                        
+                        // Check if invalid characters were removed
+                        if (originalValue !== filteredValue) {
+                          setInvalidCharacterWarning('Only letters and spaces are allowed');
+                        } else {
+                          setInvalidCharacterWarning('');
+                        }
+                        
+                        setSelected(s => ({ ...s, fullName: filteredValue }));
+                      }}
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, fullName: true }));
+                        setFormErrors(prev => ({ ...prev, fullName: validateFullName(selected.fullName) }));
+                      }}
+                    />
+                    {invalidCharacterWarning && (
+                      <p className='text-xs text-red-600 mt-1'>{invalidCharacterWarning}</p>
+                    )}
+                    {touched.fullName && formErrors.fullName && !invalidCharacterWarning && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.fullName}</p>
+                    )}
                   </div>
                   <div>
                     <label className='text-xs text-gray-500'>Email</label>
-                    <input className='input-field mt-1' placeholder='email@company.com' type='email' value={selected.email} onChange={e=>setSelected(s=>({ ...s, email: e.target.value }))} />
+                    <input 
+                      className='input-field mt-1' 
+                      placeholder='email@company.com' 
+                      type='email' 
+                      value={selected.email} 
+                      onChange={e => setSelected(s => ({ ...s, email: e.target.value }))}
+                      onBlur={() => {
+                        // Convert email to lowercase when leaving the field
+                        const lowercaseEmail = selected.email.toLowerCase();
+                        setSelected(s => ({ ...s, email: lowercaseEmail }));
+                        
+                        setTouched(prev => ({ ...prev, email: true }));
+                        setFormErrors(prev => ({ ...prev, email: validateEmail(lowercaseEmail) }));
+                      }}
+                    />
+                    {touched.email && formErrors.email && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.email}</p>
+                    )}
                   </div>
                   <div>
                     <label className='text-xs text-gray-500'>Password</label>
-                    <input className='input-field mt-1' placeholder='Password' type='password' value={selected.password || ''} onChange={e=>setSelected(s=>({ ...s, password: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className='text-xs text-gray-500'>Phone (optional)</label>
-                    <input className='input-field mt-1' placeholder='+94 ...' value={selected.phone || ''} onChange={e=>setSelected(s=>({ ...s, phone: e.target.value }))} />
+                    <div className='relative'>
+                      <input 
+                        className='input-field mt-1 pr-10' 
+                        placeholder='Password' 
+                        type={showPassword ? 'text' : 'password'} 
+                        value={selected.password || ''} 
+                        onChange={e => setSelected(s => ({ ...s, password: e.target.value }))}
+                        onBlur={() => {
+                          setTouched(prev => ({ ...prev, password: true }));
+                          setFormErrors(prev => ({ ...prev, password: validatePassword(selected.password || '') }));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600'
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    {touched.password && formErrors.password && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.password}</p>
+                    )}
+                    {/* Password Requirements Checklist */}
+                    {selected?.password && (
+                      <div className="mt-2 space-y-1">
+                        {[{
+                          key: 'length',
+                          label: 'At least 8 characters'
+                        }, {
+                          key: 'upper',
+                          label: 'At least one uppercase letter (A-Z)'
+                        }, {
+                          key: 'lower',
+                          label: 'At least one lowercase letter (a-z)'
+                        }, {
+                          key: 'number',
+                          label: 'At least one number (0-9)'
+                        }, {
+                          key: 'symbol',
+                          label: 'At least one symbol (!@#$% etc.)'
+                        }].map((item) => {
+                          const ok = passwordCriteria[item.key];
+                          return (
+                            <div key={item.key} className={`flex items-center text-xs ${ok ? 'text-green-600' : 'text-gray-500'}`}>
+                              {ok ? <CheckCircle2 className="w-3.5 h-3.5 mr-2" /> : <Circle className="w-3.5 h-3.5 mr-2" />}
+                              <span>{item.label}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className='space-y-3'>
@@ -747,19 +899,210 @@ const AdminUsers = () => {
                 </div>
               </div>
               <div className='pt-4 flex justify-end'>
-                <button className='px-4 py-2 rounded-md bg-black text-white hover:bg-gray-900'
+                <button 
+                  className={`px-4 py-2 rounded-md text-white transition-all duration-200 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 ${
+                    isCreatingAdmin 
+                      ? 'bg-gray-600 scale-95' 
+                      : 'bg-black hover:bg-gray-900 hover:scale-105 active:scale-95 disabled:opacity-50'
+                  }`}
                   onClick={async ()=>{
+                    // Validate all fields
+                    const fullNameError = validateFullName(selected.fullName);
+                    const emailError = validateEmail(selected.email);
+                    const passwordError = validatePassword(selected.password || '');
+                    
+                    setFormErrors({
+                      fullName: fullNameError,
+                      email: emailError,
+                      password: passwordError
+                    });
+                    
+                    setTouched({
+                      fullName: true,
+                      email: true,
+                      password: true
+                    });
+                    
+                    // Stop if there are validation errors
+                    if (fullNameError || emailError || passwordError) {
+                      return;
+                    }
+                    
+                    setIsCreatingAdmin(true);
+                    
                     try {
-                      const payload = { fullName: selected.fullName, email: selected.email, password: selected.password, phone: selected.phone, role: 'ADMIN', status: selected.status }
+                      const payload = { 
+                        fullName: selected.fullName, 
+                        email: selected.email, 
+                        password: selected.password, 
+                        role: 'ADMIN', 
+                        status: selected.status 
+                      }
                       await axiosInstance.post('auth/admin/users', payload)
                       setSelected(null)
+                      setFormErrors({})
+                      setTouched({})
+                      setShowPassword(false)
                       fetchUsers()
-                    } catch (_) {}
+                    } catch (error) {
+                      console.error('Error creating admin:', error)
+                      console.error('Error response:', error.response?.data)
+                      console.error('Error status:', error.response?.status)
+                      alert(`Failed to create admin: ${error.response?.data?.error?.message || error.message}`)
+                    } finally {
+                      setIsCreatingAdmin(false);
+                    }
                   }}
-                >Create Admin</button>
+                  disabled={
+                    isCreatingAdmin ||
+                    !selected.fullName || 
+                    !selected.email || 
+                    !selected.password ||
+                    validateFullName(selected.fullName) ||
+                    validateEmail(selected.email) ||
+                    validatePassword(selected.password || '')
+                  }
+                >
+                  {isCreatingAdmin ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Admin'
+                  )}
+                </button>
               </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* User Info Modal (View Only) */}
+      {viewingUser && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-lg w-full max-w-2xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h2 className='text-xl font-semibold text-gray-900'>User Information</h2>
+              <button onClick={() => setViewingUser(null)} className='text-gray-500 hover:text-gray-700'>
+                <XCircle className='w-5 h-5' />
+              </button>
+            </div>
+            
+            <div className='space-y-6'>
+              {/* Profile Section */}
+              <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg'>
+                <img
+                  src={viewingUser.profilePic || DefaultAvatar}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
+                  className='w-16 h-16 rounded-full object-cover border-2 border-gray-200'
+                  alt='User Avatar'
+                />
+                <div>
+                  <h3 className='text-lg font-medium text-gray-900'>{viewingUser.fullName || 'No name provided'}</h3>
+                  <p className='text-sm text-gray-600'>{viewingUser.role}</p>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                    viewingUser.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {viewingUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Details */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>{viewingUser.email}</p>
+                  </div>
+                  
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Phone Number</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.phone || 'Not provided'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.address || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Account Created</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {new Date(viewingUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Last Login</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.lastLogin 
+                        ? new Date(viewingUser.lastLogin).toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })
+                        : 'Never logged in'
+                      }
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Verified</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      viewingUser.isEmailVerified 
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-red-700 bg-red-50'
+                    }`}>
+                      {viewingUser.isEmailVerified ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio Section (if available) */}
+              {viewingUser.bio && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Bio</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className='flex justify-end gap-3 pt-4 border-t'>
+                <button 
+                  onClick={() => setViewingUser(null)}
+                  className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors'
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelected(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+                >
+                  Edit User
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

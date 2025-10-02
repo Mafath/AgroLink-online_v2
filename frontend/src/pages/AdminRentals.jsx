@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Package, DollarSign, Download } from 'lucide-react'
+import { Info, Pencil, Trash2, Package, DollarSign, Download, FileDown } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import logoImg from '../assets/AgroLink_logo3-removebg-preview.png'
@@ -333,13 +333,9 @@ const AdminRentals = () => {
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>Rentals</h1>
           <div className='flex items-center gap-2'>
-            <button
-              onClick={downloadRentalsPDF}
-              className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-green-100 text-green-700 rounded-md hover:bg-green-200 transition-colors'
-              title='Download Rentals Report as PDF'
-            >
-              <Download className='w-4 h-4' />
-              Download PDF
+            <button onClick={downloadRentalsPDF} className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 transition-colors' title='Export PDF'>
+              <FileDown className='w-4 h-4' />
+              Export
             </button>
           </div>
         </div>
@@ -398,7 +394,7 @@ const AdminRentals = () => {
                     <option value='priceAsc'>Price: Low to High</option>
                     <option value='priceDesc'>Price: High to Low</option>
                   </select>
-                  <button className='btn-primary whitespace-nowrap' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
+                  <button className='bg-black text-white hover:bg-gray-900 transition-colors whitespace-nowrap px-4 py-2 rounded-full' onClick={() => setIsAddOpen(true)}>Add Rental Item +</button>
                 </div>
               </div>
               <div className='h-[61vh] overflow-y-auto'>

@@ -694,7 +694,7 @@ const AdminInventory = () => {
                     <option value='lowFirst'>Low stock</option>
                     <option value='outFirst'>Out of stock</option>
                   </select>
-                  <button className='btn-primary whitespace-nowrap px-3 py-2 text-sm' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
+                  <button className='bg-black text-white hover:bg-gray-900 transition-colors whitespace-nowrap px-3 py-2 text-sm rounded-md' onClick={()=>{ setIsAddInventory(true); setIsAddOpen(true) }}>Add Inventory Item +</button>
                 </div>
               </div>
               <div className='h-[61vh] overflow-y-auto'>

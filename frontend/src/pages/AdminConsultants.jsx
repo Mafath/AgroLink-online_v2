@@ -1,10 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, Plus, Eye, EyeOff, FileDown, XCircle } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import toast from 'react-hot-toast'
 import AdminSidebar from '../components/AdminSidebar'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png'
 
 const roles = ['Admin', 'Farmer', 'Buyer', 'Driver', 'Agronomist']
 const statuses = ['Active', 'Suspended']
@@ -77,11 +80,13 @@ const AdminConsultants = () => {
   const [resp, setResp] = useState({ data: [] })
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [viewingUser, setViewingUser] = useState(null)
   const [creating, setCreating] = useState(false)
   const [createForm, setCreateForm] = useState({ fullName: '', email: '', password: '', expertise: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [formErrors, setFormErrors] = useState({ fullName: '', email: '', password: '', expertise: '' })
   const [formTouched, setFormTouched] = useState({ fullName: false, email: false, password: false, expertise: false })
+  const [invalidCharacterWarning, setInvalidCharacterWarning] = useState('')
 
   // Validation functions
   const validateFullName = (name) => {
@@ -151,6 +156,12 @@ const AdminConsultants = () => {
   }
 
   const handleFormFieldBlur = (field) => {
+    // Handle email field - convert to lowercase when leaving the field
+    if (field === 'email') {
+      const lowercaseEmail = createForm.email.toLowerCase();
+      setCreateForm(prev => ({ ...prev, email: lowercaseEmail }));
+    }
+    
     setFormTouched(prev => ({ ...prev, [field]: true }))
   }
 
@@ -159,7 +170,225 @@ const AdminConsultants = () => {
     setFormErrors({ fullName: '', email: '', password: '', expertise: '' })
     setFormTouched({ fullName: false, email: false, password: false, expertise: false })
     setShowPassword(false)
+    setInvalidCharacterWarning('')
   }
+
+  const downloadAgronomistsPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Top green and black bar (3/4 green, 1/4 black)
+      pdf.setFillColor(13, 126, 121); // Primary green (#0d7e79)
+      pdf.rect(0, 0, 157.5, 8, 'F'); // 3/4 of 210mm = 157.5mm
+      
+      pdf.setFillColor(0, 0, 0); // Black
+      pdf.rect(157.5, 0, 52.5, 8, 'F'); // 1/4 of 210mm = 52.5mm
+      
+      // Add space below top bar
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 5, 'F'); // 5mm white space
+      
+      // Main content area (white background)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 13, 210, 25, 'F');
+      
+      // Add the actual AgroLink logo using html2canvas
+      try {
+        // Create a temporary div with the logo
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '60px';
+        tempDiv.style.height = '60px';
+        tempDiv.style.display = 'flex';
+        tempDiv.style.alignItems = 'center';
+        tempDiv.style.justifyContent = 'center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+        document.body.appendChild(tempDiv);
+        
+        // Capture the logo with html2canvas
+        const canvas = await html2canvas(tempDiv, {
+          width: 60,
+          height: 60,
+          backgroundColor: null,
+          scale: 2 // Higher resolution
+        });
+        
+        // Remove the temporary div
+        document.body.removeChild(tempDiv);
+        
+        // Add the logo to PDF with correct aspect ratio (bigger size)
+        const logoDataURL = canvas.toDataURL('image/png');
+        pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16); // Adjusted for space below top bar
+      } catch (error) {
+        console.log('Could not load logo, using text fallback');
+        // Fallback: just show company name if logo fails to load
+      }
+      
+      // Company name with gradient effect (left to right like navbar)
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Create gradient effect by interpolating colors from left to right
+      const startColor = { r: 0, g: 128, b: 111 }; // #00806F (darker teal)
+      const endColor = { r: 139, g: 195, b: 75 }; // #8BC34B (lighter yellow-green)
+      const text = 'AgroLink';
+      const startX = 35;
+      
+      // Custom letter positions for better spacing
+      const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5]; // A-g-r-o-L-i-n-k
+      
+      for (let i = 0; i < text.length; i++) {
+        const progress = i / (text.length - 1); // 0 to 1
+        
+        // Interpolate colors
+        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        
+        pdf.setTextColor(r, g, b);
+        pdf.text(text[i], startX + letterPositions[i], 23); // Adjusted for space below top bar
+      }
+      
+      // Tagline
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Agricultural Technology Solutions', 35, 27); // Adjusted for space below top bar
+      
+      // Vertical separator line
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(120, 17, 120, 33); // Adjusted for space below top bar
+      
+      // Contact information on the right
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Phone:', 130, 21); // Adjusted for space below top bar
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('+94 71 920 7688', 145, 21);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Web:', 130, 25);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('www.AgroLink.org', 145, 25);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Address:', 130, 29);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29);
+      
+      // Bottom line separator
+      pdf.setDrawColor(13, 126, 121); // Primary green
+      pdf.setLineWidth(1);
+      pdf.line(20, 40, 190, 40); // Adjusted for space below top bar
+      
+      // Reset text color for content
+      pdf.setTextColor(0, 0, 0);
+      
+      // Add report title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Agronomist Management Report', 20, 55); // Adjusted for space below top bar
+      
+      // Add date
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63); // Adjusted for space below top bar
+      
+      // Add summary stats
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Summary Statistics:', 20, 75);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Total Agronomists: ${items.length}`, 20, 85);
+      pdf.text(`Active Agronomists: ${activeUsersCount}`, 20, 90);
+      pdf.text(`Suspended Agronomists: ${suspendedUsersCount}`, 20, 95);
+      pdf.text(`Available Agronomists: ${availableConsultantsCount}`, 20, 100);
+      
+      // Add agronomist details table
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Agronomist Details:', 20, 115);
+      
+      // Table headers with black background
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      let tableY = 125;
+      
+      // Draw primary green background for header row
+      pdf.setFillColor(13, 126, 121); // Primary green background
+      pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row (increased height)
+      
+      // Set white text color for headers
+      pdf.setTextColor(255, 255, 255); // White text
+      pdf.text('Name', 25, tableY);
+      pdf.text('Email', 50, tableY);
+      pdf.text('Expertise', 100, tableY);
+      pdf.text('Availability', 135, tableY);
+      pdf.text('Status', 170, tableY);
+      
+      // Reset text color for data rows
+      pdf.setTextColor(0, 0, 0); // Black text
+      
+      // Table data
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10); // Increased font size for data rows
+      tableY += 8; // Increased spacing
+      
+      items.slice(0, 20).forEach((agronomist, index) => {
+        if (tableY > 260) {
+          pdf.addPage();
+          tableY = 20;
+        }
+        
+        // Add alternating backgrounds for all rows
+        if (index % 2 === 0) {
+          pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+        } else {
+          pdf.setFillColor(255, 255, 255); // White background for odd rows
+        }
+        pdf.rect(20, tableY - 6, 170, 10, 'F'); // Rectangle covering row (consistent height)
+        
+        pdf.text(agronomist.fullName || '—', 25, tableY);
+        pdf.text(agronomist.email || '—', 50, tableY);
+        pdf.text(agronomist.expertise || '—', 100, tableY);
+        pdf.text(agronomist.availability || 'UNAVAILABLE', 135, tableY);
+        pdf.text(agronomist.status || '—', 170, tableY);
+        
+        tableY += 12; // Increased spacing
+      });
+      
+      // Add footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        
+        // Footer line
+        pdf.setDrawColor(13, 126, 121); // Primary green
+        pdf.setLineWidth(1);
+        pdf.line(20, 270, 190, 270);
+        
+        // Footer text
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 275);
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 275);
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 280);
+      }
+      
+      // Save the PDF
+      pdf.save(`AgroLink-Agronomists-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Error generating PDF. Please try again.');
+    }
+  };
 
   const fetchConsultants = async () => {
     setLoading(true)
@@ -281,7 +510,12 @@ const AdminConsultants = () => {
         {/* Top bar */}
         <div className='flex items-center justify-between mb-6'>
           <h1 className='text-3xl font-semibold ml-2'>Agronomist Management</h1>
-          <div />
+          <div className='flex items-center gap-2'>
+            <button onClick={downloadAgronomistsPDF} className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 transition-colors' title='Export PDF'>
+              <FileDown className='w-4 h-4' />
+              Export
+            </button>
+          </div>
         </div>
 
         <div className='grid grid-cols-[240px,1fr] gap-6'>
@@ -329,7 +563,7 @@ const AdminConsultants = () => {
                   <option value='UNAVAILABLE'>Unavailable</option>
                 </select>
                 <button
-                  className='btn-primary h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 hover:opacity-95 active:opacity-90 focus:ring-2 focus:ring-green-300 whitespace-nowrap'
+                  className='bg-black text-white hover:bg-gray-900 transition-colors h-9 px-5 rounded-full text-[13px] font-medium shadow-sm inline-flex items-center justify-center gap-1.5 whitespace-nowrap'
                   onClick={() => setCreating(true)}
                 >
                   <Plus className='w-3.5 h-3.5' />
@@ -387,7 +621,7 @@ const AdminConsultants = () => {
                       </td>
                     <td className='py-2 px-3 text-center align-middle'>
                         <div className='flex items-center justify-center gap-2'>
-                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setSelected(u)} title='Info'>
+                        <button className='icon-btn bg-green-100 text-green-700 px-3 py-1 rounded-xl inline-flex items-center gap-1 text-xs' onClick={() => setViewingUser(u)} title='Info'>
                           <Info className='w-3 h-3' />
                           <span className='text-xs'>Info</span>
                         </button>
@@ -486,9 +720,12 @@ const AdminConsultants = () => {
                   value={createForm.fullName} 
                   onChange={e => handleFormFieldChange('fullName', e.target.value)}
                   onBlur={() => handleFormFieldBlur('fullName')}
-                  placeholder='John Doe' 
+                  placeholder='Agronomist Name' 
                 />
-                {formTouched.fullName && formErrors.fullName && (
+                {invalidCharacterWarning && (
+                  <p className='text-xs text-red-600 mt-1'>{invalidCharacterWarning}</p>
+                )}
+                {formTouched.fullName && formErrors.fullName && !invalidCharacterWarning && (
                   <p className='mt-1 text-xs text-red-600'>{formErrors.fullName}</p>
                 )}
               </div>
@@ -610,12 +847,147 @@ const AdminConsultants = () => {
         </div>
       )}
 
-      {/* Details modal */}
+      {/* View Agronomist Info modal (Read-only) */}
+      {viewingUser && (
+        <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
+          <div className='bg-white rounded-lg w-full max-w-2xl p-6'>
+            <div className='flex items-center justify-between mb-6'>
+              <h2 className='text-xl font-semibold text-gray-900'>Agronomist Information</h2>
+              <button onClick={() => setViewingUser(null)} className='text-gray-500 hover:text-gray-700'>
+                <XCircle className='w-5 h-5' />
+              </button>
+            </div>
+            
+            <div className='space-y-6'>
+              {/* Profile Section */}
+              <div className='flex items-center gap-4 p-4 bg-gray-50 rounded-lg'>
+                <img
+                  src={viewingUser.profilePic || DefaultAvatar}
+                  onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DefaultAvatar; }}
+                  className='w-16 h-16 rounded-full object-cover border-2 border-gray-200'
+                  alt='User Avatar'
+                />
+                <div>
+                  <h3 className='text-lg font-medium text-gray-900'>{viewingUser.fullName || 'No name provided'}</h3>
+                  <p className='text-sm text-gray-600'>{viewingUser.role}</p>
+                  <span className={`inline-block px-2 py-1 text-xs rounded-full mt-1 ${
+                    viewingUser.status === 'ACTIVE' 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {viewingUser.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* User Details */}
+              <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Address</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>{viewingUser.email}</p>
+                  </div>
+                  
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Phone Number</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.phone || 'Not provided'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Expertise</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {viewingUser.expertise || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+
+                <div className='space-y-4'>
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Account Created</label>
+                    <p className='text-sm text-gray-900 bg-gray-50 p-2 rounded border'>
+                      {new Date(viewingUser.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Availability</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      String(viewingUser.availability||'AVAILABLE').toUpperCase() === 'AVAILABLE'
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-gray-700 bg-gray-50'
+                    }`}>
+                      {(viewingUser.availability||'AVAILABLE').charAt(0) + String(viewingUser.availability||'AVAILABLE').slice(1).toLowerCase()}
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className='block text-sm font-medium text-gray-700 mb-1'>Email Verified</label>
+                    <p className={`text-sm p-2 rounded border ${
+                      viewingUser.isEmailVerified 
+                        ? 'text-green-700 bg-green-50' 
+                        : 'text-red-700 bg-red-50'
+                    }`}>
+                      {viewingUser.isEmailVerified ? 'Yes' : 'No'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Address Section (if available) */}
+              {viewingUser.address && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Address</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.address}
+                  </p>
+                </div>
+              )}
+
+              {/* Bio Section (if available) */}
+              {viewingUser.bio && (
+                <div>
+                  <label className='block text-sm font-medium text-gray-700 mb-1'>Bio</label>
+                  <p className='text-sm text-gray-900 bg-gray-50 p-3 rounded border'>
+                    {viewingUser.bio}
+                  </p>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className='flex justify-end gap-3 pt-4 border-t'>
+                <button 
+                  onClick={() => setViewingUser(null)}
+                  className='px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors'
+                >
+                  Close
+                </button>
+                <button 
+                  onClick={() => {
+                    setSelected(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className='px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors'
+                >
+                  Edit Agronomist
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Agronomist modal */}
       {selected && (
         <div className='fixed inset-0 bg-black/40 grid place-items-center z-50'>
           <div className='bg-white rounded-lg w-full max-w-3xl p-4'>
             <div className='flex items-center justify-between mb-3'>
-              <h2 className='text-lg font-semibold'>Agronomist Details</h2>
+              <h2 className='text-lg font-semibold'>Edit Agronomist</h2>
               <button onClick={() => setSelected(null)} className='text-gray-500'>Close</button>
             </div>
             <div className='grid grid-cols-1 md:grid-cols-2 gap-4'>
@@ -639,6 +1011,13 @@ const AdminConsultants = () => {
               </div>
               {/* Right: actions */}
               <div className='space-y-3'>
+                <div>
+                  <label className='text-xs text-gray-500'>Role</label>
+                  <div className='mt-1 p-2 bg-gray-50 border border-gray-200 rounded-md'>
+                    <span className='text-sm text-gray-700'>{selected.role}</span>
+                    <p className='text-xs text-gray-500 mt-1'>Role cannot be changed</p>
+                  </div>
+                </div>
                 <div>
                   <label className='text-xs text-gray-500'>Expertise</label>
                   <select
