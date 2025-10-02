@@ -13,6 +13,7 @@ const EmailChangePage = () => {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState({})
+  const [touched, setTouched] = useState({})
   const [currentUser, setCurrentUser] = useState(null)
   const [userLoading, setUserLoading] = useState(true)
 
@@ -34,9 +35,33 @@ const EmailChangePage = () => {
     fetchCurrentUser()
   }, [])
 
+  // Email validation function
+  const validateEmail = (email) => {
+    const trimmed = email.trim()
+    
+    // Only validate format if email is not empty
+    if (trimmed) {
+      const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i
+      if (!emailRegex.test(trimmed)) {
+        return 'Please enter a valid email address'
+      }
+    }
+    
+    return ''
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    
+    // Validate email before submission
+    const emailError = validateEmail(formData.newEmail)
+    if (emailError) {
+      setErrors({ newEmail: emailError })
+      setLoading(false)
+      return
+    }
+    
     setErrors({})
 
     try {
@@ -59,10 +84,17 @@ const EmailChangePage = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData(prev => ({ ...prev, [name]: value }))
-    // Clear error when user starts typing
+    
+    // Clear errors when user starts typing (don't validate while typing)
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }))
     }
+  }
+
+  const handleEmailBlur = () => {
+    setTouched(prev => ({ ...prev, newEmail: true }))
+    const emailError = validateEmail(formData.newEmail)
+    setErrors(prev => ({ ...prev, newEmail: emailError }))
   }
 
   return (
@@ -181,11 +213,16 @@ const EmailChangePage = () => {
                     name='newEmail'
                     value={formData.newEmail}
                     onChange={handleInputChange}
-                    className='w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200'
+                    onBlur={handleEmailBlur}
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent transition-all duration-200 ${
+                      touched.newEmail && errors.newEmail
+                        ? 'border-red-500 focus:ring-red-500' 
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
                     placeholder='Enter your new email address'
                     required
                   />
-                  {errors.newEmail && (
+                  {touched.newEmail && errors.newEmail && (
                     <div className='flex items-center gap-2 text-red-600 text-sm mt-1'>
                       <XCircle className='w-4 h-4' />
                       {errors.newEmail}
@@ -247,7 +284,7 @@ const EmailChangePage = () => {
                 {/* Submit Button */}
                 <button
                   type='submit'
-                  disabled={loading}
+                  disabled={loading || (touched.newEmail && errors.newEmail) || !formData.newEmail.trim() || !formData.currentPassword.trim()}
                   className='w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white py-3 px-6 rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none'
                 >
                   {loading ? 'Sending Verification...' : 'Change Email Address'}
