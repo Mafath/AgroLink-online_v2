@@ -691,20 +691,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
       path: '/security/password'
     },
     {
-      id: 'history',
-      title: 'Login History',
-      description: 'View recent login attempts and active sessions',
-      icon: Clock,
-      color: 'purple',
-      gradient: 'from-purple-50 to-violet-50',
-      borderColor: 'border-purple-100',
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
-      buttonGradient: 'from-purple-600 to-violet-600',
-      buttonHover: 'hover:from-purple-700 hover:to-violet-700',
-      path: '/security/history'
-    },
-    {
       id: 'deletion',
       title: 'Account Deletion',
       description: 'Permanently delete your account and all data',
@@ -785,10 +771,6 @@ const SecuritySection = ({ user, onUserUpdate }) => {
               <li className='flex items-center gap-2'>
                 <CheckCircle className='w-4 h-4 text-green-500' />
                 Keep your email address up to date for security notifications
-              </li>
-              <li className='flex items-center gap-2'>
-                <CheckCircle className='w-4 h-4 text-green-500' />
-                Regularly review your login history for suspicious activity
               </li>
               <li className='flex items-center gap-2'>
                 <CheckCircle className='w-4 h-4 text-green-500' />
@@ -895,7 +877,6 @@ const StatsSection = ({ me }) => {
   const [farmerLastMonthDelivered, setFarmerLastMonthDelivered] = React.useState(null)
   const [farmerTotalSales, setFarmerTotalSales] = React.useState(null)
   const [buyerTotalSpent30, setBuyerTotalSpent30] = React.useState(null)
-  const [secondLastLogin, setSecondLastLogin] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
   const loadStats = async () => {
     setLoading(true)  
@@ -920,21 +901,6 @@ const StatsSection = ({ me }) => {
       if (me.role !== 'FARMER') setBuyerTotalSpent30(0)
     }
 
-    // Fetch second last login for non-FARMER roles
-    if (me.role !== 'FARMER') {
-      try {
-        const loginHistoryRes = await axiosInstance.get('/auth/login-history?limit=2')
-        if (Array.isArray(loginHistoryRes.data) && loginHistoryRes.data.length >= 2) {
-          // Get the second item (index 1) which is the second last login
-          const secondLast = loginHistoryRes.data[1]
-          setSecondLastLogin(secondLast.timestamp)
-        } else {
-          setSecondLastLogin(null)
-        }
-      } catch {
-        setSecondLastLogin(null)
-      }
-    }
 
     try {
       if (me.role === 'FARMER') {
@@ -1017,8 +983,8 @@ const StatsSection = ({ me }) => {
         <div className='text-2xl font-semibold'>{ordersCount == null ? '—' : ordersCount}</div>
       </div>
       <div className='card text-center'>
-        <div className='text-xs text-gray-500'>Previous Login</div>
-        <div className='text-2xl font-semibold'>{secondLastLogin ? new Date(secondLastLogin).toLocaleDateString() : '—'}</div>
+        <div className='text-xs text-gray-500'>Last Login</div>
+        <div className='text-2xl font-semibold'>{me?.lastLogin ? new Date(me.lastLogin).toLocaleDateString() : '—'}</div>
       </div>
       <div className='card text-center'>
         <div className='text-xs text-gray-500'>Total Spent (Last 30 Days)</div>
