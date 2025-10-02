@@ -383,7 +383,7 @@ export const adminDeleteUser = async (req, res) => {
 // Admin: create user (ADMIN/DRIVER/others) with password
 export const adminCreateUser = async (req, res) => {
   try {
-    const { email, password, role = 'DRIVER', fullName, availability, service_area, expertise } = req.body || {};
+    const { email, password, role = 'DRIVER', fullName, availability, service_area, expertise, status = 'ACTIVE' } = req.body || {};
 
     if (!email || !password) {
       return res
@@ -427,6 +427,7 @@ export const adminCreateUser = async (req, res) => {
       role: normalizedRole,
       fullName: typeof fullName === 'string' ? fullName.trim() : '',
       profilePic: defaultAvatar,
+      status: String(status || 'ACTIVE').toUpperCase(),
       availability: normalizedRole === 'DRIVER'
         ? (String(availability || 'UNAVAILABLE').toUpperCase())
         : (normalizedRole === 'AGRONOMIST' ? (String(availability || 'AVAILABLE').toUpperCase()) : undefined),

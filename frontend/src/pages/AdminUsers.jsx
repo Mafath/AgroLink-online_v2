@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import Chart from 'react-apexcharts'
 import { axiosInstance } from '../lib/axios'
-import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle } from 'lucide-react'
+import { Info, Pencil, Trash2, Shield, Sprout, ShoppingCart, Truck, TrendingUp, Users, UserCheck, FileDown, XCircle, Eye, EyeOff, Loader2 } from 'lucide-react'
 import DefaultAvatar from '../assets/User Avatar.jpg'
 import AdminSidebar from '../components/AdminSidebar'
 import jsPDF from 'jspdf'
@@ -90,6 +90,10 @@ const AdminUsers = () => {
   const [selected, setSelected] = useState(null)
   const [viewingUser, setViewingUser] = useState(null)
   const [statsItems, setStatsItems] = useState([])
+  const [formErrors, setFormErrors] = useState({})
+  const [touched, setTouched] = useState({})
+  const [showPassword, setShowPassword] = useState(false)
+  const [isCreatingAdmin, setIsCreatingAdmin] = useState(false)
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -104,6 +108,39 @@ const AdminUsers = () => {
       setLoading(false)
     }
   }
+
+  // Validation functions (from signup page)
+  const validateFullName = (name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return "Full name is required";
+    if (trimmed.length < 3) return "Full name must be at least 3 characters";
+    if (!/^[A-Za-z ]+$/.test(trimmed)) return "Use letters and spaces only";
+    return "";
+  };
+
+  const validateEmail = (email) => {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return "Email is required";
+    const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+    if (!emailRegex.test(normalized)) return "Enter a valid email address";
+    return "";
+  };
+
+  const validatePassword = (password) => {
+    if (!password) return "Password is required";
+    if (password.length < 8) return "Password is weak";
+    
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSymbol = /[^A-Za-z0-9]/.test(password);
+    
+    if (!hasUpper || !hasLower || !hasNumber || !hasSymbol) {
+      return "Password is weak";
+    }
+    
+    return "";
+  };
 
   useEffect(() => { fetchUsers() }, [query.role, query.status])
 
@@ -464,7 +501,13 @@ const AdminUsers = () => {
                   {statuses.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
                 <button
-                  onClick={() => setSelected({ _id: null, fullName: '', email: '', password: '', phone: '', role: 'ADMIN', status: 'ACTIVE' })}
+                  onClick={() => {
+                    setSelected({ _id: null, fullName: '', email: '', password: '', role: 'ADMIN', status: 'ACTIVE' })
+                    setFormErrors({})
+                    setTouched({})
+                    setShowPassword(false)
+                    setIsCreatingAdmin(false)
+                  }}
                   className='inline-flex items-center justify-center gap-2 px-4 py-2 text-sm bg-gray-900 text-white rounded-md hover:bg-black transition-colors whitespace-nowrap'
                   title='Add Admin'
                 >
@@ -716,19 +759,65 @@ const AdminUsers = () => {
                 <div className='space-y-3'>
                   <div>
                     <label className='text-xs text-gray-500'>Full name</label>
-                    <input className='input-field mt-1' placeholder='Admin name' value={selected.fullName} onChange={e=>setSelected(s=>({ ...s, fullName: e.target.value }))} />
+                    <input 
+                      className='input-field mt-1' 
+                      placeholder='Admin name' 
+                      value={selected.fullName} 
+                      onChange={e => {
+                        const value = e.target.value.replace(/[^A-Za-z ]/g, '');
+                        setSelected(s => ({ ...s, fullName: value }));
+                      }}
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, fullName: true }));
+                        setFormErrors(prev => ({ ...prev, fullName: validateFullName(selected.fullName) }));
+                      }}
+                    />
+                    {touched.fullName && formErrors.fullName && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.fullName}</p>
+                    )}
                   </div>
                   <div>
                     <label className='text-xs text-gray-500'>Email</label>
-                    <input className='input-field mt-1' placeholder='email@company.com' type='email' value={selected.email} onChange={e=>setSelected(s=>({ ...s, email: e.target.value }))} />
+                    <input 
+                      className='input-field mt-1' 
+                      placeholder='email@company.com' 
+                      type='email' 
+                      value={selected.email} 
+                      onChange={e => setSelected(s => ({ ...s, email: e.target.value }))}
+                      onBlur={() => {
+                        setTouched(prev => ({ ...prev, email: true }));
+                        setFormErrors(prev => ({ ...prev, email: validateEmail(selected.email) }));
+                      }}
+                    />
+                    {touched.email && formErrors.email && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.email}</p>
+                    )}
                   </div>
                   <div>
                     <label className='text-xs text-gray-500'>Password</label>
-                    <input className='input-field mt-1' placeholder='Password' type='password' value={selected.password || ''} onChange={e=>setSelected(s=>({ ...s, password: e.target.value }))} />
-                  </div>
-                  <div>
-                    <label className='text-xs text-gray-500'>Phone (optional)</label>
-                    <input className='input-field mt-1' placeholder='+94 ...' value={selected.phone || ''} onChange={e=>setSelected(s=>({ ...s, phone: e.target.value }))} />
+                    <div className='relative'>
+                      <input 
+                        className='input-field mt-1 pr-10' 
+                        placeholder='Password' 
+                        type={showPassword ? 'text' : 'password'} 
+                        value={selected.password || ''} 
+                        onChange={e => setSelected(s => ({ ...s, password: e.target.value }))}
+                        onBlur={() => {
+                          setTouched(prev => ({ ...prev, password: true }));
+                          setFormErrors(prev => ({ ...prev, password: validatePassword(selected.password || '') }));
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className='absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600'
+                        onClick={() => setShowPassword(!showPassword)}
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                    {touched.password && formErrors.password && (
+                      <p className='text-xs text-red-600 mt-1'>{formErrors.password}</p>
+                    )}
                   </div>
                 </div>
                 <div className='space-y-3'>
@@ -748,16 +837,79 @@ const AdminUsers = () => {
                 </div>
               </div>
               <div className='pt-4 flex justify-end'>
-                <button className='px-4 py-2 rounded-md bg-black text-white hover:bg-gray-900'
+                <button 
+                  className={`px-4 py-2 rounded-md text-white transition-all duration-200 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 ${
+                    isCreatingAdmin 
+                      ? 'bg-gray-600 scale-95' 
+                      : 'bg-black hover:bg-gray-900 hover:scale-105 active:scale-95 disabled:opacity-50'
+                  }`}
                   onClick={async ()=>{
+                    // Validate all fields
+                    const fullNameError = validateFullName(selected.fullName);
+                    const emailError = validateEmail(selected.email);
+                    const passwordError = validatePassword(selected.password || '');
+                    
+                    setFormErrors({
+                      fullName: fullNameError,
+                      email: emailError,
+                      password: passwordError
+                    });
+                    
+                    setTouched({
+                      fullName: true,
+                      email: true,
+                      password: true
+                    });
+                    
+                    // Stop if there are validation errors
+                    if (fullNameError || emailError || passwordError) {
+                      return;
+                    }
+                    
+                    setIsCreatingAdmin(true);
+                    
                     try {
-                      const payload = { fullName: selected.fullName, email: selected.email, password: selected.password, phone: selected.phone, role: 'ADMIN', status: selected.status }
+                      const payload = { 
+                        fullName: selected.fullName, 
+                        email: selected.email, 
+                        password: selected.password, 
+                        role: 'ADMIN', 
+                        status: selected.status 
+                      }
                       await axiosInstance.post('auth/admin/users', payload)
                       setSelected(null)
+                      setFormErrors({})
+                      setTouched({})
+                      setShowPassword(false)
                       fetchUsers()
-                    } catch (_) {}
+                    } catch (error) {
+                      console.error('Error creating admin:', error)
+                      console.error('Error response:', error.response?.data)
+                      console.error('Error status:', error.response?.status)
+                      alert(`Failed to create admin: ${error.response?.data?.error?.message || error.message}`)
+                    } finally {
+                      setIsCreatingAdmin(false);
+                    }
                   }}
-                >Create Admin</button>
+                  disabled={
+                    isCreatingAdmin ||
+                    !selected.fullName || 
+                    !selected.email || 
+                    !selected.password ||
+                    validateFullName(selected.fullName) ||
+                    validateEmail(selected.email) ||
+                    validatePassword(selected.password || '')
+                  }
+                >
+                  {isCreatingAdmin ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Admin'
+                  )}
+                </button>
               </div>
               </>
             )}
