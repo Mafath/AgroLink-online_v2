@@ -47,7 +47,7 @@ const AccountDeletionPage = () => {
     } catch (error) {
       const message = error.response?.data?.error?.message || 'Failed to delete account'
       setErrors({ general: message })
-      toast.error(message)
+      // Removed toast.error to show only inline error
     } finally {
       setLoading(false)
     }
