@@ -416,7 +416,10 @@ const MyListings = () => {
                   value={form.expireAfterDays}
                   onChange={(e) => {
                     const v = e.target.value.replace(/\D/g, '')
-                    setForm({ ...form, expireAfterDays: v })
+                    // Only allow values >= 1, or empty string for editing
+                    if (v === '' || (Number(v) >= 1)) {
+                      setForm({ ...form, expireAfterDays: v })
+                    }
                   }}
                   placeholder='e.g., 21 for ~3 weeks'
                 />
@@ -562,7 +565,10 @@ const MyListings = () => {
                     value={editForm.expireAfterDays}
                     onChange={(e) => {
                       const v = e.target.value.replace(/\D/g, '')
-                      setEditForm({ ...editForm, expireAfterDays: v })
+                      // Only allow values >= 1, or empty string for editing
+                      if (v === '' || (Number(v) >= 1)) {
+                        setEditForm({ ...editForm, expireAfterDays: v })
+                      }
                     }}
                     placeholder='e.g., 21'
                   />
