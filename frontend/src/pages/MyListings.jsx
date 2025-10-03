@@ -704,8 +704,18 @@ const MyListings = () => {
                   step='1'
                   className='input-field'
                   value={form.expireAfterDays}
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, decimal point, plus sign, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                    // Prevent arrow keys from going below 0
+                    if (e.key === 'ArrowDown' && (form.expireAfterDays === '' || Number(form.expireAfterDays) <= 1)) {
+                      e.preventDefault()
+                    }
+                  }}
                   onChange={(e) => {
-                    const v = e.target.value.replace(/\D/g, '')
+                    const v = e.target.value.replace(/[^0-9]/g, '') // Remove all non-numeric characters
                     // Only allow values >= 1, or empty string for editing
                     if (v === '' || (Number(v) >= 1)) {
                       setForm({ ...form, expireAfterDays: v })
@@ -713,7 +723,7 @@ const MyListings = () => {
                   }}
                   placeholder='e.g., 21 for ~3 weeks'
                 />
-                <p className='text-xs text-gray-500 mt-1'>Enter the period until this produce expires (in days).</p>
+                <p className='text-xs text-gray-500 mt-1'>Enter the period until this produce expires (in days). Minimum 1 day.</p>
               </div>
               <div>
                 <label className='form-label'>Images (up to 4)</label>
@@ -869,8 +879,18 @@ const MyListings = () => {
                     step='1'
                     className='input-field py-2 px-3 text-sm'
                     value={editForm.expireAfterDays}
+                    onKeyDown={(e) => {
+                      // Prevent minus sign, decimal point, plus sign, and 'e' from being typed
+                      if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault()
+                      }
+                      // Prevent arrow keys from going below 0
+                      if (e.key === 'ArrowDown' && (editForm.expireAfterDays === '' || Number(editForm.expireAfterDays) <= 1)) {
+                        e.preventDefault()
+                      }
+                    }}
                     onChange={(e) => {
-                      const v = e.target.value.replace(/\D/g, '')
+                      const v = e.target.value.replace(/[^0-9]/g, '') // Remove all non-numeric characters
                       // Only allow values >= 1, or empty string for editing
                       if (v === '' || (Number(v) >= 1)) {
                         setEditForm({ ...editForm, expireAfterDays: v })
