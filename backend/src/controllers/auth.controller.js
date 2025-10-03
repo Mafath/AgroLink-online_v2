@@ -7,7 +7,7 @@ import Activity from "../models/activity.model.js";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
-import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken } from "../lib/emailService.js";
+import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken, sendPasswordResetEmail } from "../lib/emailService.js";
 
 
 export const signup = async (req, res) => {
@@ -157,6 +157,63 @@ export const signin = async (req, res) => {
 
 // Backward-compat alias
 export const login = signin;
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body || {};
+
+    if (!email) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Email is required" } });
+    }
+
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(email)) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Invalid email format" } });
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+    
+    // Always return success message for security reasons (don't reveal if emailexists)
+    const responseMessage = "If an account with that email exists, we've sent password reset instructions to your email.";
+    
+    if (user) {
+      // Generate password reset token
+      const resetToken = generateVerificationToken();
+      const resetExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Save reset token to user
+      user.passwordResetToken = resetToken;
+      user.passwordResetExpires = resetExpires;
+      await user.save();
+
+      // Send password reset email
+      try {
+        await sendPasswordResetEmail(user.email, user.fullName, resetToken);
+        console.log(`Password reset email sent to: ${user.email}`);
+      } catch (emailError) {
+        console.error('Failed to send password reset email:', emailError);
+        // Don't fail the request if email fails, just log it
+      }
+    } else {
+      // Log attempted reset for non-existent email (for security monitoring)
+      console.log(`Password reset attempt for non-existent email: ${email}`);
+    }
+
+    return res.status(200).json({
+      message: responseMessage,
+      success: true
+    });
+  } catch (error) {
+    console.error("Error in forgotPassword controller: ", error.message);
+    return res.status(500).json({ 
+      error: { code: "SERVER_ERROR", message: "Internal server error" } 
+    });
+  }
+};
 
 export const logout = async (req, res) => {
   try {
