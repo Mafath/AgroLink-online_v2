@@ -169,8 +169,8 @@ const ResetPasswordPage = () => {
 
   if (tokenInvalid) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center pt-0 pb-7 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 mt-7">
+      <div className="min-h-screen bg-bg flex items-start justify-center pt-0 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6">
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img src={Logo} alt="AgroLink logo" className="w-16 h-19 rounded-2xl object-cover" />
@@ -206,8 +206,8 @@ const ResetPasswordPage = () => {
 
   if (passwordReset) {
     return (
-      <div className="min-h-screen bg-bg flex items-center justify-center pt-0 pb-7 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 mt-7">
+      <div className="min-h-screen bg-bg flex items-start justify-center pt-0 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-6">
           <div className="text-center">
             <div className="flex justify-center mb-4">
               <img src={Logo} alt="AgroLink logo" className="w-16 h-19 rounded-2xl object-cover" />
@@ -242,8 +242,8 @@ const ResetPasswordPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-bg flex items-center justify-center pt-0 pb-7 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8 mt-7">
+    <div className="min-h-screen bg-bg flex items-start justify-center pt-0 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-6">
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <img src={Logo} alt="AgroLink logo" className="w-16 h-19 rounded-2xl object-cover" />
