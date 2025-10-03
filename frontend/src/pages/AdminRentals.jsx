@@ -577,7 +577,27 @@ const AdminRentals = () => {
               </div>
               <div>
                 <label className='form-label'>Total Qty</label>
-                <input type='number' min='0' className='input-field' value={rentalForm.totalQty} onChange={(e)=>setRentalForm(f=>({...f, totalQty:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  className='input-field' 
+                  value={rentalForm.totalQty} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    // Remove any non-numeric characters and only allow positive integers or empty string
+                    const cleanValue = v.replace(/[^0-9]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setRentalForm(f => ({ ...f, totalQty: cleanValue }))
+                    }
+                  }}
+                  required 
+                />
               </div>
               <div className='md:col-span-2'>
                 <label className='form-label'>Description</label>
@@ -585,7 +605,28 @@ const AdminRentals = () => {
               </div>
               <div>
                 <label className='form-label'>Rental / Day</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerDay} onChange={(e)=>setRentalForm(f=>({...f, rentalPerDay:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  step='0.01' 
+                  className='input-field' 
+                  value={rentalForm.rentalPerDay} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    // Remove any minus signs and only allow positive numbers or empty string
+                    const cleanValue = v.replace(/[^0-9.]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setRentalForm(f => ({ ...f, rentalPerDay: cleanValue }))
+                    }
+                  }}
+                  required 
+                />
               </div>
               
               <div className='md:col-span-2'>
