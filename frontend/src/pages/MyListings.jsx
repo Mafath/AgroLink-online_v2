@@ -684,17 +684,25 @@ const MyListings = () => {
                   className='input-field'
                   value={form.harvestedAt}
                   max={toInputDate(new Date())}
+                  min={toInputDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))}
                   onChange={e => {
                     const v = e.target.value
                     const today = new Date()
+                    const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
                     const picked = v ? new Date(v) : null
+                    
                     if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
-                      // clamp to today
+                      // clamp to today if future date
                       return setForm({ ...form, harvestedAt: toInputDate(new Date()) })
+                    }
+                    if (picked && picked < oneMonthAgo) {
+                      // clamp to one month ago if too old
+                      return setForm({ ...form, harvestedAt: toInputDate(oneMonthAgo) })
                     }
                     setForm({ ...form, harvestedAt: v })
                   }}
                 />
+                <p className='text-xs text-gray-500 mt-1'>Select a date within the last 30 days.</p>
               </div>
               <div>
                 <label className='form-label'>Expire after (days)</label>
@@ -860,16 +868,25 @@ const MyListings = () => {
                     className='input-field py-2 px-3 text-sm'
                     value={editForm.harvestedAt}
                     max={toInputDate(new Date())}
+                    min={toInputDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))}
                     onChange={(e) => {
                       const v = e.target.value
                       const today = new Date()
+                      const oneMonthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
                       const picked = v ? new Date(v) : null
+                      
                       if (picked && picked > new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                        // clamp to today if future date
                         return setEditForm({ ...editForm, harvestedAt: toInputDate(new Date()) })
+                      }
+                      if (picked && picked < oneMonthAgo) {
+                        // clamp to one month ago if too old
+                        return setEditForm({ ...editForm, harvestedAt: toInputDate(oneMonthAgo) })
                       }
                       setEditForm({ ...editForm, harvestedAt: v })
                     }}
                   />
+                  <p className='text-xs text-gray-500 mt-1'>Select a date within the last 30 days.</p>
                 </div>
                 <div>
                   <label className='form-label'>Expire after (days)</label>
