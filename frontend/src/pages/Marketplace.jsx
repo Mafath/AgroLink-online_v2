@@ -561,11 +561,80 @@ const Marketplace = () => {
                 <div className='grid grid-cols-2 gap-3'>
                   <div className='flex flex-col'>
                     <label className='text-xs text-gray-600 mb-1'>Start date</label>
-                    <input type='date' className='input-field text-sm' value={rentalStart} onChange={(e)=>{ setRentalStart(e.target.value); setAvailability(null) }} />
+                    <input 
+                      type='date' 
+                      className='input-field text-sm' 
+                      value={rentalStart} 
+                      min={(new Date()).toISOString().split('T')[0]} 
+                      onChange={(e)=>{ 
+                        const v = e.target.value
+                        const today = new Date()
+                        const start = v ? new Date(v) : null
+                        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                        if (start && start < startOfToday) {
+                          setRentalStart(startOfToday.toISOString().split('T')[0])
+                          // Clamp end date into [today, today+30d]
+                          const maxEnd = new Date(startOfToday.getTime() + 30 * 24 * 60 * 60 * 1000)
+                          const currentEnd = rentalEnd ? new Date(rentalEnd) : null
+                          if (!currentEnd || currentEnd < startOfToday) {
+                            setRentalEnd(startOfToday.toISOString().split('T')[0])
+                          } else if (currentEnd > maxEnd) {
+                            setRentalEnd(maxEnd.toISOString().split('T')[0])
+                          }
+                          setAvailability(null)
+                          return
+                        }
+                        setRentalStart(v)
+                        // After setting start, clamp end within [start, start+30d]
+                        if (start) {
+                          const dayStart = new Date(start.getFullYear(), start.getMonth(), start.getDate())
+                          const maxEnd = new Date(dayStart.getTime() + 30 * 24 * 60 * 60 * 1000)
+                          const currentEnd = rentalEnd ? new Date(rentalEnd) : null
+                          if (!currentEnd || currentEnd < dayStart) {
+                            setRentalEnd(dayStart.toISOString().split('T')[0])
+                          } else if (currentEnd > maxEnd) {
+                            setRentalEnd(maxEnd.toISOString().split('T')[0])
+                          }
+                        }
+                        setAvailability(null) 
+                      }} 
+                    />
                   </div>
                   <div className='flex flex-col'>
                     <label className='text-xs text-gray-600 mb-1'>End date</label>
-                    <input type='date' className='input-field text-sm' value={rentalEnd} onChange={(e)=>{ setRentalEnd(e.target.value); setAvailability(null) }} />
+                    <input 
+                      type='date' 
+                      className='input-field text-sm' 
+                      value={rentalEnd} 
+                      min={(rentalStart ? new Date(rentalStart) : new Date()).toISOString().split('T')[0]} 
+                      max={(function(){
+                        const base = rentalStart ? new Date(rentalStart) : new Date()
+                        const startOfBase = new Date(base.getFullYear(), base.getMonth(), base.getDate())
+                        const maxDate = new Date(startOfBase.getTime() + 30 * 24 * 60 * 60 * 1000)
+                        return maxDate.toISOString().split('T')[0]
+                      })()} 
+                      onChange={(e)=>{ 
+                        const v = e.target.value
+                        const base = rentalStart ? new Date(rentalStart) : new Date()
+                        const startOfBase = new Date(base.getFullYear(), base.getMonth(), base.getDate())
+                        const maxDate = new Date(startOfBase.getTime() + 30 * 24 * 60 * 60 * 1000)
+                        const picked = v ? new Date(v) : null
+                        if (picked) {
+                          if (picked < startOfBase) {
+                            setRentalEnd(startOfBase.toISOString().split('T')[0])
+                            setAvailability(null)
+                            return
+                          }
+                          if (picked > maxDate) {
+                            setRentalEnd(maxDate.toISOString().split('T')[0])
+                            setAvailability(null)
+                            return
+                          }
+                        }
+                        setRentalEnd(v); 
+                        setAvailability(null) 
+                      }} 
+                    />
                   </div>
                   <div className='flex items-center gap-2 col-span-2'>
                     <label className='text-sm text-gray-600'>Quantity (items):</label>
