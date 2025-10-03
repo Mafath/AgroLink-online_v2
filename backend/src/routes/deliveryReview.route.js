@@ -1,6 +1,8 @@
 import express from 'express';
 import {
   createDeliveryReview,
+  updateMyDeliveryReview,
+  deleteMyDeliveryReview,
   getMyDeliveryReviews,
   getAllDeliveryReviews,
   replyToReview,
@@ -16,6 +18,8 @@ const router = express.Router();
 
 // User routes (authenticated users)
 router.post('/', requireAuth, createDeliveryReview);
+router.put('/my/:reviewId', requireAuth, updateMyDeliveryReview);
+router.delete('/my/:reviewId', requireAuth, deleteMyDeliveryReview);
 router.get('/my', requireAuth, getMyDeliveryReviews);
 
 // Admin routes (admin only)

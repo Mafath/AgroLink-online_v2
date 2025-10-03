@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Star, MessageSquare, Package, Calendar, User, Truck } from 'lucide-react';
+import { Star, MessageSquare, Package, Calendar, User, Truck, Edit2, Save, X, Trash2 } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/useAuthStore';
@@ -8,6 +8,11 @@ const MyDeliveryReviews = () => {
   const { authUser } = useAuthStore();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingReview, setEditingReview] = useState(null);
+  const [editRating, setEditRating] = useState(0);
+  const [editComment, setEditComment] = useState('');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchMyReviews();
@@ -26,6 +31,68 @@ const MyDeliveryReviews = () => {
     }
   };
 
+  const handleEditReview = (review) => {
+    setEditingReview(review._id);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingReview(null);
+    setEditRating(0);
+    setEditComment('');
+  };
+
+  const handleUpdateReview = async (reviewId) => {
+    if (editRating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+
+    if (!editComment.trim()) {
+      toast.error('Please write a comment');
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      await axiosInstance.put(`/delivery-reviews/my/${reviewId}`, {
+        rating: editRating,
+        comment: editComment.trim()
+      });
+      
+      toast.success('Review updated successfully!');
+      setEditingReview(null);
+      setEditRating(0);
+      setEditComment('');
+      fetchMyReviews();
+    } catch (error) {
+      console.error('Failed to update review:', error);
+      const message = error?.response?.data?.error?.message || 'Failed to update review';
+      toast.error(message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteReview = async (reviewId) => {
+    const confirmed = window.confirm('Are you sure you want to delete this review? This action cannot be undone.');
+    if (!confirmed) return;
+
+    try {
+      setIsDeleting(true);
+      await axiosInstance.delete(`/delivery-reviews/my/${reviewId}`);
+      toast.success('Review deleted successfully!');
+      fetchMyReviews();
+    } catch (error) {
+      console.error('Failed to delete review:', error);
+      const message = error?.response?.data?.error?.message || 'Failed to delete review';
+      toast.error(message);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   const renderStars = (rating) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
@@ -35,6 +102,28 @@ const MyDeliveryReviews = () => {
         }`}
       />
     ));
+  };
+
+  const renderEditableStars = (rating, onRatingChange) => {
+    return Array.from({ length: 5 }, (_, i) => {
+      const starValue = i + 1;
+      const isFilled = starValue <= rating;
+      
+      return (
+        <button
+          key={i}
+          type="button"
+          className="focus:outline-none"
+          onClick={() => onRatingChange(starValue)}
+        >
+          <Star
+            className={`w-5 h-5 transition-colors ${
+              isFilled ? 'text-yellow-400 fill-current' : 'text-gray-300'
+            }`}
+          />
+        </button>
+      );
+    });
   };
 
   const getRatingColor = (rating) => {
@@ -119,21 +208,102 @@ const MyDeliveryReviews = () => {
                 </div>
 
                 {/* Rating */}
-                <div className="flex items-center space-x-2 mb-4">
-                  <div className="flex">
-                    {renderStars(review.rating)}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="flex">
+                      {editingReview === review._id ? (
+                        renderEditableStars(editRating, setEditRating)
+                      ) : (
+                        renderStars(review.rating)
+                      )}
+                    </div>
+                    <span className={`text-sm font-medium ${getRatingColor(editingReview === review._id ? editRating : review.rating)}`}>
+                      {editingReview === review._id ? editRating : review.rating} out of 5 stars
+                    </span>
                   </div>
-                  <span className={`text-sm font-medium ${getRatingColor(review.rating)}`}>
-                    {review.rating} out of 5 stars
-                  </span>
+                  
+                  {/* Action Buttons */}
+                  {editingReview !== review._id && (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => handleEditReview(review)}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 hover:border-blue-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1"
+                        title="Edit review"
+                      >
+                        <Edit2 className="w-4 h-4 mr-1.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReview(review._id)}
+                        disabled={isDeleting}
+                        className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 hover:border-red-300 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Delete review"
+                      >
+                        {isDeleting ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-1.5"></div>
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-1.5" />
+                            Delete
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Review Comment */}
                 <div className="mb-4">
                   <h4 className="text-sm font-medium text-gray-700 mb-2">Your Review:</h4>
-                  <p className="text-gray-900 bg-gray-50 rounded-lg p-3">
-                    {review.comment}
-                  </p>
+                  {editingReview === review._id ? (
+                    <div className="space-y-3">
+                      <textarea
+                        value={editComment}
+                        onChange={(e) => setEditComment(e.target.value)}
+                        placeholder="Share your thoughts about the delivery service..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        rows={4}
+                        maxLength={1000}
+                      />
+                      <p className="text-xs text-gray-500">
+                        {editComment.length}/1000 characters
+                      </p>
+                      <div className="flex items-center space-x-3">
+                        <button
+                          onClick={() => handleUpdateReview(review._id)}
+                          disabled={isUpdating}
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          {isUpdating ? (
+                            <>
+                              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                              Updating...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="w-4 h-4 mr-2" />
+                              Save Changes
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={handleCancelEdit}
+                          disabled={isUpdating}
+                          className="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-900 bg-gray-50 rounded-lg p-3">
+                      {review.comment}
+                    </p>
+                  )}
                 </div>
 
                 {/* Admin Reply */}

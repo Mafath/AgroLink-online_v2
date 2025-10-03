@@ -81,6 +81,112 @@ export const createDeliveryReview = async (req, res) => {
   }
 };
 
+// Update user's own delivery review
+export const updateMyDeliveryReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+    const { rating, comment } = req.body;
+    
+    if (!rating || !comment) {
+      return res.status(400).json({ 
+        error: { code: 'BAD_REQUEST', message: 'Rating and comment are required' } 
+      });
+    }
+
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ 
+        error: { code: 'BAD_REQUEST', message: 'Rating must be between 1 and 5' } 
+      });
+    }
+
+    const review = await DeliveryReview.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ 
+        error: { code: 'NOT_FOUND', message: 'Review not found' } 
+      });
+    }
+
+    // Check if the review belongs to the user
+    if (review.reviewer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        error: { code: 'FORBIDDEN', message: 'You can only edit your own reviews' } 
+      });
+    }
+
+    // Update the review
+    review.rating = rating;
+    review.comment = comment.trim();
+    await review.save();
+
+    const populatedReview = await DeliveryReview.findById(reviewId)
+      .populate({
+        path: 'delivery',
+        select: 'order requester status',
+        populate: {
+          path: 'order',
+          select: 'orderNumber total status'
+        }
+      })
+      .populate('reviewer', 'fullName email role')
+      .populate('adminReply.repliedBy', 'fullName email');
+
+    // Filter out admin replies that are not visible
+    const filteredReview = {
+      ...populatedReview.toObject(),
+      adminReply: populatedReview.adminReply && populatedReview.adminReply.reply && !populatedReview.adminReply.isVisible ? {
+        ...populatedReview.adminReply,
+        reply: '',
+        isVisible: false
+      } : populatedReview.adminReply
+    };
+
+    return res.json(filteredReview);
+  } catch (error) {
+    console.error('updateMyDeliveryReview error:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to update review' } 
+    });
+  }
+};
+
+// Delete user's own delivery review
+export const deleteMyDeliveryReview = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+
+    const review = await DeliveryReview.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ 
+        error: { code: 'NOT_FOUND', message: 'Review not found' } 
+      });
+    }
+
+    // Check if the review belongs to the user
+    if (review.reviewer.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        error: { code: 'FORBIDDEN', message: 'You can only delete your own reviews' } 
+      });
+    }
+
+    // Remove the review reference from the delivery
+    const Delivery = (await import('../models/delivery.model.js')).default;
+    await Delivery.updateOne(
+      { review: reviewId },
+      { $unset: { review: 1 } }
+    );
+
+    // Delete the review
+    await DeliveryReview.findByIdAndDelete(reviewId);
+
+    return res.json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    console.error('deleteMyDeliveryReview error:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Failed to delete review' } 
+    });
+  }
+};
+
 // Get user's own delivery reviews
 export const getMyDeliveryReviews = async (req, res) => {
   try {
