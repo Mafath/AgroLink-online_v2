@@ -666,7 +666,7 @@ export const sendOrderPlacedEmail = async (order, recipient) => {
     const transporter = createTransporter();
 
     const customerName = recipient?.fullName || order.contactName || 'Customer';
-    const customerEmail = recipient?.email || order.contactEmail;
+    const customerEmail = order.contactEmail || recipient?.email;
     const siteUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const isDelivery = order.deliveryType === 'DELIVERY';
@@ -794,7 +794,7 @@ export const sendDeliveryCancellationEmail = async (delivery, customer) => {
     const transporter = createTransporter();
 
     const customerName = customer?.fullName || delivery.contactName || 'Customer';
-    const customerEmail = customer?.email || delivery.contactEmail;
+    const customerEmail = delivery.contactEmail || customer?.email;
     const siteUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const subject = `Delivery Cancelled - Order ${delivery.order?.orderNumber || delivery._id}`;
@@ -864,7 +864,7 @@ export const sendOrderCancellationEmail = async (order, customer) => {
     const transporter = createTransporter();
 
     const customerName = customer?.fullName || order.contactName || 'Customer';
-    const customerEmail = customer?.email || order.contactEmail;
+    const customerEmail = order.contactEmail || customer?.email;
     const siteUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 
     const subject = `Order Cancelled - ${order.orderNumber || order._id}`;
