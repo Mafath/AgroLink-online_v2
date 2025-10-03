@@ -47,6 +47,8 @@ import EmailChangePage from './pages/EmailChangePage';
 import EmailChangeVerificationPage from './pages/EmailChangeVerificationPage';
 import PasswordChangePage from './pages/PasswordChangePage';
 import AccountDeletionPage from './pages/AccountDeletionPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 
 
 {/* Delete after testing */}
@@ -84,6 +86,8 @@ const App = () => {
           <Route path="/" element={authUser ? (authUser.role === 'ADMIN' ? <AdminDashboard /> : authUser.role === 'DRIVER' ? <DriverDashboard /> : authUser.role === 'AGRONOMIST' ? <AgronomistDashboard /> : <HomePage />) : <HomePage />} />
           <Route path="/signup" element={!authUser ? <SignupPage /> : <Navigate to="/" />} />
           <Route path="/login" element={!authUser ? <LoginPage /> : <Navigate to="/" />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/verify-email/:token" element={<EmailVerificationPage />} />
           <Route path="/email-verification-status" element={<EmailVerificationStatusPage />} />
           <Route path="/driver" element={authUser && authUser.role === 'DRIVER' ? <DriverDashboard /> : <Navigate to="/" />} />

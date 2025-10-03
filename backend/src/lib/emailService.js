@@ -172,6 +172,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
               margin-bottom: 8px;
               position: relative;
               z-index: 1;
+              color: #000000;
             }
             .header h2 {
               font-size: 18px;
@@ -179,6 +180,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
               opacity: 0.9;
               position: relative;
               z-index: 1;
+              color: #000000;
             }
             .content {
               padding: 40px 30px;
@@ -202,7 +204,7 @@ export const sendVerificationEmail = async (email, fullName, verificationToken) 
             .button {
               display: inline-block;
               background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-              color: white;
+              color: #000000;
               padding: 16px 40px;
               text-decoration: none;
               border-radius: 8px;
@@ -374,7 +376,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
   try {
     const transporter = createTransporter();
     
-    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password/${resetToken}`;
     
     const htmlTemplate = `
       <!DOCTYPE html>
@@ -405,8 +407,8 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
               overflow: hidden;
             }
             .header {
-              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-              color: white;
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              color: #000000;
               padding: 40px 30px;
               text-align: center;
               position: relative;
@@ -446,6 +448,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
               margin-bottom: 8px;
               position: relative;
               z-index: 1;
+              color: #000000;
             }
             .header h2 {
               font-size: 18px;
@@ -453,6 +456,7 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
               opacity: 0.9;
               position: relative;
               z-index: 1;
+              color: #000000;
             }
             .content {
               padding: 40px 30px;
@@ -475,19 +479,19 @@ export const sendPasswordResetEmail = async (email, fullName, resetToken) => {
             }
             .button {
               display: inline-block;
-              background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-              color: white;
+              background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+              color: #000000;
               padding: 16px 40px;
               text-decoration: none;
               border-radius: 8px;
               font-weight: 600;
               font-size: 16px;
-              box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+              box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
               transition: all 0.3s ease;
             }
             .button:hover {
               transform: translateY(-2px);
-              box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+              box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
             }
             .link-container {
               background-color: #f7fafc;
