@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import { axiosInstance } from '../lib/axios'
-import { Plus, X, Edit, Trash2, Info, ArrowLeft } from 'lucide-react'
+import { Plus, X, Edit, Trash2, Info, ArrowLeft, FileDown } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useNavigate } from 'react-router-dom'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png'
 
 const MyListings = () => {
   const navigate = useNavigate()
@@ -119,6 +122,269 @@ const MyListings = () => {
     return s
   }
 
+  const clearForm = () => {
+    setForm({ cropName: '', pricePerKg: '', capacityKg: '', details: '', harvestedAt: '', expireAfterDays: '', images: [] })
+  }
+
+  const downloadMyListingsPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Top green and black bar (3/4 green, 1/4 black)
+      pdf.setFillColor(13, 126, 121); // Primary green (#0d7e79)
+      pdf.rect(0, 0, 157.5, 8, 'F'); // 3/4 of 210mm = 157.5mm
+      
+      pdf.setFillColor(0, 0, 0); // Black
+      pdf.rect(157.5, 0, 52.5, 8, 'F'); // 1/4 of 210mm = 52.5mm
+      
+      // Add space below top bar
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 5, 'F'); // 5mm white space
+      
+      // Main content area (white background)
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 13, 210, 25, 'F');
+      
+      // Add the actual AgroLink logo using html2canvas
+      try {
+        // Create a temporary div with the logo
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '60px';
+        tempDiv.style.height = '60px';
+        tempDiv.style.display = 'flex';
+        tempDiv.style.alignItems = 'center';
+        tempDiv.style.justifyContent = 'center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+        document.body.appendChild(tempDiv);
+        
+        // Capture the logo with html2canvas
+        const canvas = await html2canvas(tempDiv, {
+          width: 60,
+          height: 60,
+          backgroundColor: null,
+          scale: 2 // Higher resolution
+        });
+        
+        // Remove the temporary div
+        document.body.removeChild(tempDiv);
+        
+        // Add the logo to PDF with correct aspect ratio (bigger size)
+        const logoDataURL = canvas.toDataURL('image/png');
+        pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16); // Adjusted for space below top bar
+      } catch (error) {
+        console.log('Could not load logo, using text fallback');
+        // Fallback to text logo
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(255, 255, 255); // White text
+        pdf.text('AgroLink', 20, 20);
+      }
+      
+      // Company name with gradient effect (left to right like navbar)
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      
+      // Create gradient effect by interpolating colors from left to right
+      const startColor = { r: 0, g: 128, b: 111 }; // #00806F (darker teal)
+      const endColor = { r: 139, g: 195, b: 75 }; // #8BC34B (lighter yellow-green)
+      const text = 'AgroLink';
+      const startX = 35;
+      
+      // Custom letter positions for better spacing
+      const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5]; // A-g-r-o-L-i-n-k
+      
+      for (let i = 0; i < text.length; i++) {
+        const progress = i / (text.length - 1); // 0 to 1
+        
+        // Interpolate colors
+        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        
+        pdf.setTextColor(r, g, b);
+        pdf.text(text[i], startX + letterPositions[i], 23); // Adjusted for space below top bar
+      }
+      
+      // Tagline
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Agricultural Technology Solutions', 35, 27); // Adjusted for space below top bar
+      
+      // Vertical separator line
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(120, 17, 120, 33); // Adjusted for space below top bar
+      
+      // Contact information on the right
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Email:', 130, 17); // Adjusted for space below top bar
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('info@agrolink.org', 145, 17);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Phone:', 130, 21); // Adjusted for space below top bar
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('+94 71 920 7688', 145, 21);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Web:', 130, 25);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('www.AgroLink.org', 145, 25);
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Address:', 130, 29);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29);
+      
+      // Bottom line separator
+      pdf.setDrawColor(13, 126, 121); // Primary green
+      pdf.setLineWidth(1);
+      pdf.line(20, 40, 190, 40); // Adjusted for space below top bar
+      
+      // Reset text color for content
+      pdf.setTextColor(0, 0, 0);
+      
+      // Add report title
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('My Listings Report', 20, 55); // Adjusted for space below top bar
+      
+      // Add date
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63); // Adjusted for space below top bar
+      
+      // Add summary stats
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Summary Statistics:', 20, 75);
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const totalListings = items.length;
+      const availableListings = items.filter(item => item.status === 'AVAILABLE').length;
+      const soldListings = items.filter(item => item.status === 'SOLD').length;
+      const totalValue = items.reduce((sum, item) => sum + (Number(item.pricePerKg || 0) * Number(item.capacityKg || 0)), 0);
+      
+      pdf.text(`Total Listings: ${totalListings}`, 20, 85);
+      pdf.text(`Available Listings: ${availableListings}`, 20, 90);
+      pdf.text(`Sold Listings: ${soldListings}`, 20, 95);
+      pdf.text(`Total Value: LKR ${totalValue.toLocaleString()}`, 20, 100);
+      
+      // Helper function to create a table
+      const createTable = (title, items, startY) => {
+        let tableY = startY;
+        
+        // Table title
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(title, 20, tableY);
+        tableY += 8;
+        
+        if (items.length === 0) {
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text('No items found', 20, tableY);
+          return tableY + 15;
+        }
+        
+        // Table headers
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'bold');
+        
+        // Draw primary green background for header row
+        pdf.setFillColor(13, 126, 121); // Primary green background
+        pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering header row
+        
+        // Set white text color for headers
+        pdf.setTextColor(255, 255, 255); // White text
+        pdf.text('Crop Name', 20, tableY);
+        pdf.text('Price/Kg', 60, tableY);
+        pdf.text('Capacity', 100, tableY);
+        pdf.text('Harvested', 130, tableY);
+        pdf.text('Created', 160, tableY);
+        
+        // Reset text color for data rows
+        pdf.setTextColor(0, 0, 0); // Black text
+        tableY += 10;
+        
+        // Table data
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        
+        items.forEach((item, index) => {
+          if (tableY > 260) {
+            pdf.addPage();
+            tableY = 20;
+          }
+          
+          // Add alternating backgrounds for all rows
+          if (index % 2 === 0) {
+            pdf.setFillColor(240, 240, 240); // Light gray background for even rows
+          } else {
+            pdf.setFillColor(255, 255, 255); // White background for odd rows
+          }
+          pdf.rect(20, tableY - 5, 170, 10, 'F'); // Rectangle covering row
+          
+          pdf.text(item.cropName || '—', 20, tableY);
+          pdf.text(`LKR ${Number(item.pricePerKg || 0).toLocaleString()}`, 60, tableY);
+          pdf.text(`${item.capacityKg} Kg`, 100, tableY);
+          pdf.text(item.harvestedAt ? new Date(item.harvestedAt).toLocaleDateString() : '—', 130, tableY);
+          pdf.text(item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '—', 160, tableY);
+          
+          tableY += 12;
+        });
+        
+        return tableY + 10; // Add some space after table
+      };
+      
+      // Separate items by status
+      const availableItems = items.filter(item => item.status === 'AVAILABLE');
+      const soldItems = items.filter(item => item.status === 'SOLD');
+      const removedItems = items.filter(item => item.status === 'REMOVED');
+      
+      let currentY = 115;
+      
+      // Create tables for each status
+      currentY = createTable('Available Listings', availableItems, currentY);
+      currentY = createTable('Sold Items', soldItems, currentY);
+      currentY = createTable('Removed Items', removedItems, currentY);
+      
+      // Add footer
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        
+        // Footer line
+        pdf.setDrawColor(13, 126, 121); // Primary green
+        pdf.setLineWidth(1);
+        pdf.line(20, 280, 190, 280);
+        
+        // Footer text
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285);
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 285);
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+      }
+      
+      // Save the PDF
+      pdf.save(`My-Listings-Report-${new Date().toISOString().split('T')[0]}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      toast.error('Error generating PDF. Please try again.');
+    }
+  };
+
   return (
     <div className='p-4 max-w-7xl mx-auto'>
       <div className='flex items-center justify-between mb-4 mt-6'>
@@ -132,9 +398,17 @@ const MyListings = () => {
         <h2 className='text-3xl md:text-4xl font-bold text-black'>My Listings</h2>
         <div className='w-20'></div>
       </div>
-      <div className='flex items-center justify-end mb-4'>
-        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 whitespace-nowrap'>
-          <Plus className='w-4 h-4' /> Add new post
+      <div className='flex items-center justify-end mb-4 gap-2'>
+        <button onClick={() => setShowForm(true)} className='btn-primary flex items-center gap-2 whitespace-nowrap px-3 py-2 text-sm'>
+          <Plus className='w-3.5 h-3.5' /> Add new post
+        </button>
+        <button 
+          onClick={downloadMyListingsPDF} 
+          className='inline-flex items-center gap-2 px-4 py-2 text-sm bg-black text-white rounded-md hover:bg-gray-900 transition-colors' 
+          title='Export PDF'
+        >
+          <FileDown className='w-4 h-4' />
+          Export
         </button>
       </div>
 
@@ -335,7 +609,7 @@ const MyListings = () => {
       {showForm && (
         <div className='fixed inset-0 bg-black/30 flex items-center justify-center z-50'>
           <div className='card w-full max-w-lg relative max-h-[85vh] overflow-y-auto mx-4'>
-            <button onClick={() => setShowForm(false)} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100'><X className='w-4 h-4' /></button>
+            <button onClick={() => { setShowForm(false); clearForm(); }} className='absolute right-3 top-3 p-2 rounded-md hover:bg-gray-100'><X className='w-4 h-4' /></button>
             <h3 className='text-lg font-semibold mb-4'>Create new post</h3>
             <form onSubmit={handleCreate} className='space-y-4'>
               <div>
@@ -360,11 +634,19 @@ const MyListings = () => {
                     step='0.01'
                     className='input-field'
                     value={form.pricePerKg}
+                    onKeyDown={(e) => {
+                      // Prevent minus sign, plus sign, and 'e' from being typed
+                      if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault()
+                      }
+                    }}
                     onChange={e => {
                       const v = e.target.value
-                      if (v === '') return setForm({ ...form, pricePerKg: '' })
-                      const n = Number(v)
-                      setForm({ ...form, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                      // Remove any minus signs and only allow positive numbers or empty string
+                      const cleanValue = v.replace(/[^0-9.]/g, '')
+                      if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                        setForm({ ...form, pricePerKg: cleanValue })
+                      }
                     }}
                     placeholder='0.00'
                   />
@@ -377,11 +659,19 @@ const MyListings = () => {
                     step='1'
                     className='input-field'
                     value={form.capacityKg}
+                    onKeyDown={(e) => {
+                      // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                      if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault()
+                      }
+                    }}
                     onChange={e => {
                       const v = e.target.value
-                      if (v === '') return setForm({ ...form, capacityKg: '' })
-                      const n = Number(v)
-                      setForm({ ...form, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                      // Remove any non-numeric characters and only allow positive integers or empty string
+                      const cleanValue = v.replace(/[^0-9]/g, '')
+                      if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                        setForm({ ...form, capacityKg: cleanValue })
+                      }
                     }}
                     placeholder='0'
                   />
@@ -416,7 +706,10 @@ const MyListings = () => {
                   value={form.expireAfterDays}
                   onChange={(e) => {
                     const v = e.target.value.replace(/\D/g, '')
-                    setForm({ ...form, expireAfterDays: v })
+                    // Only allow values >= 1, or empty string for editing
+                    if (v === '' || (Number(v) >= 1)) {
+                      setForm({ ...form, expireAfterDays: v })
+                    }
                   }}
                   placeholder='e.g., 21 for ~3 weeks'
                 />
@@ -470,7 +763,7 @@ const MyListings = () => {
                 <textarea rows={3} className='input-field' value={form.details} onChange={e => setForm({ ...form, details: e.target.value })} />
               </div>
               <div className='flex justify-end gap-2'>
-                <button type='button' onClick={() => setShowForm(false)} className='border px-4 py-2 rounded-lg'>Cancel</button>
+                <button type='button' onClick={() => { setShowForm(false); clearForm(); }} className='border px-4 py-2 rounded-lg'>Cancel</button>
                 <button disabled={saving} className='btn-primary'>{saving ? 'Posting...' : 'Post'}</button>
               </div>
             </form>
@@ -506,11 +799,19 @@ const MyListings = () => {
                     step='0.01'
                     className='input-field py-2 px-3 text-sm'
                     value={editForm.pricePerKg}
+                    onKeyDown={(e) => {
+                      // Prevent minus sign, plus sign, and 'e' from being typed
+                      if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault()
+                      }
+                    }}
                     onChange={(e) => {
                       const v = e.target.value
-                      if (v === '') return setEditForm({ ...editForm, pricePerKg: '' })
-                      const n = Number(v)
-                      setEditForm({ ...editForm, pricePerKg: (isNaN(n) || n < 0) ? '0' : v })
+                      // Remove any minus signs and only allow positive numbers or empty string
+                      const cleanValue = v.replace(/[^0-9.]/g, '')
+                      if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                        setEditForm({ ...editForm, pricePerKg: cleanValue })
+                      }
                     }}
                     placeholder='0.00'
                   />
@@ -523,11 +824,19 @@ const MyListings = () => {
                     step='1'
                     className='input-field py-2 px-3 text-sm'
                     value={editForm.capacityKg}
+                    onKeyDown={(e) => {
+                      // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                      if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                        e.preventDefault()
+                      }
+                    }}
                     onChange={(e) => {
                       const v = e.target.value
-                      if (v === '') return setEditForm({ ...editForm, capacityKg: '' })
-                      const n = Number(v)
-                      setEditForm({ ...editForm, capacityKg: (isNaN(n) || n < 0) ? '0' : v })
+                      // Remove any non-numeric characters and only allow positive integers or empty string
+                      const cleanValue = v.replace(/[^0-9]/g, '')
+                      if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                        setEditForm({ ...editForm, capacityKg: cleanValue })
+                      }
                     }}
                     placeholder='0'
                   />
@@ -562,7 +871,10 @@ const MyListings = () => {
                     value={editForm.expireAfterDays}
                     onChange={(e) => {
                       const v = e.target.value.replace(/\D/g, '')
-                      setEditForm({ ...editForm, expireAfterDays: v })
+                      // Only allow values >= 1, or empty string for editing
+                      if (v === '' || (Number(v) >= 1)) {
+                        setEditForm({ ...editForm, expireAfterDays: v })
+                      }
                     }}
                     placeholder='e.g., 21'
                   />

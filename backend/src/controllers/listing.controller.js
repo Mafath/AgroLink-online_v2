@@ -311,4 +311,18 @@ export const deleteListing = async (req, res) => {
   }
 };
 
+export const adminDeleteListing = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const listing = await Listing.findByIdAndDelete(id);
+    if (!listing) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Listing not found' } });
+    }
+    return res.status(200).json({ ok: true });
+  } catch (error) {
+    console.log('Error in adminDeleteListing: ', error.message);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Internal server error' } });
+  }
+};
+
 

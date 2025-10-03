@@ -685,7 +685,7 @@ const AdminListings = () => {
                               <button className='px-2 py-0.5 rounded-full bg-green-50 text-green-600 text-xs inline-flex items-center gap-1' onClick={()=>{ setViewItem({ ...it, isListing:true }); setIsEditing(false); }}>
                                 <Info className='w-3.5 h-3.5' /> Info
                               </button>
-                              <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this listing?')){ try{ await axiosInstance.delete(`listings/${it._id}`); loadListings(); }catch(_){ } } }}>
+                              <button className='px-2 py-0.5 rounded-full bg-red-50 text-red-600 text-xs inline-flex items-center gap-1' onClick={async()=>{ if(window.confirm('Delete this listing?')){ try{ await axiosInstance.delete(`listings/admin/${it._id}`); loadListings(); }catch(e){ console.error('Delete failed:', e); } } }}>
                                 <Trash2 className='w-3.5 h-3.5' /> Delete
                               </button>
                             </div>

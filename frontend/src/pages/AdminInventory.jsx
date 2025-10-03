@@ -797,26 +797,50 @@ const AdminInventory = () => {
                   <div>
                     <label className='form-label'>Stock Qty</label>
                     <input 
-                      type='text'
+                      type='number'
+                      min='0'
+                      step='1'
                       className='input-field' 
                       value={viewItem.stockQuantity !== undefined ? String(viewItem.stockQuantity) : ''} 
+                      onKeyDown={(e) => {
+                        // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                        if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault()
+                        }
+                      }}
                       onChange={(e) => {
                         const v = e.target.value
                         console.log('Stock quantity changed to:', v)
-                        setViewItem(prev => ({ ...prev, stockQuantity: v }))
+                        // Remove any non-numeric characters and only allow positive integers or empty string
+                        const cleanValue = v.replace(/[^0-9]/g, '')
+                        if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                          setViewItem(prev => ({ ...prev, stockQuantity: cleanValue }))
+                        }
                       }}
                     />
                   </div>
                   <div>
                     <label className='form-label'>Price</label>
                     <input 
-                      type='text'
+                      type='number'
+                      min='0'
+                      step='0.01'
                       className='input-field' 
                       value={viewItem.price !== undefined ? String(viewItem.price) : ''} 
+                      onKeyDown={(e) => {
+                        // Prevent minus sign, plus sign, and 'e' from being typed
+                        if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault()
+                        }
+                      }}
                       onChange={(e) => {
                         const v = e.target.value
                         console.log('Price changed to:', v)
-                        setViewItem(prev => ({ ...prev, price: v }))
+                        // Remove any minus signs and only allow positive numbers or empty string
+                        const cleanValue = v.replace(/[^0-9.]/g, '')
+                        if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                          setViewItem(prev => ({ ...prev, price: cleanValue }))
+                        }
                       }}
                     />
                   </div>
@@ -844,7 +868,27 @@ const AdminInventory = () => {
                 <>
                   <div>
                     <label className='form-label'>Total Qty</label>
-                    <input type='number' min='0' className='input-field' value={viewItem.totalQty||''} onChange={(e)=>setViewItem(v=>({...v, totalQty:e.target.value}))} required />
+                    <input 
+                      type='number' 
+                      min='0' 
+                      className='input-field' 
+                      value={viewItem.totalQty||''} 
+                      onKeyDown={(e) => {
+                        // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                        if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault()
+                        }
+                      }}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        // Remove any non-numeric characters and only allow positive integers or empty string
+                        const cleanValue = v.replace(/[^0-9]/g, '')
+                        if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                          setViewItem(v => ({ ...v, totalQty: cleanValue }))
+                        }
+                      }}
+                      required 
+                    />
                   </div>
                   <div className='md:col-span-2'>
                     <label className='form-label'>Description</label>
@@ -852,7 +896,28 @@ const AdminInventory = () => {
                   </div>
                   <div>
                     <label className='form-label'>Rental / Day</label>
-                    <input type='number' min='0' step='0.01' className='input-field' value={viewItem.rentalPerDay||''} onChange={(e)=>setViewItem(v=>({...v, rentalPerDay:e.target.value}))} required />
+                    <input 
+                      type='number' 
+                      min='0' 
+                      step='0.01' 
+                      className='input-field' 
+                      value={viewItem.rentalPerDay||''} 
+                      onKeyDown={(e) => {
+                        // Prevent minus sign, plus sign, and 'e' from being typed
+                        if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                          e.preventDefault()
+                        }
+                      }}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        // Remove any minus signs and only allow positive numbers or empty string
+                        const cleanValue = v.replace(/[^0-9.]/g, '')
+                        if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                          setViewItem(v => ({ ...v, rentalPerDay: cleanValue }))
+                        }
+                      }}
+                      required 
+                    />
                   </div>
                   
                   <div className='md:col-span-2'>
@@ -1052,7 +1117,27 @@ const AdminInventory = () => {
               </div>
               <div>
                 <label className='form-label'>Total Qty</label>
-                <input type='number' min='0' className='input-field' value={rentalForm.totalQty} onChange={(e)=>setRentalForm(f=>({...f, totalQty:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  className='input-field' 
+                  value={rentalForm.totalQty} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    // Remove any non-numeric characters and only allow positive integers or empty string
+                    const cleanValue = v.replace(/[^0-9]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setRentalForm(f => ({ ...f, totalQty: cleanValue }))
+                    }
+                  }}
+                  required 
+                />
               </div>
               <div className='md:col-span-2'>
                 <label className='form-label'>Description</label>
@@ -1060,7 +1145,28 @@ const AdminInventory = () => {
               </div>
               <div>
                 <label className='form-label'>Rental / Day</label>
-                <input type='number' min='0' step='0.01' className='input-field' value={rentalForm.rentalPerDay} onChange={(e)=>setRentalForm(f=>({...f, rentalPerDay:e.target.value}))} required />
+                <input 
+                  type='number' 
+                  min='0' 
+                  step='0.01' 
+                  className='input-field' 
+                  value={rentalForm.rentalPerDay} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    // Remove any minus signs and only allow positive numbers or empty string
+                    const cleanValue = v.replace(/[^0-9.]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setRentalForm(f => ({ ...f, rentalPerDay: cleanValue }))
+                    }
+                  }}
+                  required 
+                />
               </div>
               
               <div className='md:col-span-2'>
@@ -1103,9 +1209,19 @@ const AdminInventory = () => {
                   step='1'
                   className='input-field' 
                   value={inventoryForm.stockQuantity} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, decimal point, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === '.' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
                   onChange={(e) => {
                     const v = e.target.value
-                    setInventoryForm(f => ({ ...f, stockQuantity: v }))
+                    // Remove any non-numeric characters and only allow positive integers or empty string
+                    const cleanValue = v.replace(/[^0-9]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setInventoryForm(f => ({ ...f, stockQuantity: cleanValue }))
+                    }
                   }}
                   required 
                 />
@@ -1118,9 +1234,19 @@ const AdminInventory = () => {
                   step='0.01' 
                   className='input-field' 
                   value={inventoryForm.price} 
+                  onKeyDown={(e) => {
+                    // Prevent minus sign, plus sign, and 'e' from being typed
+                    if (e.key === '-' || e.key === '+' || e.key === 'e' || e.key === 'E') {
+                      e.preventDefault()
+                    }
+                  }}
                   onChange={(e) => {
                     const v = e.target.value
-                    setInventoryForm(f => ({ ...f, price: v }))
+                    // Remove any minus signs and only allow positive numbers or empty string
+                    const cleanValue = v.replace(/[^0-9.]/g, '')
+                    if (cleanValue === '' || (Number(cleanValue) >= 0)) {
+                      setInventoryForm(f => ({ ...f, price: cleanValue }))
+                    }
                   }}
                   required 
                 />
