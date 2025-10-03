@@ -191,20 +191,20 @@ const AdminDashboard = () => {
                       <div className='border-t border-gray-200 my-3'></div>
                       <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
                         <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-500'></span>Apparel</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>$12,150</div>
+                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-500'></span>Inventory</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR12,150</div>
                         </div>
                         <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-300'></span>Electronics</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>$24,900</div>
+                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-300'></span>Rentals</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR24,900</div>
                         </div>
                         <div>
-                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-200'></span>FMCG</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>$12,750</div>
+                          <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-200'></span>Listings</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR12,750</div>
                         </div>
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-400'></span>Other Sales</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>$50,200</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR50,200</div>
                         </div>
                       </div>
                     </div>
@@ -220,8 +220,8 @@ const AdminDashboard = () => {
                   <div className='text-sm text-gray-700 font-medium mb-2'>Activity Timeline</div>
                   <div className='space-y-5 text-sm'>
                     {[
-                      ['12 Invoices have been paid','Invoices have been paid to the company','12 min ago'],
-                      ['Client Meeting','Project meeting with john @10:15am','45 min ago'],
+                      ['12 listings have been added','Listings have been added to the platform','12 min ago'],
+                      ['7 deliveries were comlpeted','Deliveries were completed @10:15am','45 min ago'],
                     ].map((t,i)=> (
                       <div key={i} className='grid grid-cols-[16px,1fr,100px] gap-3 items-start'>
                         <span className={`w-3 h-3 rounded-full mt-1 ${i===0?'bg-violet-500':'bg-green-500'}`} />
