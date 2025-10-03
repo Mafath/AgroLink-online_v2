@@ -215,6 +215,59 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+export const resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body || {};
+
+    if (!token || !password) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Token and password are required" } });
+    }
+
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ error: { code: "VALIDATION_ERROR", message: "Password must be at least 8 characters" } });
+    }
+
+    // Find user with this reset token
+    const user = await User.findOne({
+      passwordResetToken: token,
+      passwordResetExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        error: { code: "INVALID_TOKEN", message: "Reset token is invalid or has expired" }
+      });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Update user's password and clear reset token
+    user.passwordHash = passwordHash;
+    user.passwordResetToken = undefined;
+    user.passwordResetExpires = undefined;
+    await user.save();
+
+    // Log successful password reset for security monitoring
+    console.log(`Password reset successful for user: ${user.email}`);
+
+    return res.status(200).json({
+      message: "Password reset successfully. You can now log in with your new password.",
+      success: true
+    });
+  } catch (error) {
+    console.error("Error in resetPassword controller: ", error.message);
+    return res.status(500).json({ 
+      error: { code: "SERVER_ERROR", message: "Internal server error" } 
+    });
+  }
+};
+
 export const logout = async (req, res) => {
   try {
     // If a driver or agronomist logs out, mark them UNAVAILABLE
