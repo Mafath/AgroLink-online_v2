@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/AgroLink-%F0%9F%8C%BE-brightgreen?style=for-the-badge&logo=spring&logoColor=white" alt="AgroLink Logo" />
-</p>
-
 <div align="center">
   <img src="frontend/src/assets/AgroLink_logo3-removebg-preview.png" alt="AgroLink Logo" width="150" height="180" />
 </div>
@@ -22,15 +18,10 @@
 
 ---
 
-## 📖 **About AgroLink**
+## **About AgroLink**
 
 **AgroLink Online** is a comprehensive digital marketplace platform that connects farmers, buyers, agronomists, and drivers in the agricultural ecosystem. Built with modern web technologies, it facilitates the buying and selling of agricultural products, equipment rentals, harvest management, and delivery services.
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Platform-Web%20Application-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Architecture-Full%20Stack-green?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Deployment-Ready-orange?style=for-the-badge" />
-</div>
 
 ## 🚀 **Core Features**
 
@@ -49,6 +40,23 @@
 - **Payment Integration**: Stripe payment processing for secure transactions
 - **Inventory Management**: Track agricultural supplies and equipment
 
+</td>
+<td width="50%">
+
+### 🌾 **Harvest Management**
+- **Harvest Requests**: Farmers can request expert assistance for harvest planning
+- **Schedule Management**: Agronomists can create and manage harvest schedules
+- **Progress Tracking**: Real-time monitoring of harvest activities
+- **Expert Consultation**: Direct communication between farmers and agronomists
+
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td width="50%">
+
 ### 👥 **Multi-Role User System**
 - **Farmers**: List products, manage harvests, track finances
 - **Buyers**: Browse marketplace, place orders, track deliveries
@@ -58,12 +66,6 @@
 
 </td>
 <td width="50%">
-
-### 🌾 **Harvest Management**
-- **Harvest Requests**: Farmers can request expert assistance for harvest planning
-- **Schedule Management**: Agronomists can create and manage harvest schedules
-- **Progress Tracking**: Real-time monitoring of harvest activities
-- **Expert Consultation**: Direct communication between farmers and agronomists
 
 ### 🚚 **Delivery & Logistics**
 - **Delivery Tracking**: Real-time order tracking and status updates
@@ -85,6 +87,25 @@
 - **Transaction History**: Complete financial record keeping
 - **Debt Management**: Track and manage agricultural debts
 
+</td>
+<td width="50%">
+
+### 📊 **Reporting & Analytics**
+- **Harvest Reports**: Detailed harvest performance analytics
+- **Financial Reports**: Comprehensive financial insights
+- **Activity Tracking**: Monitor platform usage and engagement
+- **Admin Dashboard**: Platform-wide analytics and management
+
+</td>
+</tr>
+</table>
+
+
+
+<table>
+<tr>
+<td width="50%">
+
 ### 🛠️ **Equipment Rental**
 - **Equipment Listings**: Rent out agricultural equipment
 - **Booking System**: Schedule equipment rentals
@@ -94,11 +115,6 @@
 </td>
 <td width="50%">
 
-### 📊 **Reporting & Analytics**
-- **Harvest Reports**: Detailed harvest performance analytics
-- **Financial Reports**: Comprehensive financial insights
-- **Activity Tracking**: Monitor platform usage and engagement
-- **Admin Dashboard**: Platform-wide analytics and management
 
 ### 🔒 **Security & Authentication**
 - **JWT Authentication**: Secure token-based authentication
@@ -110,7 +126,7 @@
 </tr>
 </table>
 
-## 🛠️ **Technology Stack**
+## **Technology Stack**
 
 <div align="center">
   <img src="https://img.shields.io/badge/Stack-MERN%20%2B%20Modern%20Tools-green?style=for-the-badge" />
@@ -169,10 +185,6 @@
 
 ## 🌐 **Access the Application**
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Frontend-React%20App-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Backend-Express%20API-green?style=for-the-badge" />
-</div>
 
 <table>
 <tr>
@@ -203,7 +215,7 @@
   <img src="https://img.shields.io/badge/Visual%20Preview-Application%20Interface-blue?style=for-the-badge" />
 </div>
 
-### 🏠 **Homepage & Dashboard**
+### **Homepage & Dashboard**
 <table>
 <tr>
 <td width="50%">
@@ -223,7 +235,7 @@
 </tr>
 </table>
 
-### 🛒 **Marketplace & E-commerce**
+### **Marketplace & E-commerce**
 <table>
 <tr>
 <td width="50%">
@@ -243,7 +255,7 @@
 </tr>
 </table>
 
-### 🌾 **Harvest Management**
+### **Harvest Management**
 <table>
 <tr>
 <td width="50%">
@@ -263,7 +275,7 @@
 </tr>
 </table>
 
-### 👥 **User Management**
+### **User Management**
 <table>
 <tr>
 <td width="50%">
@@ -283,7 +295,7 @@
 </tr>
 </table>
 
-### 📊 **Analytics & Reports**
+### **Analytics & Reports**
 <table>
 <tr>
 <td width="50%">
@@ -303,7 +315,7 @@
 </tr>
 </table>
 
-## 📚 **API Documentation**
+## **API Documentation**
 
 ### **Authentication Endpoints**
 - `POST /api/auth/signup` - User registration
@@ -319,7 +331,7 @@
 - **Finance**: Financial tracking and management
 - **Inventory**: Supply and equipment management
 
-## 👥 **User Roles & Permissions**
+## **User Roles & Permissions**
 
 | Role | Permissions |
 |------|-------------|
@@ -378,26 +390,21 @@ For support and questions, please contact the development team or create an issu
 
 ## 🌟 **AgroLink Online**
 
-**Connecting the agricultural community through technology** 🌱
+**Connecting the agricultural community through technology**
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Made%20with-❤️-red?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Built%20for-Farmers-green?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Future%20of-Agriculture-blue?style=for-the-badge" />
-</div>
+
 
 ### 🤝 **Get Involved**
 
-[![GitHub stars](https://img.shields.io/github/stars/your-username/AgroLink-online?style=social)](https://github.com/your-username/AgroLink-online)
-[![GitHub forks](https://img.shields.io/github/forks/your-username/AgroLink-online?style=social)](https://github.com/your-username/AgroLink-online)
-[![GitHub issues](https://img.shields.io/github/issues/your-username/AgroLink-online)](https://github.com/your-username/AgroLink-online/issues)
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/your-username/AgroLink-online)](https://github.com/your-username/AgroLink-online/pulls)
+[![GitHub stars](https://img.shields.io/github/stars/Mafath/AgroLink-online_v2?style=social)](https://github.com/Mafath/AgroLink-online_v2)
+[![GitHub forks](https://img.shields.io/github/forks/Mafath/AgroLink-online_v2?style=social)](https://github.com/Mafath/AgroLink-online_v2)
+[![GitHub issues](https://img.shields.io/github/issues/Mafath/AgroLink-online_v2)](https://github.com/Mafath/AgroLink-online_v2/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/Mafath/AgroLink-online_v2)](https://github.com/Mafath/AgroLink-online_v2/pulls)
 
-### 📞 **Connect With Us**
+### **Connect With Us**
 
 [![Email](https://img.shields.io/badge/Email-Contact%20Us-blue?style=flat-square&logo=gmail)](mailto:contact@agrolink.com)
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Follow%20Us-blue?style=flat-square&logo=linkedin)](https://linkedin.com/company/agrolink)
-[![Twitter](https://img.shields.io/badge/Twitter-Follow%20Us-blue?style=flat-square&logo=twitter)](https://twitter.com/agrolink)
 
 ---
 
