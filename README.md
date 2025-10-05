@@ -284,16 +284,36 @@
 <tr>
 <td width="50%" valign="top">
 
-**User Registration**
+**Driver Dashboard**
+![Driver Dashboard](visuals/user-dashboard.png)
+*Manage delivery assignments, status updates, and routes*
+
+</td>
+<td width="50%" valign="top">
+
+**Agronomist Dashboard**
+![Agronomist Dashboard](visuals/user-dashboard.png)
+*Oversee harvest schedules, respond to requests, and track progress*
+
+</td>
+</tr>
+</table>
+
+### **Authentication**
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Signup**
 ![Signup](visuals/signup.png)
 *Multi-role registration with email verification*
 
 </td>
 <td width="50%" valign="top">
 
-**User Dashboard**
-![User Dashboard](visuals/user-dashboard.png)
-*Personalized dashboard based on user role*
+**Login**
+![Login](visuals/login.png)
+*Secure sign-in with validation and error feedback*
 
 </td>
 </tr>
