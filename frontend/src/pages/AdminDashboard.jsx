@@ -135,7 +135,7 @@ const AdminDashboard = () => {
                 <div className='p-4 flex items-center justify-between'>
                     <div>
                     <div className='text-sm text-gray-600'>Ratings</div>
-                    <div className='text-2xl font-semibold mt-1'>13k <span className='text-green-600 text-xs align-middle'>+15.6%</span></div>
+                    <div className='text-2xl font-semibold mt-1'>0.4k <span className='text-green-600 text-xs align-middle'>+15.6%</span></div>
                     <div className='mt-3'>
                       <span className='text-xs bg-violet-100 text-violet-700 px-2 py-1 rounded-full'>Year of 2025</span>
                     </div>
@@ -147,7 +147,7 @@ const AdminDashboard = () => {
                 <div className='p-4 flex items-center justify-between'>
                   <div>
                     <div className='text-sm text-gray-600'>Sessions</div>
-                    <div className='text-2xl font-semibold mt-1'>24.5k <span className='text-rose-500 text-xs align-middle'>-20%</span></div>
+                    <div className='text-2xl font-semibold mt-1'>1.3k <span className='text-rose-500 text-xs align-middle'>-20%</span></div>
                     <div className='mt-3 text-xs text-gray-600'>Last Week</div>
                   </div>
                   <div className='w-24 h-24 bg-gray-100 rounded-lg' />
@@ -185,26 +185,26 @@ const AdminDashboard = () => {
                         <span className='w-9 h-9 rounded-lg bg-violet-100 grid place-items-center text-violet-600'>📄</span>
                         <div>
                           <div className='text-xs text-gray-500'>Number of Sales</div>
-                          <div className='font-semibold text-base'>$86,400</div>
+                          <div className='font-semibold text-base'>LKR 104,400</div>
                         </div>
                       </div>
                       <div className='border-t border-gray-200 my-3'></div>
                       <div className='grid grid-cols-2 gap-x-8 gap-y-4'>
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-500'></span>Inventory</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>LKR12,150</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR 12,150</div>
                         </div>
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-300'></span>Rentals</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>LKR24,900</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR 24,900</div>
                         </div>
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-200'></span>Listings</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>LKR12,750</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR 17,150</div>
                         </div>
                         <div>
                           <div className='flex items-center gap-2 text-gray-700'><span className='w-2 h-2 rounded-full bg-violet-400'></span>Other Sales</div>
-                          <div className='text-xs text-gray-500 mt-0.5'>LKR50,200</div>
+                          <div className='text-xs text-gray-500 mt-0.5'>LKR 50,200</div>
                         </div>
                       </div>
                     </div>
