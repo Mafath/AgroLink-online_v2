@@ -25,13 +25,13 @@
 
 ## 🚀 **Core Features**
 
-<div align="center">
+<div align="center" style="margin-bottom: 16px;">
   <img src="https://img.shields.io/badge/Features-Comprehensive-blue?style=for-the-badge" />
 </div>
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🛒 **Marketplace & E-commerce**
 - **Product Listings**: Farmers can list their crops with detailed information, pricing, and images
@@ -41,13 +41,14 @@
 - **Inventory Management**: Track agricultural supplies and equipment
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🌾 **Harvest Management**
 - **Harvest Requests**: Farmers can request expert assistance for harvest planning
 - **Schedule Management**: Agronomists can create and manage harvest schedules
 - **Progress Tracking**: Real-time monitoring of harvest activities
 - **Expert Consultation**: Direct communication between farmers and agronomists
+ - **Notifications**: Alerts for schedule changes and upcoming tasks
 
 </td>
 </tr>
@@ -55,7 +56,7 @@
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 👥 **Multi-Role User System**
 - **Farmers**: List products, manage harvests, track finances
@@ -65,7 +66,7 @@
 - **Administrators**: Platform oversight and management
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🚚 **Delivery & Logistics**
 - **Delivery Tracking**: Real-time order tracking and status updates
@@ -79,7 +80,7 @@
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 💰 **Financial Management**
 - **Budget Tracking**: Monitor farm expenses and income
@@ -88,7 +89,7 @@
 - **Debt Management**: Track and manage agricultural debts
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 📊 **Reporting & Analytics**
 - **Harvest Reports**: Detailed harvest performance analytics
@@ -104,7 +105,7 @@
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🛠️ **Equipment Rental**
 - **Equipment Listings**: Rent out agricultural equipment
@@ -113,7 +114,7 @@
 - **Rental History**: Complete rental transaction records
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 
 ### 🔒 **Security & Authentication**
@@ -128,13 +129,13 @@
 
 ## **Technology Stack**
 
-<div align="center">
-  <img src="https://img.shields.io/badge/Stack-MERN%20%2B%20Modern%20Tools-green?style=for-the-badge" />
+<div align="center" style="margin-bottom: 16px;">
+  <img src="https://img.shields.io/badge/Stack-MERN%20%2B%20Modern%20Tools-blue?style=for-the-badge" />
 </div>
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🎨 **Frontend Technologies**
 <div align="center">
@@ -155,9 +156,10 @@
 - **React Hot Toast** - Elegant notifications
 - **ApexCharts** - Interactive data visualization
 - **Stripe** - Secure payment processing
+ - **jsPDF** - Client-side PDF generation
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### ⚙️ **Backend Technologies**
 <div align="center">
@@ -177,6 +179,8 @@
 - **Cloudinary** - Cloud image management
 - **Nodemailer** - Email sending service
 - **Socket.io** - Real-time bidirectional communication
+ - **CORS** - Cross-origin resource sharing
+ - **dotenv** - Environment variable management
 
 </td>
 </tr>
@@ -188,7 +192,7 @@
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### 🎨 **Frontend Application**
 - **URL**: http://localhost:5173
@@ -197,7 +201,7 @@
 - **Authentication**: JWT-based login system
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 ### ⚙️ **Backend API**
 - **URL**: http://localhost:5001
@@ -218,14 +222,14 @@
 ### **Homepage & Dashboard**
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Landing Page**
 ![Homepage](visuals/homepage.png)
 *Modern, responsive homepage with role-based welcome messages*
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Admin Dashboard**
 ![Admin Dashboard](visuals/admin-dashboard.png)
@@ -238,14 +242,14 @@
 ### **Marketplace & E-commerce**
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Product Marketplace**
 ![Marketplace](visuals/marketplace.png)
 *Browse and search agricultural products with advanced filtering*
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Shopping Cart**
 ![Shopping Cart](visuals/shopping-cart.png)
@@ -258,14 +262,14 @@
 ### **Harvest Management**
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Harvest Dashboard**
 ![Harvest Dashboard](visuals/harvest-dashboard.png)
 *Track harvest progress and manage schedules*
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Harvest Scheduling**
 ![Harvest Schedule](visuals/harvest-schedule.png)
@@ -278,18 +282,38 @@
 ### **User Management**
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
-**User Registration**
+**Driver Dashboard**
+![Driver Dashboard](visuals/user-dashboard.png)
+*Manage delivery assignments, status updates, and routes*
+
+</td>
+<td width="50%" valign="top">
+
+**Agronomist Dashboard**
+![Agronomist Dashboard](visuals/user-dashboard.png)
+*Oversee harvest schedules, respond to requests, and track progress*
+
+</td>
+</tr>
+</table>
+
+### **Authentication**
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Signup**
 ![Signup](visuals/signup.png)
 *Multi-role registration with email verification*
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
-**User Dashboard**
-![User Dashboard](visuals/user-dashboard.png)
-*Personalized dashboard based on user role*
+**Login**
+![Login](visuals/login.png)
+*Secure sign-in with validation and error feedback*
 
 </td>
 </tr>
@@ -298,14 +322,14 @@
 ### **Analytics & Reports**
 <table>
 <tr>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Financial Reports**
 ![Financial Reports](visuals/financial-reports.png)
 *Comprehensive financial tracking and analytics*
 
 </td>
-<td width="50%">
+<td width="50%" valign="top">
 
 **Order Management**
 ![Order Management](visuals/order-management.png)
