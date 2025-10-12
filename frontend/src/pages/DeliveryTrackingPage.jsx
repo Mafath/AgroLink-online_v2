@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { Truck, Package, MapPin, Clock, CheckCircle, AlertCircle, Mail, Star, MessageSquare } from 'lucide-react';
+import { Truck, Package, MapPin, Clock, CheckCircle, AlertCircle, Mail, Star, MessageSquare, X, RefreshCw } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import DeliveryReviewForm from '../components/DeliveryReviewForm';
 
@@ -12,10 +12,24 @@ const DeliveryTrackingPage = () => {
   const [loading, setLoading] = useState(true);
   const [showReviewForm, setShowReviewForm] = useState(false);
   const [selectedDelivery, setSelectedDelivery] = useState(null);
+  const [showMessageForm, setShowMessageForm] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [deliveryMessages, setDeliveryMessages] = useState({});
 
   useEffect(() => {
     fetchDeliveries();
   }, []);
+
+  // Refresh messages when deliveries change
+  useEffect(() => {
+    if (deliveries.length > 0) {
+      const cancelledDeliveries = deliveries.filter(delivery => delivery.status === 'CANCELLED');
+      cancelledDeliveries.forEach(delivery => {
+        fetchDeliveryMessages(delivery._id);
+      });
+    }
+  }, [deliveries]);
 
   const fetchDeliveries = async () => {
     try {
@@ -26,10 +40,29 @@ const DeliveryTrackingPage = () => {
         const response = await axiosInstance.get('/deliveries/me');
         setDeliveries(response.data);
       }
+      
+      // Fetch messages for cancelled deliveries
+      const cancelledDeliveries = deliveries.filter(delivery => delivery.status === 'CANCELLED');
+      for (const delivery of cancelledDeliveries) {
+        await fetchDeliveryMessages(delivery._id);
+      }
     } catch (error) {
       console.error('Failed to fetch deliveries:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDeliveryMessages = async (deliveryId) => {
+    try {
+      // Fetch all messages for this delivery (customer messages, manager replies, system messages)
+      const response = await axiosInstance.get(`/deliveries/${deliveryId}/messages`);
+      setDeliveryMessages(prev => ({
+        ...prev,
+        [deliveryId]: response.data
+      }));
+    } catch (error) {
+      console.error('Failed to fetch delivery messages:', error);
     }
   };
 
@@ -117,12 +150,43 @@ const DeliveryTrackingPage = () => {
     }
   };
 
-  const handleContactSupport = (delivery) => {
-    const supportEmail = 'ishan78ahmed01@gmail.com';
-    const subject = `Delivery Cancellation Support - Order ${delivery.order?.orderNumber || delivery._id}`;
+  const handleSendMessage = (delivery) => {
+    setSelectedDelivery(delivery);
+    setShowMessageForm(true);
+    setMessageText('');
+  };
 
-    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(supportEmail)}&su=${encodeURIComponent(subject)}`;
-    window.open(gmailUrl, '_blank');
+  const handleMessageSubmit = async () => {
+    if (!messageText.trim() || !selectedDelivery) return;
+
+    setSendingMessage(true);
+    try {
+      await axiosInstance.post(`/deliveries/${selectedDelivery._id}/message`, {
+        message: messageText.trim()
+      });
+      
+      // Refresh messages for this delivery
+      await fetchDeliveryMessages(selectedDelivery._id);
+      
+      setShowMessageForm(false);
+      setSelectedDelivery(null);
+      setMessageText('');
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Failed to send message. Please try again.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
+  const handleMessageCancel = () => {
+    setShowMessageForm(false);
+    setSelectedDelivery(null);
+    setMessageText('');
+  };
+
+  const refreshMessages = async (deliveryId) => {
+    await fetchDeliveryMessages(deliveryId);
   };
 
   const handleReviewClick = (delivery) => {
@@ -292,7 +356,7 @@ const DeliveryTrackingPage = () => {
                     </div>
                   )}
 
-                  {/* Contact Support Button for Cancelled Deliveries */}
+                  {/* Message Manager for Cancelled Deliveries */}
                   {delivery.status === 'CANCELLED' && (
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -303,17 +367,80 @@ const DeliveryTrackingPage = () => {
                               Delivery Cancelled
                             </h4>
                             <p className="text-sm text-red-700 mb-3">
-                              Your delivery has been cancelled. If you have any questions or concerns, please contact our support team.
+                              Your delivery has been cancelled. You can send one message to our delivery manager if you have any questions or concerns.
                             </p>
-                            <button
-                              onClick={() => handleContactSupport(delivery)}
-                              className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
-                            >
-                              <Mail className="w-4 h-4 mr-2" />
-                              Contact Support
-                            </button>
+                            <div className="flex items-center space-x-3">
+                              {!deliveryMessages[delivery._id] || !deliveryMessages[delivery._id].some(msg => msg.senderType === 'CUSTOMER') ? (
+                                <button
+                                  onClick={() => handleSendMessage(delivery)}
+                                  className="inline-flex items-center px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700 transition-colors"
+                                >
+                                  <MessageSquare className="w-4 h-4 mr-2" />
+                                  Send Message
+                                </button>
+                              ) : (
+                                <div className="inline-flex items-center px-4 py-2 bg-gray-100 text-gray-500 text-sm font-medium rounded-lg">
+                                  <MessageSquare className="w-4 h-4 mr-2" />
+                                  Message Sent
+                                </div>
+                              )}
+                              <button
+                                onClick={() => refreshMessages(delivery._id)}
+                                className="inline-flex items-center px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg border border-gray-300"
+                                title="Check for new messages"
+                              >
+                                <RefreshCw className="w-4 h-4 mr-1" />
+                                Check Messages
+                              </button>
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show existing messages for cancelled deliveries */}
+                  {delivery.status === 'CANCELLED' && deliveryMessages[delivery._id] && deliveryMessages[delivery._id].length > 0 && (
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-medium text-gray-900">Messages</h4>
+                        <button
+                          onClick={() => refreshMessages(delivery._id)}
+                          className="inline-flex items-center px-2 py-1 text-xs text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded"
+                          title="Refresh messages"
+                        >
+                          <RefreshCw className="w-3 h-3 mr-1" />
+                          Refresh
+                        </button>
+                      </div>
+                      <div className="space-y-3">
+                        {deliveryMessages[delivery._id].map((message, index) => (
+                          <div key={index} className={`p-3 rounded-lg ${
+                            message.senderType === 'CUSTOMER' 
+                              ? 'bg-blue-50 border border-blue-200' 
+                              : message.senderType === 'MANAGER'
+                              ? 'bg-green-50 border border-green-200'
+                              : 'bg-gray-50 border border-gray-200'
+                          }`}>
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm text-gray-700">{message.message}</p>
+                                <div className="flex items-center mt-2 text-xs text-gray-500">
+                                  <span>
+                                    {message.senderType === 'CUSTOMER' 
+                                      ? 'You' 
+                                      : message.senderType === 'MANAGER'
+                                      ? 'Manager Reply'
+                                      : 'System'
+                                    }
+                                  </span>
+                                  <span className="mx-2">•</span>
+                                  <span>{new Date(message.createdAt).toLocaleString()}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -331,6 +458,66 @@ const DeliveryTrackingPage = () => {
           onReviewSubmitted={handleReviewSubmitted}
           onCancel={handleReviewCancel}
         />
+      )}
+
+      {/* Message Form Modal */}
+      {showMessageForm && selectedDelivery && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Send Message to Manager</h3>
+              <button
+                onClick={handleMessageCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
+                Order #{selectedDelivery.order?.orderNumber || selectedDelivery._id}
+              </p>
+              <p className="text-sm text-gray-500">
+                Send a message to our delivery manager about this cancelled delivery. You can only send one message per delivery.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your Message
+              </label>
+              <textarea
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Type your message here..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                rows={4}
+                maxLength={1000}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {messageText.length}/1000 characters
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleMessageCancel}
+                disabled={sendingMessage}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMessageSubmit}
+                disabled={!messageText.trim() || sendingMessage}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {sendingMessage ? 'Sending...' : 'Send Message'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

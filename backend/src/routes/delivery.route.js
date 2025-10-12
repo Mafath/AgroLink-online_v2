@@ -9,6 +9,13 @@ import {
   driverUpdateStatus,
   getDriverDeliveries,
   adminCancelDelivery,
+  getDeliveryManagerMessages,
+  getUnreadMessagesCount,
+  markMessageAsRead,
+  markAllMessagesAsRead,
+  sendMessageToManager,
+  getMyDeliveryMessages,
+  replyToCustomerMessage,
 } from '../controllers/delivery.controller.js';
 
 const router = express.Router();
@@ -18,6 +25,10 @@ router.post('/', requireAuth, requireRole('FARMER', 'BUYER'), createDeliveryRequ
 router.get('/me', requireAuth, requireRole('FARMER', 'BUYER'), getMyDeliveries);
 router.get('/order/:orderId', requireAuth, requireRole('FARMER', 'BUYER'), getMyDeliveryByOrder);
 
+// Customer messages for cancelled deliveries
+router.post('/:deliveryId/message', requireAuth, requireRole('FARMER', 'BUYER'), sendMessageToManager);
+router.get('/:deliveryId/messages', requireAuth, requireRole('FARMER', 'BUYER'), getMyDeliveryMessages);
+
 // Admin lists all and assigns drivers
 router.get('/', requireAuth, requireRole('ADMIN'), adminListDeliveries);
 router.post('/:id/assign', requireAuth, requireRole('ADMIN'), assignDriver);
@@ -26,6 +37,13 @@ router.patch('/:id/cancel', requireAuth, requireRole('ADMIN'), adminCancelDelive
 // Drivers view their deliveries and update status
 router.get('/driver/me', requireAuth, requireRole('DRIVER'), getDriverDeliveries);
 router.post('/:id/status', requireAuth, requireRole('DRIVER'), driverUpdateStatus);
+
+// Delivery manager messages (for delivery managers)
+router.get('/messages', requireAuth, requireRole('ADMIN'), getDeliveryManagerMessages);
+router.get('/messages/unread-count', requireAuth, requireRole('ADMIN'), getUnreadMessagesCount);
+router.patch('/messages/:messageId/read', requireAuth, requireRole('ADMIN'), markMessageAsRead);
+router.patch('/messages/read-all', requireAuth, requireRole('ADMIN'), markAllMessagesAsRead);
+router.post('/messages/:messageId/reply', requireAuth, requireRole('ADMIN'), replyToCustomerMessage);
 
 export default router;
 

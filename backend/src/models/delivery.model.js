@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 
 const STATUS = [
   'PENDING',
+  'ASSIGNMENT_PENDING',
   'ASSIGNED',
   'PREPARING',
   'COLLECTED',
@@ -43,6 +44,12 @@ const deliverySchema = new mongoose.Schema(
     driver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null, index: true },
     statusHistory: { type: [statusHistorySchema], default: [] },
     review: { type: mongoose.Schema.Types.ObjectId, ref: 'DeliveryReview', default: null },
+    assignmentStatus: {
+      status: { type: String, enum: ['PENDING', 'ACCEPTED', 'DECLINED'], default: 'PENDING' },
+      assignedAt: { type: Date },
+      respondedAt: { type: Date },
+      response: { type: String, enum: ['ACCEPTED', 'DECLINED'] }
+    },
   },
   { timestamps: true }
 );
