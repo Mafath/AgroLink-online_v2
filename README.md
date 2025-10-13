@@ -2,7 +2,6 @@
   <img src="frontend/src/assets/AgroLink_logo3-removebg-preview.png" alt="AgroLink Logo" width="150" height="180" />
 </div>
 
-<small>
 <h1 align="center">AgroLink – Smart Agricultural Trading & Management System</h1>
 
 <p align="center">
@@ -403,47 +402,6 @@ For support and questions, please contact the development team or create an issu
 
 ---
 
-## 🚀 Run After Cloning
-
-Follow these steps to run the project locally after cloning.
-
-### 1) Clone the repository
-```bash
-git clone https://github.com/Mafath/AgroLink-online_v2.git
-cd AgroLink-online-main
-```
-
-### 2) Configure environment variables
-- Create a `.env` file in `backend/` with your `MONGO_URI`, `JWT_SECRET`, Cloudinary, Stripe, and email credentials.
-- Optionally create a `.env` in `frontend/` with `VITE_API_BASE_URL` and `VITE_STRIPE_PUBLISHABLE_KEY`.
-
-### 3) Install dependencies
-```bash
-cd backend && npm install && cd ../frontend && npm install && cd ..
-```
-
-### 4) Start development servers
-```bash
-# Terminal 1 - Backend (http://localhost:5001)
-cd backend && npm run dev
-
-# Terminal 2 - Frontend (http://localhost:5173)
-cd frontend && npm run dev
-```
-
-### 5) (Optional) Seed sample data
-```bash
-node backend/src/scripts/seedUsers.js
-node backend/src/scripts/seedListings.js
-node backend/src/scripts/seedInventory.js
-```
-
-### 6) Open the app
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5001
-
----
-
 <div align="center">
 
 ## 🌟 **AgroLink Online**
@@ -471,4 +429,3 @@ node backend/src/scripts/seedInventory.js
 </div>
 
 </div>
-</small>
