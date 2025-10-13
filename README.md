@@ -2,6 +2,7 @@
   <img src="frontend/src/assets/AgroLink_logo3-removebg-preview.png" alt="AgroLink Logo" width="150" height="180" />
 </div>
 
+<small>
 <h1 align="center">AgroLink – Smart Agricultural Trading & Management System</h1>
 
 <p align="center">
@@ -470,3 +471,4 @@ node backend/src/scripts/seedInventory.js
 </div>
 
 </div>
+</small>
