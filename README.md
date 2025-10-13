@@ -55,7 +55,7 @@
 </table>
 
 <table>
-<tr>
+<tr style="background: var(--color-canvas-subtle);">
 <td width="50%" valign="top">
 
 ### 👥 **Multi-Role User System**
