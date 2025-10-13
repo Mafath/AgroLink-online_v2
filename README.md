@@ -52,10 +52,8 @@
 
 </td>
 </tr>
-</table>
 
-<table>
-<tr style="background: var(--color-canvas-subtle);">
+<tr>
 <td width="50%" valign="top">
 
 ### 👥 **Multi-Role User System**
@@ -76,9 +74,6 @@
 
 </td>
 </tr>
-</table>
-
-<table>
 <tr>
 <td width="50%" valign="top">
 
@@ -99,11 +94,7 @@
 
 </td>
 </tr>
-</table>
 
-
-
-<table>
 <tr>
 <td width="50%" valign="top">
 
@@ -126,6 +117,7 @@
 </td>
 </tr>
 </table>
+
 
 ## **Technology Stack**
 
