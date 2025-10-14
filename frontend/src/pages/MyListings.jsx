@@ -551,7 +551,8 @@ const MyListings = () => {
 
       {/* Removed Items Table */}
       <div className='card mt-6'>
-        <h3 className='text-xl font-semibold text-gray-800 mb-4'>Removed Items</h3>
+        <h3 className='text-xl font-semibold text-gray-800 mb-1'>Removed Items</h3>
+        <p className='text-red-500 text-sm mb-4'>*Items here were removed after reaching their expiry.</p>
         {loading ? (
           <div>Loading...</div>
         ) : items.filter(item => item.status === 'REMOVED').length === 0 ? (
