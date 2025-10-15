@@ -44,28 +44,28 @@ const HarvestDashboard = () => {
       try {
         setLoading(true);
         
-        // Fetch harvest schedules data (same as HarvestSchedule component)
+        // Fetch harvest schedules once and compute both totals and ongoing
         const schedulesResponse = await axiosInstance.get('/harvest/schedules');
-        const allSchedules = schedulesResponse.data?.harvests || [];
-        // Filter out cancelled/abandoned harvests (same logic as HarvestSchedule)
-        const totalSchedules = allSchedules.filter(schedule => 
-          schedule.status !== 'CANCELLED' && 
-          schedule.harvestSchedule?.scheduleStatus !== 'Cancelled'
+        const harvests = schedulesResponse.data?.harvests || [];
+
+        // Total schedules: exclude cancelled/abandoned
+        const totalSchedules = harvests.filter(schedule => 
+          schedule?.status !== 'CANCELLED' && 
+          schedule?.harvestSchedule?.scheduleStatus !== 'Cancelled'
         ).length;
         
-        // Fetch harvest schedules for ongoing harvests (same as HarvestTrack component)
-        const trackResponse = await axiosInstance.get('/harvest/schedules');
-        const allTrackSchedules = trackResponse.data?.harvests || [];
-        // Filter for ongoing schedules only (same logic as HarvestTrack)
-        const ongoingHarvests = allTrackSchedules.filter(schedule => 
-          ['Published', 'In Progress'].includes(schedule.harvestSchedule?.scheduleStatus) &&
-          schedule.status !== 'CANCELLED' &&
-          schedule.harvestSchedule?.scheduleStatus !== 'Cancelled'
+        // Ongoing harvests: Published or In Progress, exclude cancelled
+        const ongoingHarvests = harvests.filter(schedule => 
+          ['Published', 'In Progress'].includes(schedule?.harvestSchedule?.scheduleStatus) &&
+          schedule?.status !== 'CANCELLED' &&
+          schedule?.harvestSchedule?.scheduleStatus !== 'Cancelled'
         ).length;
         
-        // Fetch reports data to get issues reported count
-        const reportsResponse = await axiosInstance.get('/reports/stats');
-        const issuesReported = reportsResponse.data?.totalReports || 0;
+        // Fetch farmer crop reports count
+        const reportsResponse = await axiosInstance.get('/harvest-reports/farmer/reports');
+        const issuesReported = Array.isArray(reportsResponse.data?.data)
+          ? reportsResponse.data.data.length
+          : 0;
         
         setMetrics({
           totalSchedules,
