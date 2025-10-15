@@ -65,7 +65,7 @@ const AdminFinance = () => {
   const [loadingIncome, setLoadingIncome] = React.useState(false)
   const [loadingExpenses, setLoadingExpenses] = React.useState(false)
   const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
-  const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
+  const [incomeRange, setIncomeRange] = React.useState('') // '', 'day' | 'week' | 'month' | 'lastMonth'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(false)
   const [deliveryIncome, setDeliveryIncome] = React.useState({ total: 0, count: 0, items: [] })
@@ -74,6 +74,7 @@ const AdminFinance = () => {
   const [showDeliveryIncomeDetails, setShowDeliveryIncomeDetails] = React.useState(false)
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
+  const [overviewRange, setOverviewRange] = React.useState('') // '' | 'day' | 'week' | 'month' | 'lastMonth'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [selectedIncome, setSelectedIncome] = React.useState(null)
@@ -93,8 +94,8 @@ const AdminFinance = () => {
   const [allTransactions, setAllTransactions] = React.useState([])
   const [loadingReports, setLoadingReports] = React.useState(false)
   const [showIncomeRecords, setShowIncomeRecords] = React.useState(false)
-  const [driverRange, setDriverRange] = React.useState('month')
-  const [farmerRange, setFarmerRange] = React.useState('month')
+  const [driverRange, setDriverRange] = React.useState('')
+  const [farmerRange, setFarmerRange] = React.useState('')
   const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
   const [driverPaid, setDriverPaid] = React.useState({})
   const [showDriverPayments, setShowDriverPayments] = React.useState(false)
@@ -161,48 +162,56 @@ const AdminFinance = () => {
   }, [incomeRange])
   const fetchCompanyIncome = async (range = 'month') => {
     try {
-      // compute from/to
-      let from = null
-      let to = new Date().toISOString()
-      const now = new Date()
-      if (range === 'day') {
-        const d = new Date(now)
-        d.setDate(now.getDate() - 1)
-        from = d.toISOString()
-      } else if (range === 'week') {
-        const d = new Date(now)
-        d.setDate(now.getDate() - 7)
-        from = d.toISOString()
-      } else {
-        const d = new Date(now.getFullYear(), now.getMonth(), 1)
-        from = d.toISOString()
-      }
-      const res = await axiosInstance.get('/finance/income/orders', { params: { from, to } })
-      setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
+      const params = (() => {
+        if (!range) return {}
+        let from = null
+        const to = new Date().toISOString()
+        const now = new Date()
+        if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
+        else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
+        else if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        } else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/orders', { params })
+      setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
     } catch {}
   }
 
   const fetchDeliveryIncome = async (range = 'month') => {
     try {
-      let from = null
-      let to = new Date().toISOString()
-      const now = new Date()
-      if (range === 'day') {
-        const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString()
-      } else if (range === 'week') {
-        const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString()
-      } else {
-        const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString()
-      }
-      const res = await axiosInstance.get('/finance/income/delivery-fees', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        let from = null
+        const to = new Date().toISOString()
+        const now = new Date()
+        if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
+        else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
+        else if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        } else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/delivery-fees', { params })
       setDeliveryIncome(res.data || { total: 0, count: 0, items: [] })
     } catch { setDeliveryIncome({ total: 0, count: 0, items: [] }) }
   }
 
   const fetchIncomeBySource = async (range = 'month') => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/income/by-source', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/by-source', { params })
       setSourceTotals(res.data || { deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
     } catch { setSourceTotals({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 }) }
   }
@@ -280,16 +289,29 @@ const AdminFinance = () => {
 
   const fetchDriverPayouts = async (range, rate) => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/expenses/driver-payouts', { params: { from, to, rateType: rate.type, rateValue: rate.value } })
+      const params = (() => {
+        const base = { rateType: rate.type, rateValue: rate.value }
+        if (!range) return base
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { ...base, from, to }
+      })()
+      const res = await axiosInstance.get('/finance/expenses/driver-payouts', { params })
       setDriverPayouts(res.data || { total: 0, count: 0, items: [] })
     } catch {}
   }
 
   const fetchFarmerPayouts = async (range) => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params })
       setFarmerPayouts(res.data || { total: 0, items: [], commissionPercent: 15 })
     } catch {}
   }
@@ -455,10 +477,16 @@ const AdminFinance = () => {
                 <div className='border-t border-gray-100 mt-3 pt-4' />
                 {activeTab === 'overview' && (
                   <div className='space-y-6'>
+                    <div className='flex items-center gap-2'>
+                      <button onClick={()=>setOverviewRange(r=> r==='lastMonth' ? '' : 'lastMonth')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='lastMonth'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='month' ? '' : 'month')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
+                    </div>
                     <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
-                      <StatCard icon={Wallet} title='Total Balance' value={loadingSummary ? '—' : `LKR ${summary.balance.toLocaleString()}`} trend='' positive={summary.balance >= 0} />
-                      <StatCard icon={TrendingUp} title='Income' value={loadingSummary ? '—' : `LKR ${summary.income.toLocaleString()}`} trend='' positive />
-                      <StatCard icon={Receipt} title='Expenses' value={loadingSummary ? '—' : `LKR ${summary.expenses.toLocaleString()}`} trend='' positive={false} />
+                      <StatCard icon={Wallet} title='Net profit' value={loadingSummary ? '—' : `LKR ${summary.balance.toLocaleString()}`} trend='' positive={summary.balance >= 0} />
+                      <StatCard icon={TrendingUp} title='Total Income' value={loadingSummary ? '—' : `LKR ${summary.income.toLocaleString()}`} trend='' positive />
+                      <StatCard icon={Receipt} title='Total Expenses' value={loadingSummary ? '—' : `LKR ${summary.expenses.toLocaleString()}`} trend='' positive={false} />
                       <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
                     </div>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
@@ -593,9 +621,10 @@ const AdminFinance = () => {
                 {activeTab === 'income' && (
                   <div className='space-y-6'>
                     <div className='flex items-center gap-2'>
-                      <button onClick={()=>setIncomeRange('day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
-                      <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
-                      <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='lastMonth' ? '' : 'lastMonth')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='lastMonth'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='month' ? '' : 'month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
@@ -840,9 +869,10 @@ const AdminFinance = () => {
                 {activeTab === 'expenses' && (
                   <div className='space-y-6'>
                     <div className='flex items-center gap-2'>
-                      <button onClick={()=>{ setDriverRange('day'); setFarmerRange('day') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
-                      <button onClick={()=>{ setDriverRange('week'); setFarmerRange('week') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
-                      <button onClick={()=>{ setDriverRange('month'); setFarmerRange('month') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='month' && farmerRange==='month' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='lastMonth' && farmerRange==='lastMonth') ? '' : 'lastMonth'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='lastMonth' && farmerRange==='lastMonth' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='month' && farmerRange==='month') ? '' : 'month'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='month' && farmerRange==='month' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='week' && farmerRange==='week') ? '' : 'week'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>{ const v = (driverRange==='day' && farmerRange==='day') ? '' : 'day'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                       <StatCard icon={Receipt} title='Driver Payments' value={`LKR ${((driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)).toLocaleString()}`} trend='' positive={false} />
