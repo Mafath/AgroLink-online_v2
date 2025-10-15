@@ -779,7 +779,10 @@ const AdminFinance = () => {
                           <tbody>
                             {farmerPayouts.items.length === 0 ? (
                               <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No payouts</td></tr>
-                            ) : farmerPayouts.items.map((r, i) => (
+                            ) : farmerPayouts.items
+                                .slice()
+                                .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+                                .map((r, i) => (
                               <tr key={i} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{r.orderNumber || r.orderId}</td>
                                 <td className='py-3 px-5 text-gray-700'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
