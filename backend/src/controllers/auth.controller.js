@@ -8,6 +8,7 @@ import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
 import { sendVerificationEmail, sendEmailChangeVerification, generateVerificationToken, sendPasswordResetEmail } from "../lib/emailService.js";
+import admin from "firebase-admin";
 
 
 export const signup = async (req, res) => {
@@ -908,6 +909,85 @@ export const deleteAccount = async (req, res) => {
     console.error('Error in deleteAccount:', error);
     return res.status(500).json({ 
       error: { code: 'SERVER_ERROR', message: 'Failed to delete account' } 
+    });
+  }
+};
+
+// Initialize Firebase Admin (only once)
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.applicationDefault(),
+    projectId: process.env.FIREBASE_PROJECT_ID || 'agrolink-auth'
+  });
+}
+
+// Firebase Authentication
+export const firebaseAuth = async (req, res) => {
+  try {
+    const { idToken, email, fullName, profilePic } = req.body;
+
+    if (!idToken) {
+      return res.status(400).json({ 
+        error: { code: 'VALIDATION_ERROR', message: 'ID token is required' } 
+      });
+    }
+
+    // Verify the Firebase ID token
+    const decodedToken = await admin.auth().verifyIdToken(idToken);
+    const firebaseUid = decodedToken.uid;
+
+    // Check if user already exists with this Firebase UID
+    let user = await User.findOne({ firebaseUid });
+
+    if (user) {
+      // User exists, update last login
+      await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
+    } else {
+      // Check if user exists with same email (for migration)
+      const existingUser = await User.findOne({ email: email.toLowerCase().trim() });
+      
+      if (existingUser) {
+        // Link Firebase UID to existing user
+        existingUser.firebaseUid = firebaseUid;
+        existingUser.authProvider = 'firebase';
+        await existingUser.save();
+        user = existingUser;
+      } else {
+        // Create new user
+        user = new User({
+          email: email.toLowerCase().trim(),
+          fullName: fullName || '',
+          firebaseUid,
+          authProvider: 'firebase',
+          profilePic: profilePic || '',
+          isEmailVerified: true, // Firebase users are pre-verified
+          role: 'BUYER' // Default role, can be changed later
+        });
+        await user.save();
+      }
+    }
+
+    // Generate JWT token
+    const accessToken = signAccessToken({ 
+      userId: user._id.toString(), 
+      role: user.role 
+    });
+
+    return res.status(200).json({
+      accessToken,
+      user: { 
+        id: user._id, 
+        email: user.email, 
+        role: user.role, 
+        fullName: user.fullName,
+        isEmailVerified: user.isEmailVerified,
+        authProvider: user.authProvider
+      },
+    });
+  } catch (error) {
+    console.error('Firebase auth error:', error);
+    return res.status(500).json({ 
+      error: { code: 'SERVER_ERROR', message: 'Firebase authentication failed' } 
     });
   }
 };

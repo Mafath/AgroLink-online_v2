@@ -113,4 +113,34 @@ export const useAuthStore = create((set) => ({ //useAuthStore: A hook that you c
     }
   },
 
+  // Firebase-compatible login function
+  loginWithToken: async (accessToken, user) => {
+    set({ isLoggingIn: true });
+    try {
+      setAccessToken(accessToken);
+      sessionStorage.setItem('accessToken', accessToken);
+      set({ authUser: user });
+      toast.success("Logged in successfully");
+    } catch (error) {
+      toast.error("Login failed");
+    } finally {
+      set({ isLoggingIn: false });
+    }
+  },
+
+  // Firebase-compatible signup function
+  signupWithToken: async (accessToken, user) => {
+    set({ isSigningUp: true });
+    try {
+      setAccessToken(accessToken);
+      sessionStorage.setItem('accessToken', accessToken);
+      set({ authUser: user });
+      toast.success("Signed up successfully");
+    } catch (error) {
+      toast.error("Signup failed");
+    } finally {
+      set({ isSigningUp: false });
+    }
+  },
+
 }));

@@ -1,11 +1,12 @@
-  import { useMemo, useState } from "react";
-  import { useAuthStore } from "../store/useAuthStore";
-  import { Eye, EyeOff, Loader2, Lock, Mail, User, CheckCircle2, Circle } from "lucide-react";
-  import { Link, useNavigate } from "react-router-dom";
-  import toast from "react-hot-toast";
-  import { FiShield } from "react-icons/fi";
-  // import Logo from "../assets/AgroLink logo3.png";
-  import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
+import { useMemo, useState } from "react";
+import { useAuthStore } from "../store/useAuthStore";
+import { Eye, EyeOff, Loader2, Lock, Mail, User, CheckCircle2, Circle } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { FiShield } from "react-icons/fi";
+import { firebaseAuthService } from "../lib/firebaseAuth";
+// import Logo from "../assets/AgroLink logo3.png";
+import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
 
 
   const SignUpPage = () => {
@@ -28,8 +29,20 @@
     });
     const [invalidCharacterWarning, setInvalidCharacterWarning] = useState("");
 
-    const { signup, isSigningUp } = useAuthStore();
+    const { signup, isSigningUp, signupWithToken } = useAuthStore();
     const navigate = useNavigate();
+
+    const handleFirebaseSignUp = async () => {
+      try {
+        const result = await firebaseAuthService.signInWithGoogle();
+        signupWithToken(result.accessToken, result.user);
+        toast.success('Signed up with Google successfully!');
+        navigate('/');
+      } catch (error) {
+        console.error('Firebase sign-up error:', error);
+        toast.error('Failed to sign up with Google. Please try again.');
+      }
+    };
 
     const validateFullName = (name) => {
       const trimmed = name.trim();
@@ -334,6 +347,7 @@
             {/* Google Button */}
             <div className="mt-6">
               <button
+                onClick={handleFirebaseSignUp}
                 className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
