@@ -592,6 +592,8 @@ const AdminFinance = () => {
                             {companyIncome.items.length === 0 ? (
                               <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
                             ) : (companyIncome.items
+                                  .slice()
+                                  .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
                                   .filter(row => incomeTypeFilter === 'all' ? true : row.itemType === incomeTypeFilter)
                                   .map((row, idx) => (
                               <tr key={idx} className='border-b last:border-b-0'>
