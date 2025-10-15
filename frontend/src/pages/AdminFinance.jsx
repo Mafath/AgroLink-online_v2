@@ -178,16 +178,12 @@ const AdminFinance = () => {
     try {
       const params = (() => {
         if (!range) return {}
-        let from = null
-        const to = new Date().toISOString()
-        const now = new Date()
-        if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
-        else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
-        else if (range === 'lastMonth') {
+        if (range === 'lastMonth') {
           const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
           const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
           return { from: startPrev.toISOString(), to: endPrev.toISOString() }
-        } else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
         return { from, to }
       })()
       const res = await axiosInstance.get('/finance/income/orders', { params })
@@ -199,16 +195,12 @@ const AdminFinance = () => {
     try {
       const params = (() => {
         if (!range) return {}
-        let from = null
-        const to = new Date().toISOString()
-        const now = new Date()
-        if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
-        else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
-        else if (range === 'lastMonth') {
+        if (range === 'lastMonth') {
           const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
           const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
           return { from: startPrev.toISOString(), to: endPrev.toISOString() }
-        } else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
         return { from, to }
       })()
       const res = await axiosInstance.get('/finance/income/delivery-fees', { params })
@@ -294,11 +286,22 @@ const AdminFinance = () => {
 
   const rangeToFromTo = (range) => {
     const now = new Date()
-    let from
-    if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
-    else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
-    else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
-    return { from, to: new Date().toISOString() }
+    // Today: start of calendar day -> now
+    if (range === 'day') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      return { from: startOfToday.toISOString(), to: new Date().toISOString() }
+    }
+    // This Week: Monday 00:00 -> now (ISO week with Monday as first day)
+    if (range === 'week') {
+      const day = now.getDay() || 7 // Sunday=0 -> 7
+      const monday = new Date(now)
+      monday.setDate(now.getDate() - (day - 1))
+      monday.setHours(0,0,0,0)
+      return { from: monday.toISOString(), to: new Date().toISOString() }
+    }
+    // This Month: first day of month 00:00 -> now
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: startOfMonth.toISOString(), to: new Date().toISOString() }
   }
 
   const fetchDriverPayouts = async (range, rate) => {
