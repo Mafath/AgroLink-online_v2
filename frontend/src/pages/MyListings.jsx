@@ -661,6 +661,9 @@ const MyListings = () => {
                       </div>
                     )
                   })()}
+                  <div className='mt-1 text-xs text-blue-600 bg-blue-50 p-2 rounded border'>
+                    <strong>Note:</strong> Commission is paid by buyers, not farmers. Your earnings are based on your base price above.
+                  </div>
                 </div>
                 <div>
                   <label className='form-label'>Capacity (kg)</label>
