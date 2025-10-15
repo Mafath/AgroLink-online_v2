@@ -1,5 +1,6 @@
 import Listing from "../models/listing.model.js";
 import { logListingAdded, logItemExpired } from "../lib/activityService.js";
+import { computeFinalPriceWithCommission } from "../lib/utils.js";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -53,7 +54,11 @@ export const getAllListings = async (req, res) => {
     const listings = await Listing.find({ status: 'AVAILABLE' })
       .sort({ createdAt: -1 })
       .populate({ path: 'farmer', select: 'fullName email role' });
-    return res.status(200).json(listings);
+    const withFinal = listings.map((l) => ({
+      ...l.toObject(),
+      finalPricePerKg: computeFinalPriceWithCommission(l.pricePerKg)
+    }));
+    return res.status(200).json(withFinal);
   } catch (error) {
     console.log("Error in getAllListings: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
@@ -66,7 +71,11 @@ export const getAllListingsAll = async (req, res) => {
     const listings = await Listing.find({})
       .sort({ createdAt: -1 })
       .populate({ path: 'farmer', select: 'fullName email role' });
-    return res.status(200).json(listings);
+    const withFinal = listings.map((l) => ({
+      ...l.toObject(),
+      finalPricePerKg: computeFinalPriceWithCommission(l.pricePerKg)
+    }));
+    return res.status(200).json(withFinal);
   } catch (error) {
     console.log("Error in getAllListingsAll: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });
@@ -78,7 +87,11 @@ export const getMyListings = async (req, res) => {
     const userId = req.user._id;
     await autoExpireListings({ farmer: userId });
     const listings = await Listing.find({ farmer: userId }).sort({ createdAt: -1 });
-    return res.status(200).json(listings);
+    const withFinal = listings.map((l) => ({
+      ...l.toObject(),
+      finalPricePerKg: computeFinalPriceWithCommission(l.pricePerKg)
+    }));
+    return res.status(200).json(withFinal);
   } catch (error) {
     console.log("Error in getMyListings: ", error.message);
     return res.status(500).json({ error: { code: "SERVER_ERROR", message: "Internal server error" } });

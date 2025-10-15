@@ -678,6 +678,21 @@ const MyListings = () => {
                   />
                 </div>
               </div>
+              <div className='sm:col-span-2 mt-1'>
+                {(() => {
+                  const base = Number(form.pricePerKg || 0)
+                  const rate = 0.15 // backend COMMISSION_RATE; duplicated for display only
+                  const final = Math.round((base * (1 + rate)) * 100 + Number.EPSILON) / 100
+                  return (
+                    <div className='text-xs text-gray-600'>
+                      Buyers will see: <span className='font-semibold'>LKR {isNaN(final) ? '0.00' : final.toFixed(2)}</span> (includes {Math.round(rate*100)}% commission paid by buyers)
+                    </div>
+                  )
+                })()}
+                <div className='mt-1 text-xs text-blue-600 bg-blue-50 p-2 rounded border'>
+                  <strong>Note:</strong> Commission is paid by buyers, not farmers. Your earnings are based on your base price above.
+                </div>
+              </div>
               <div>
                 <label className='form-label'>Harvested date</label>
                 <input
