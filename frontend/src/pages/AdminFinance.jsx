@@ -848,13 +848,89 @@ const AdminFinance = () => {
                       <StatCard icon={Receipt} title='Driver Payments' value={`LKR ${((driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)).toLocaleString()}`} trend='' positive={false} />
                       <StatCard icon={Wallet} title='Farmer Payments' value={`LKR ${Number(farmerPayouts.total||0).toLocaleString()}`} trend='' positive={false} />
                     </div>
+
+                    {/* Farmer payouts (moved above driver payments) */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={Receipt} title='Farmer Payments (after commission)' />
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={farmerRange} onChange={e=>setFarmerRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
+                          <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
+                      </div>
+                      {showFarmerPayments && (
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Farmer</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Payout</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {farmerPayouts.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No payouts</td></tr>
+                            ) : farmerPayouts.items
+                                .slice()
+                                .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+                                .map((r, i) => (
+                              <tr key={i} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>{r.orderNumber || r.orderId}</div>
+                                  <div className='text-xs text-gray-500'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</div>
+                                </td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>{r.farmerName || '—'}</div>
+                                  {r.farmerEmail ? (
+                                    <div className='text-xs text-gray-500'>{r.farmerEmail}</div>
+                                  ) : null}
+                                </td>
+                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>LKR {Number(r.lineTotal||0).toLocaleString()}</div>
+                                  {(() => {
+                                    const commission = Number(r.lineTotal||0) - Number(r.payout||0)
+                                    return commission > 0 ? (
+                                      <div className='text-xs text-green-700'>- LKR {commission.toLocaleString()}</div>
+                                    ) : null
+                                  })()}
+                                </td>
+                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(r.payout||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      )}
+                    </div>
+
                     {/* Driver payouts */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
                       <div className='p-5 flex items-center justify-between'>
                         <div className='flex items-center gap-3'>
                           <SectionHeader icon={Receipt} title='Driver Payments' />
                         </div>
-                        <div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRange} onChange={e=>setDriverRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
                           <button onClick={()=>setShowDriverPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
                             <ChevronDown className={`size-4 transition-transform ${showDriverPayments ? '' : '-rotate-90'}`} />
                           </button>
@@ -894,81 +970,26 @@ const AdminFinance = () => {
                         </table>
                       </div>
                       )}
+                    </div>
 
-                      {/* Bar chart: deliveries completed by driver */}
-                      <div className='p-5'>
-                        <div className='bg-white rounded-xl border border-gray-200'>
-                          <div className='p-4 text-sm font-medium text-gray-700'>Deliveries by Driver · {Number(driverPayouts.count||0)} completed</div>
-                          <div className='px-4 pb-4'>
-                            <Chart type='bar' height={260} options={{
-                              chart:{ toolbar:{ show:false }},
-                              grid:{ borderColor:'#eee' },
-                              plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
-                              xaxis:{ categories: (driverPayouts.totalsByDriver||[]).map(d=>d.driverName||'—'), labels:{ style:{ colors:'#9ca3af' } } },
-                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                              colors:['#3b82f6']
-                            }} series={[{ name:'Completed', data: (driverPayouts.totalsByDriver||[]).map(d=>Number(d.deliveries||0)) }]} />
-                          </div>
+                    {/* Bar chart: deliveries completed by driver (moved outside the card) */}
+                    <div className='p-5'>
+                      <div className='bg-white rounded-xl border border-gray-200'>
+                        <div className='p-4 text-sm font-medium text-gray-700'>Deliveries by Driver · {Number(driverPayouts.count||0)} completed</div>
+                        <div className='px-4 pb-4'>
+                          <Chart type='bar' height={260} options={{
+                            chart:{ toolbar:{ show:false }},
+                            grid:{ borderColor:'#eee' },
+                            plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
+                            xaxis:{ categories: (driverPayouts.totalsByDriver||[]).map(d=>d.driverName||'—'), labels:{ style:{ colors:'#9ca3af' } } },
+                            yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                            colors:['#3b82f6']
+                          }} series={[{ name:'Completed', data: (driverPayouts.totalsByDriver||[]).map(d=>Number(d.deliveries||0)) }]} />
                         </div>
                       </div>
                     </div>
 
-                    {/* Farmer payouts */}
-                    <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5 flex items-center justify-between'>
-                        <div className='flex items-center gap-3'>
-                          <SectionHeader icon={Receipt} title='Farmer Payments (after commission)' />
-                          <div className='text-sm text-gray-600'>Total: <span className='font-semibold'>LKR {Number(farmerPayouts.total||0).toLocaleString()}</span></div>
-                        </div>
-                        <div className='flex items-center gap-2'>
-                          <select className='border rounded-md px-2 py-1.5 text-sm' value={farmerRange} onChange={e=>setFarmerRange(e.target.value)}>
-                            <option value='day'>Last 24h</option>
-                            <option value='week'>Last 7 days</option>
-                            <option value='month'>This Month</option>
-                          </select>
-                          <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
-                            <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
-                          </button>
-                        </div>
-                      </div>
-                      {showFarmerPayments && (
-                      <div className='overflow-x-auto'>
-                        <table className='min-w-full text-sm'>
-                          <thead>
-                            <tr className='text-left text-gray-500 border-t border-b'>
-                              <th className='py-3 px-5'>Order</th>
-                              <th className='py-3 px-5'>Date</th>
-                              <th className='py-3 px-5'>Farmer</th>
-                              <th className='py-3 px-5'>Item</th>
-                              <th className='py-3 px-5'>Qty</th>
-                              <th className='py-3 px-5'>Unit</th>
-                              <th className='py-3 px-5'>Line Total</th>
-                              <th className='py-3 px-5'>Payout</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {farmerPayouts.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No payouts</td></tr>
-                            ) : farmerPayouts.items
-                                .slice()
-                                .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
-                                .map((r, i) => (
-                              <tr key={i} className='border-b last:border-b-0'>
-                                <td className='py-3 px-5 text-gray-700'>{r.orderNumber || r.orderId}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.farmerName || '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
-                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.lineTotal||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(r.payout||0).toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      )}
-                    </div>
+                    
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={Receipt} title='Log Expense' />
                       <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
