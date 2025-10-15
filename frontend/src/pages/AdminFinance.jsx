@@ -525,7 +525,7 @@ const AdminFinance = () => {
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
                               <BarChart3 className='size-5 text-gray-500' />
-                              <span>Income vs Expenses (last 6 months)</span>
+                              <span>Income vs Expenses</span>
                             </div>
                           </div>
                           {(() => {
@@ -585,37 +585,7 @@ const AdminFinance = () => {
                         </div>
                       </div>
                       <div className='lg:col-span-2 space-y-6'>
-                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                              <PieChart className='size-5 text-gray-500' />
-                              <span>Expense Categories (this month)</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const now = new Date()
-                            const start = new Date(now.getFullYear(), now.getMonth(), 1)
-                            const catMap = new Map()
-                            for (const t of (overviewExpenseTx||[])) {
-                              const dt = new Date(t.date)
-                              if (dt < start) continue
-                              const key = t.category || 'Other'
-                              catMap.set(key, (catMap.get(key)||0) + Number(t.amount||0))
-                            }
-                            const labels = Array.from(catMap.keys())
-                            const series = labels.map(l=>catMap.get(l))
-                            return labels.length === 0 ? (
-                              <div className='text-sm text-gray-500'>No expenses this month</div>
-                            ) : (
-                              <Chart type='donut' height={260} options={{
-                                chart:{ toolbar:{ show:false }}, labels,
-                                legend:{ show:false }, dataLabels:{ enabled:false },
-                                colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#14b8a6', '#eab308']
-                              }} series={series} />
-                            )
-                          })()}
-                        </div>
-                        {/* Income by Source (moved here from Income tab) */}
+                        {/* Income by Source (now first) */}
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
@@ -641,11 +611,36 @@ const AdminFinance = () => {
                             return hasData ? (
                               <Chart type='donut' height={260} options={{
                                 chart:{ toolbar:{ show:false }}, labels,
-                                legend:{ show:true, position:'bottom' }, dataLabels:{ enabled:false },
+                                legend:{ show: true, position:'bottom' }, dataLabels:{ enabled:false },
                                 colors:['#22c55e','#8b5cf6','#f59e0b','#3b82f6']
                               }} series={series} />
                             ) : (
                               <div className='text-sm text-gray-500'>No income in this range</div>
+                            )
+                          })()}
+                        </div>
+                        {/* Expenses by Category (moved below) */}
+                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <PieChart className='size-5 text-gray-500' />
+                              <span>Expenses by Category</span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)
+                            const farmerTotal = Number(farmerPayouts.total||0)
+                            const labels = ['Driver Payments','Farmer Payments']
+                            const series = [driverTotal, farmerTotal]
+                            const hasData = series.some(v=>Number(v)>0)
+                            return hasData ? (
+                              <Chart type='donut' height={260} options={{
+                                chart:{ toolbar:{ show:false }}, labels,
+                                legend:{ show: true, position:'bottom' }, dataLabels:{ enabled:false },
+                                colors:['#ef4444', '#3b82f6']
+                              }} series={series} />
+                            ) : (
+                              <div className='text-sm text-gray-500'>No expenses in this range</div>
                             )
                           })()}
                         </div>
@@ -1181,7 +1176,7 @@ const AdminFinance = () => {
                       <div className='flex items-center justify-between mb-4'>
                         <div className='flex items-center gap-2 text-gray-800 font-semibold'>
                           <BarChart3 className='size-5 text-gray-500' />
-                          <span>Income vs Expenses (last 6 months)</span>
+                          <span>Income vs Expenses</span>
                         </div>
                       </div>
                       {loadingReports ? (
