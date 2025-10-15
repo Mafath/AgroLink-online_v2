@@ -144,13 +144,27 @@ const AdminFinance = () => {
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange) }
     if (activeTab === 'overview') {
-      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
-      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
-      // Ensure income-by-source totals are available for overview donut (current month)
-      fetchIncomeBySource('month')
+      const paramsFor = (range) => {
+        if (!range) return {}
+        const now = new Date()
+        if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
+        return { from, to }
+      }
+      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME', ...paramsFor(overviewRange) } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
+      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE', ...paramsFor(overviewRange) } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+      fetchIncomeBySource(overviewRange)
+      fetchCompanyIncome(overviewRange)
+      fetchDeliveryIncome(overviewRange)
+      fetchDriverPayouts(overviewRange, driverRate)
+      fetchFarmerPayouts(overviewRange)
     }
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
-  }, [activeTab])
+  }, [activeTab, overviewRange, incomeRange, driverRange, farmerRange, driverRate])
 
   React.useEffect(() => { if (activeTab === 'expenses') fetchDriverPayouts(driverRange, driverRate) }, [driverRange, driverRate])
   React.useEffect(() => { if (activeTab === 'expenses') fetchFarmerPayouts(farmerRange) }, [farmerRange])
@@ -484,10 +498,26 @@ const AdminFinance = () => {
                       <button onClick={()=>setOverviewRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
                     <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
-                      <StatCard icon={Wallet} title='Net profit' value={loadingSummary ? '—' : `LKR ${summary.balance.toLocaleString()}`} trend='' positive={summary.balance >= 0} />
-                      <StatCard icon={TrendingUp} title='Total Income' value={loadingSummary ? '—' : `LKR ${summary.income.toLocaleString()}`} trend='' positive />
-                      <StatCard icon={Receipt} title='Total Expenses' value={loadingSummary ? '—' : `LKR ${summary.expenses.toLocaleString()}`} trend='' positive={false} />
-                      <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
+                      {(() => {
+                        const orderIncome = Number(companyIncome.totalsByType.inventory||0) + Number(companyIncome.totalsByType.rental||0)
+                        const listingIncome = Number(companyIncome.totalsByType.listingCommission||0) + Number(companyIncome.totalsByType.listingPassThrough||0)
+                        const deliveryIncomeTotal = Number(deliveryIncome.total||0)
+                        const totalIncome = orderIncome + listingIncome + deliveryIncomeTotal
+
+                        const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)
+                        const farmerTotal = Number(farmerPayouts.total||0)
+                        const totalExpenses = driverTotal + farmerTotal
+
+                        const netProfit = totalIncome - totalExpenses
+                        return (
+                          <>
+                            <StatCard icon={Wallet} title='Net Profit' value={`LKR ${netProfit.toLocaleString()}`} trend='' positive={netProfit >= 0} />
+                            <StatCard icon={TrendingUp} title='Total Income' value={`LKR ${totalIncome.toLocaleString()}`} trend='' positive />
+                            <StatCard icon={Receipt} title='Total Expenses' value={`LKR ${totalExpenses.toLocaleString()}`} trend='' positive={false} />
+                            <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
+                          </>
+                        )
+                      })()}
                     </div>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
                       <div className='lg:col-span-3 space-y-6'>
@@ -594,20 +624,25 @@ const AdminFinance = () => {
                             </div>
                           </div>
                           {(() => {
-                            const labels = ['Delivery Fees','Listing Commission','Rental Fees','Manual Income','Recurring Income']
+                            // Use four-category breakdown with explicit names
+                            const labels = [
+                              'Inventory Sales Income',
+                              'Equipment Rental Income',
+                              'Platform Listing Fees',
+                              'Logistics & Delivery Income',
+                            ]
                             const series = [
-                              Number(sourceTotals.deliveryFees||0),
-                              Number(sourceTotals.listingCommission||0),
-                              Number(sourceTotals.rentalFees||0),
-                              Number(sourceTotals.manualIncome||0),
-                              Number(sourceTotals.recurringIncome||0),
+                              Number((companyIncome?.totalsByType?.inventory)||0),
+                              Number((companyIncome?.totalsByType?.rental)||0),
+                              Number((companyIncome?.totalsByType?.listingCommission)||0) + Number((companyIncome?.totalsByType?.listingPassThrough)||0),
+                              Number((deliveryIncome?.total)||0),
                             ]
                             const hasData = series.some(v=>v>0)
                             return hasData ? (
                               <Chart type='donut' height={260} options={{
                                 chart:{ toolbar:{ show:false }}, labels,
-                                legend:{ show:false }, dataLabels:{ enabled:false },
-                                colors:['#3b82f6','#22c55e','#8b5cf6','#f59e0b','#14b8a6']
+                                legend:{ show:true, position:'bottom' }, dataLabels:{ enabled:false },
+                                colors:['#22c55e','#8b5cf6','#f59e0b','#3b82f6']
                               }} series={series} />
                             ) : (
                               <div className='text-sm text-gray-500'>No income in this range</div>
