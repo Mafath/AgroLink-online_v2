@@ -5,6 +5,8 @@ import toast from 'react-hot-toast';
 import AdminSidebar from '../components/AdminSidebar';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
+import logoImg from '../assets/AgroLink_logo3-removebg-preview.png';
 
 const AdminLogistics = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -116,24 +118,110 @@ const AdminLogistics = () => {
     try {
       const pdf = new jsPDF('p', 'mm', 'a4');
 
-      const titleMap = {
-        assigned: 'Assigned Deliveries',
-        unassigned: 'Unassigned Deliveries',
-        cancelled: 'Cancelled Deliveries'
-      };
+      // Top green and black bars
+      pdf.setFillColor(13, 126, 121);
+      pdf.rect(0, 0, 157.5, 8, 'F');
+      pdf.setFillColor(0, 0, 0);
+      pdf.rect(157.5, 0, 52.5, 8, 'F');
 
-      const rowsSource = activeTab === 'assigned' ? sortedAssigned : activeTab === 'unassigned' ? sortedUnassigned : sortedCancelled;
+      // White spacer below top bars
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 8, 210, 5, 'F');
 
+      // Header main content background
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 13, 210, 25, 'F');
+
+      // Logo via html2canvas (same as other PDFs)
+      try {
+        const tempDiv = document.createElement('div');
+        tempDiv.style.position = 'absolute';
+        tempDiv.style.left = '-9999px';
+        tempDiv.style.top = '-9999px';
+        tempDiv.style.width = '60px';
+        tempDiv.style.height = '60px';
+        tempDiv.style.display = 'flex';
+        tempDiv.style.alignItems = 'center';
+        tempDiv.style.justifyContent = 'center';
+        tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`;
+        document.body.appendChild(tempDiv);
+        const canvas = await html2canvas(tempDiv, { width:60, height:60, backgroundColor:null, scale:2 });
+        document.body.removeChild(tempDiv);
+        const logoDataURL = canvas.toDataURL('image/png');
+        pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16);
+      } catch (_) {
+        // fallback silently
+      }
+
+      // Gradient company text
+      pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(16);
-      pdf.text(`Logistics - ${titleMap[activeTab]} Report`, 14, 16);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-      pdf.text(`Generated on ${new Date().toLocaleString()}`, 14, 22);
+      const startColor = { r: 0, g: 128, b: 111 };
+      const endColor = { r: 139, g: 195, b: 75 };
+      const brand = 'AgroLink';
+      const startX = 35;
+      const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5];
+      for (let i = 0; i < brand.length; i++) {
+        const progress = i / (brand.length - 1);
+        const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress);
+        const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress);
+        const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress);
+        pdf.setTextColor(r, g, b);
+        pdf.text(brand[i], startX + letterPositions[i], 23);
+      }
 
-      const headers = [
-        ['Order', 'Customer', 'Phone', 'Address', 'Status', 'Driver', 'Created']
-      ];
+      // Tagline
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Agricultural Technology Solutions', 35, 27);
+
+      // Right contact block (match existing)
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(120, 17, 120, 33);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Email:', 130, 17);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('info@agrolink.org', 145, 17);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Phone:', 130, 21);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('+94 71 920 7688', 145, 21);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Web:', 130, 25);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('www.AgroLink.org', 145, 25);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Address:', 130, 29);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29);
+
+      // Bottom separator line of header
+      pdf.setDrawColor(13, 126, 121);
+      pdf.setLineWidth(1);
+      pdf.line(20, 40, 190, 40);
+
+      // Content titles and spacing
+      const titleMap = { assigned: 'Assigned Deliveries', unassigned: 'Unassigned Deliveries', cancelled: 'Cancelled Deliveries' };
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`Logistics - ${titleMap[activeTab]} Report`, 20, 55);
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63);
+
+      // Section title before table
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Deliveries', 20, 105);
+
+      // Table with consistent startY and styles
+      const rowsSource = activeTab === 'assigned' ? sortedAssigned : activeTab === 'unassigned' ? sortedUnassigned : sortedCancelled;
+      const headers = [['Order', 'Customer', 'Phone', 'Address', 'Status', 'Driver', 'Created']];
       const data = rowsSource.map(d => [
         `#${d?.order?.orderNumber || 'N/A'}`,
         d?.contactName || '-',
@@ -147,14 +235,29 @@ const AdminLogistics = () => {
       autoTable(pdf, {
         head: headers,
         body: data,
-        startY: 28,
+        startY: 115,
         styles: { font: 'helvetica', fontSize: 9 },
-        headStyles: { fillColor: [13, 126, 121] },
-        alternateRowStyles: { fillColor: [245, 245, 245] }
+        headStyles: { fillColor: [13, 126, 121], textColor: [255,255,255] },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        margin: { left: 20, right: 20 }
       });
 
-      const fileName = `logistics-${activeTab}-${new Date().toISOString().slice(0,10)}.pdf`;
-      pdf.save(fileName);
+      // Footer on every page
+      const pageCount = pdf.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setDrawColor(13, 126, 121);
+        pdf.setLineWidth(1);
+        pdf.line(20, 280, 190, 280);
+        pdf.setFontSize(8);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
+        pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285);
+        pdf.text(`Page ${i} of ${pageCount}`, 160, 285);
+        pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290);
+      }
+
+      pdf.save(`logistics-${activeTab}-${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (err) {
       console.error('Failed to generate PDF:', err);
       toast.error('Failed to generate PDF');
