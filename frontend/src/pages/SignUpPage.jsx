@@ -28,19 +28,35 @@ import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
       password: "",
     });
     const [invalidCharacterWarning, setInvalidCharacterWarning] = useState("");
+    const [showRoleModal, setShowRoleModal] = useState(false);
+    const [selectedRole, setSelectedRole] = useState("FARMER");
 
     const { signup, isSigningUp, signupWithToken } = useAuthStore();
     const navigate = useNavigate();
 
     const handleFirebaseSignUp = async () => {
       try {
-        const result = await firebaseAuthService.signInWithGoogle();
-        signupWithToken(result.accessToken, result.user);
-        toast.success('Signed up with Google successfully!');
-        navigate('/');
+        // First authenticate with Google (no user creation yet)
+        await firebaseAuthService.authenticateWithGoogle();
+        // Show role selection modal
+        setShowRoleModal(true);
       } catch (error) {
         console.error('Firebase sign-up error:', error);
         toast.error('Failed to sign up with Google. Please try again.');
+      }
+    };
+
+    const handleRoleSelection = async () => {
+      try {
+        // Complete signup with selected role
+        const result = await firebaseAuthService.completeSignupWithRole(selectedRole);
+        signupWithToken(result.accessToken, result.user);
+        toast.success(`Signed up as ${selectedRole} successfully!`);
+        setShowRoleModal(false);
+        navigate('/');
+      } catch (error) {
+        console.error('Role selection error:', error);
+        toast.error('Failed to complete signup. Please try again.');
       }
     };
 
@@ -380,6 +396,65 @@ import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
             </p>
           </div>
         </div>
+
+        {/* Role Selection Modal */}
+        {showRoleModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Choose Your Role</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              Please select your primary role on AgroLink to customize your experience.
+            </p>
+            
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="role"
+                  value="FARMER"
+                  checked={selectedRole === "FARMER"}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="mr-3"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">Farmer</div>
+                  <div className="text-sm text-gray-500">Sell your agricultural products</div>
+                </div>
+              </label>
+              
+              <label className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                <input
+                  type="radio"
+                  name="role"
+                  value="BUYER"
+                  checked={selectedRole === "BUYER"}
+                  onChange={(e) => setSelectedRole(e.target.value)}
+                  className="mr-3"
+                />
+                <div>
+                  <div className="font-medium text-gray-900">Buyer</div>
+                  <div className="text-sm text-gray-500">Purchase agricultural products</div>
+                </div>
+              </label>
+            </div>
+            
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowRoleModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRoleSelection}
+                className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        </div>
+        )}
       </div>
     );
   };
