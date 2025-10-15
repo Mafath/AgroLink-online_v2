@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Package, Users, Clock, CheckCircle, AlertCircle, Filter } from 'lucide-react';
+import { Truck, Package, Users, Clock, CheckCircle, AlertCircle, Filter, FileDown } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import AdminSidebar from '../components/AdminSidebar';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const AdminLogistics = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -110,6 +112,55 @@ const AdminLogistics = () => {
     return bTime - aTime;
   });
 
+  const downloadLogisticsPDF = async () => {
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+
+      const titleMap = {
+        assigned: 'Assigned Deliveries',
+        unassigned: 'Unassigned Deliveries',
+        cancelled: 'Cancelled Deliveries'
+      };
+
+      const rowsSource = activeTab === 'assigned' ? sortedAssigned : activeTab === 'unassigned' ? sortedUnassigned : sortedCancelled;
+
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(16);
+      pdf.text(`Logistics - ${titleMap[activeTab]} Report`, 14, 16);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Generated on ${new Date().toLocaleString()}`, 14, 22);
+
+      const headers = [
+        ['Order', 'Customer', 'Phone', 'Address', 'Status', 'Driver', 'Created']
+      ];
+      const data = rowsSource.map(d => [
+        `#${d?.order?.orderNumber || 'N/A'}`,
+        d?.contactName || '-',
+        d?.phone || '-',
+        `${d?.address?.line1 || ''}, ${d?.address?.city || ''}, ${d?.address?.state || ''}`.replace(/^,\s*/, ''),
+        d?.status || '-',
+        d?.driver?.fullName || '-',
+        d?.createdAt ? new Date(d.createdAt).toLocaleDateString() : '-'
+      ]);
+
+      autoTable(pdf, {
+        head: headers,
+        body: data,
+        startY: 28,
+        styles: { font: 'helvetica', fontSize: 9 },
+        headStyles: { fillColor: [13, 126, 121] },
+        alternateRowStyles: { fillColor: [245, 245, 245] }
+      });
+
+      const fileName = `logistics-${activeTab}-${new Date().toISOString().slice(0,10)}.pdf`;
+      pdf.save(fileName);
+    } catch (err) {
+      console.error('Failed to generate PDF:', err);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -129,6 +180,9 @@ const AdminLogistics = () => {
           <h1 className="text-3xl font-semibold ml-2">Logistics Management</h1>
           <div className="flex items-center space-x-2">
             <span className="px-4 py-2 rounded-lg font-medium bg-primary-600 text-white">Deliveries ({deliveries.length})</span>
+            <button onClick={downloadLogisticsPDF} className="px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900">
+              <FileDown className="inline w-4 h-4 mr-1" /> Export PDF
+            </button>
           </div>
         </div>
 
