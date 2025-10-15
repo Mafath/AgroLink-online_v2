@@ -193,14 +193,14 @@ export const forgotPassword = async (req, res) => {
       // Send password reset email
       try {
         await sendPasswordResetEmail(user.email, user.fullName, resetToken);
-        console.log(`Password reset email sent to: ${user.email}`);
+        if (process.env.DEBUG === 'true') console.log(`Password reset email sent to: ${user.email}`);
       } catch (emailError) {
         console.error('Failed to send password reset email:', emailError);
         // Don't fail the request if email fails, just log it
       }
     } else {
       // Log attempted reset for non-existent email (for security monitoring)
-      console.log(`Password reset attempt for non-existent email: ${email}`);
+      if (process.env.DEBUG === 'true') console.log(`Password reset attempt for non-existent email: ${email}`);
     }
 
     return res.status(200).json({
@@ -254,7 +254,7 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     // Log successful password reset for security monitoring
-    console.log(`Password reset successful for user: ${user.email}`);
+    if (process.env.DEBUG === 'true') console.log(`Password reset successful for user: ${user.email}`);
 
     return res.status(200).json({
       message: "Password reset successfully. You can now log in with your new password.",
@@ -635,8 +635,10 @@ export const changeEmail = async (req, res) => {
     const emailChangeToken = generateVerificationToken();
     const emailChangeExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
-    console.log('Generated email change token:', emailChangeToken);
-    console.log('Token expires at:', emailChangeExpires);
+    if (process.env.DEBUG === 'true') {
+      console.log('Generated email change token:', emailChangeToken);
+      console.log('Token expires at:', emailChangeExpires);
+    }
 
     // Store pending email change (DO NOT update actual email yet)
     user.pendingEmail = newEmail.toLowerCase().trim();
@@ -644,13 +646,15 @@ export const changeEmail = async (req, res) => {
     user.emailChangeExpires = emailChangeExpires;
     await user.save();
 
-    console.log('User updated with pending email change:', {
-      userId: user._id,
-      currentEmail: user.email,
-      pendingEmail: user.pendingEmail,
-      token: user.emailChangeToken,
-      expires: user.emailChangeExpires
-    });
+    if (process.env.DEBUG === 'true') {
+      console.log('User updated with pending email change:', {
+        userId: user._id,
+        currentEmail: user.email,
+        pendingEmail: user.pendingEmail,
+        token: user.emailChangeToken,
+        expires: user.emailChangeExpires
+      });
+    }
 
     // Send email change verification email to NEW address
     const emailResult = await sendEmailChangeVerification(
@@ -684,11 +688,13 @@ export const verifyEmailChange = async (req, res) => {
   try {
     const { token } = req.params;
 
-    console.log('Email change verification attempt with token:', token);
-    console.log('Token length:', token?.length);
-    console.log('Token type:', typeof token);
-    console.log('Token characters:', token?.split('').map(c => c.charCodeAt(0)));
-    console.log('Token encoded:', encodeURIComponent(token));
+    if (process.env.DEBUG === 'true') {
+      console.log('Email change verification attempt with token:', token);
+      console.log('Token length:', token?.length);
+      console.log('Token type:', typeof token);
+      console.log('Token characters:', token?.split('').map(c => c.charCodeAt(0)));
+      console.log('Token encoded:', encodeURIComponent(token));
+    }
 
     if (!token) {
       return res.status(400).json({ 
@@ -700,13 +706,15 @@ export const verifyEmailChange = async (req, res) => {
     const allPendingUsers = await User.find({ 
       emailChangeToken: { $exists: true, $ne: null }
     }).select('_id email pendingEmail emailChangeToken emailChangeExpires');
-    console.log('All users with pending email changes:', allPendingUsers);
+    if (process.env.DEBUG === 'true') console.log('All users with pending email changes:', allPendingUsers);
     
     // Debug: Check if token matches any stored token
     const tokenMatches = allPendingUsers.filter(user => user.emailChangeToken === token);
-    console.log('Token matches found:', tokenMatches.length);
-    if (tokenMatches.length > 0) {
-      console.log('Matching user details:', tokenMatches[0]);
+    if (process.env.DEBUG === 'true') {
+      console.log('Token matches found:', tokenMatches.length);
+      if (tokenMatches.length > 0) {
+        console.log('Matching user details:', tokenMatches[0]);
+      }
     }
 
     // Find user with matching email change token
@@ -715,22 +723,24 @@ export const verifyEmailChange = async (req, res) => {
       emailChangeExpires: { $gt: new Date() }
     });
 
-    console.log('User found for token:', user ? 'Yes' : 'No');
-    if (user) {
-      console.log('User details:', {
-        id: user._id,
-        email: user.email,
-        pendingEmail: user.pendingEmail,
-        tokenExpires: user.emailChangeExpires,
-        currentTime: new Date()
-      });
+    if (process.env.DEBUG === 'true') {
+      console.log('User found for token:', user ? 'Yes' : 'No');
+      if (user) {
+        console.log('User details:', {
+          id: user._id,
+          email: user.email,
+          pendingEmail: user.pendingEmail,
+          tokenExpires: user.emailChangeExpires,
+          currentTime: new Date()
+        });
+      }
     }
 
     if (!user) {
       // Check if token exists but is expired
       const expiredUser = await User.findOne({ emailChangeToken: token });
       if (expiredUser) {
-        console.log('Token found but expired. Expires:', expiredUser.emailChangeExpires, 'Current:', new Date());
+        if (process.env.DEBUG === 'true') console.log('Token found but expired. Expires:', expiredUser.emailChangeExpires, 'Current:', new Date());
         return res.status(400).json({ 
           error: { code: 'EXPIRED_TOKEN', message: 'Verification token has expired. Please request a new email change.' } 
         });
@@ -768,11 +778,13 @@ export const verifyEmailChange = async (req, res) => {
     user.emailChangeExpires = null;
     await user.save();
 
-    console.log('Email change completed successfully:', {
-      userId: user._id,
-      oldEmail: oldEmail,
-      newEmail: user.email
-    });
+    if (process.env.DEBUG === 'true') {
+      console.log('Email change completed successfully:', {
+        userId: user._id,
+        oldEmail: oldEmail,
+        newEmail: user.email
+      });
+    }
 
     return res.json({ 
       message: 'Email successfully changed and verified',
@@ -852,12 +864,14 @@ export const deleteAccount = async (req, res) => {
     }
 
     // Debug: Log user data to see what's available
-    console.log('User found for deletion:', {
-      id: user._id,
-      email: user.email,
-      hasPassword: !!user.passwordHash,
-      passwordLength: user.passwordHash ? user.passwordHash.length : 0
-    });
+    if (process.env.DEBUG === 'true') {
+      console.log('User found for deletion:', {
+        id: user._id,
+        email: user.email,
+        hasPassword: !!user.passwordHash,
+        passwordLength: user.passwordHash ? user.passwordHash.length : 0
+      });
+    }
 
     // Check if user has a password (for users who might have signed up with OAuth)
     if (!user.passwordHash) {

@@ -54,6 +54,7 @@ app.use('/api/finance', financeRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log('Server is running on port ' + PORT);
-  try { console.log('Effective COMMISSION_RATE:', getCommissionRate()); } catch {}
+  // Reduce startup noise; only log commission when DEBUG is enabled
+  try { if (process.env.DEBUG === 'true') console.log('Effective COMMISSION_RATE:', getCommissionRate()); } catch {}
   connectDB();
 })
