@@ -653,7 +653,7 @@ const MyListings = () => {
                   />
                   {(() => {
                     const base = Number(form.pricePerKg || 0)
-                    const rate = 0.05 // backend COMMISSION_RATE; duplicated for display only
+                    const rate = 0.15 // backend COMMISSION_RATE; duplicated for display only
                     const final = Math.round((base * (1 + rate)) * 100 + Number.EPSILON) / 100
                     return (
                       <div className='mt-1 text-xs text-gray-600'>
