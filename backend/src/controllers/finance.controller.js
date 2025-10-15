@@ -6,6 +6,7 @@ import Order from '../models/order.model.js'
 import Listing from '../models/listing.model.js'
 import Delivery from '../models/delivery.model.js'
 import { getCommissionRate, roundHalfUp2 } from '../lib/utils.js'
+import FinanceRecurring from '../models/financeRecurring.model.js'
 
 export const getSummary = async (req, res) => {
   try {
@@ -268,6 +269,74 @@ export const getIncomeFromDeliveryFees = async (req, res) => {
     return res.json({ total, count: items.length, items })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute delivery fee income' })
+  }
+}
+
+// Aggregated income by source for a date range
+export const getIncomeBySource = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const fromDate = from ? new Date(from) : null
+    const toDate = to ? new Date(to) : new Date()
+
+    // Delivery Fees
+    const orderFilter = { status: { $ne: 'CANCELLED' } }
+    if (fromDate || toDate) {
+      orderFilter.createdAt = {}
+      if (fromDate) orderFilter.createdAt.$gte = fromDate
+      if (toDate) orderFilter.createdAt.$lte = toDate
+    }
+    const orders = await Order.find(orderFilter).select('createdAt deliveryFee items orderNumber').lean()
+    const deliveryFees = orders.reduce((s,o)=> s + Number(o.deliveryFee||0), 0)
+
+    // Listing Commission (reuse logic similar to getIncomeFromOrders)
+    const commissionRate = getCommissionRate() || 0
+    let listingCommission = 0
+    for (const o of orders) {
+      for (const it of (o.items||[])) {
+        if (it.itemType !== 'listing') continue
+        const qty = Number(it.quantity||1)
+        const buyerUnitPrice = Number(it.price||0)
+        const buyerLineTotal = buyerUnitPrice * qty
+        const base = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+        const commission = Math.max(0, buyerLineTotal - base)
+        listingCommission += commission
+      }
+    }
+
+    // Rental Fees (platform fee) — placeholder 0 unless a fee model is configured
+    const rentalFees = 0
+
+    // Manual Income
+    const txFilter = { type: 'INCOME' }
+    if (fromDate || toDate) {
+      txFilter.date = {}
+      if (fromDate) txFilter.date.$gte = fromDate
+      if (toDate) txFilter.date.$lte = toDate
+    }
+    const manualTx = await FinanceTransaction.aggregate([
+      { $match: txFilter },
+      { $group: { _id: null, sum: { $sum: '$amount' } } }
+    ])
+    const manualIncome = manualTx?.[0]?.sum || 0
+
+    // Recurring Income — sum of active INCOME entries whose nextRunAt falls in range (simplified)
+    const recFilter = { type: 'INCOME', active: true }
+    if (fromDate || toDate) {
+      recFilter.nextRunAt = {}
+      if (fromDate) recFilter.nextRunAt.$gte = fromDate
+      if (toDate) recFilter.nextRunAt.$lte = toDate
+    }
+    const recAgg = await FinanceRecurring.aggregate([
+      { $match: recFilter },
+      { $group: { _id: null, sum: { $sum: '$amount' } } }
+    ])
+    const recurringIncome = recAgg?.[0]?.sum || 0
+
+    const total = deliveryFees + listingCommission + rentalFees + manualIncome + recurringIncome
+    return res.json({ deliveryFees, listingCommission, rentalFees, manualIncome, recurringIncome, total })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute income by source' })
   }
 }
 

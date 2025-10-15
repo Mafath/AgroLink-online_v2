@@ -3,7 +3,7 @@ import { requireAuth, requireRole } from '../middleware/auth.middleware.js'
 import {
   getSummary,
   listTransactions, createTransaction, updateTransaction, deleteTransaction,
-  getIncomeFromOrders, getIncomeFromDeliveryFees,
+  getIncomeFromOrders, getIncomeFromDeliveryFees, getIncomeBySource,
   getDriverPayouts, getFarmerPayouts,
 } from '../controllers/finance.controller.js'
 
@@ -15,6 +15,7 @@ router.use(requireAuth, requireRole('ADMIN'))
 router.get('/summary', getSummary)
 router.get('/income/orders', getIncomeFromOrders)
 router.get('/income/delivery-fees', getIncomeFromDeliveryFees)
+router.get('/income/by-source', getIncomeBySource)
 router.get('/expenses/driver-payouts', getDriverPayouts)
 router.get('/expenses/farmer-payouts', getFarmerPayouts)
 

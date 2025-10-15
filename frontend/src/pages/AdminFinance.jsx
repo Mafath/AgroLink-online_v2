@@ -69,6 +69,7 @@ const AdminFinance = () => {
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
   const [deliveryIncome, setDeliveryIncome] = React.useState({ total: 0, count: 0, items: [] })
+  const [sourceTotals, setSourceTotals] = React.useState({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
   const [creating, setCreating] = React.useState(false)
@@ -135,7 +136,7 @@ const AdminFinance = () => {
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchTransactions('INCOME')
-    if (activeTab === 'income') { fetchCompanyIncome(incomeRange); fetchDeliveryIncome(incomeRange) }
+    if (activeTab === 'income') { fetchCompanyIncome(incomeRange); fetchDeliveryIncome(incomeRange); fetchIncomeBySource(incomeRange) }
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange) }
     if (activeTab === 'overview') {
@@ -151,6 +152,7 @@ const AdminFinance = () => {
   React.useEffect(() => {
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
     if (activeTab === 'income') fetchDeliveryIncome(incomeRange)
+    if (activeTab === 'income') fetchIncomeBySource(incomeRange)
   }, [incomeRange])
   const fetchCompanyIncome = async (range = 'month') => {
     try {
@@ -190,6 +192,14 @@ const AdminFinance = () => {
       const res = await axiosInstance.get('/finance/income/delivery-fees', { params: { from, to } })
       setDeliveryIncome(res.data || { total: 0, count: 0, items: [] })
     } catch { setDeliveryIncome({ total: 0, count: 0, items: [] }) }
+  }
+
+  const fetchIncomeBySource = async (range = 'month') => {
+    try {
+      const { from, to } = rangeToFromTo(range)
+      const res = await axiosInstance.get('/finance/income/by-source', { params: { from, to } })
+      setSourceTotals(res.data || { deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
+    } catch { setSourceTotals({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 }) }
   }
 
   const onFileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -553,7 +563,7 @@ const AdminFinance = () => {
                       <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
                       <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
                     </div>
-                    <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
+                    <div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.inventory||0).toLocaleString()}</div>
@@ -569,6 +579,10 @@ const AdminFinance = () => {
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Delivery Fees</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(deliveryIncome.total||0).toLocaleString()}</div>
+                      </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
+                        <div className='text-xs text-gray-500'>Manual + Recurring</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number((sourceTotals.manualIncome||0) + (sourceTotals.recurringIncome||0)).toLocaleString()}</div>
                       </div>
                     </div>
                     {/* removed charts from Income; moved to Overview */}
@@ -634,6 +648,36 @@ const AdminFinance = () => {
                         </table>
                       </div>
                       )}
+                    </div>
+
+                    {/* Source breakdown donut */}
+                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                      <div className='flex items-center justify-between mb-2'>
+                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                          <PieChart className='size-5 text-gray-500' />
+                          <span>Income by Source</span>
+                        </div>
+                      </div>
+                      {(() => {
+                        const labels = ['Delivery Fees','Listing Commission','Rental Fees','Manual Income','Recurring Income']
+                        const series = [
+                          Number(sourceTotals.deliveryFees||0),
+                          Number(sourceTotals.listingCommission||0),
+                          Number(sourceTotals.rentalFees||0),
+                          Number(sourceTotals.manualIncome||0),
+                          Number(sourceTotals.recurringIncome||0),
+                        ]
+                        const hasData = series.some(v=>v>0)
+                        return hasData ? (
+                          <Chart type='donut' height={260} options={{
+                            chart:{ toolbar:{ show:false }}, labels,
+                            legend:{ position:'bottom' }, dataLabels:{ enabled:false },
+                            colors:['#3b82f6','#22c55e','#8b5cf6','#f59e0b','#14b8a6']
+                          }} series={series} />
+                        ) : (
+                          <div className='text-sm text-gray-500'>No income in this range</div>
+                        )
+                      })()}
                     </div>
 
                     {/* Delivery Fee Income Details */}
