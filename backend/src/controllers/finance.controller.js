@@ -164,12 +164,11 @@ export const getIncomeFromOrders = async (req, res) => {
 
     const orders = await Order.find(filter).lean()
     const items = []
-    const totalsByType = { inventory: 0, rental: 0, listing: 0 }
+    const totalsByType = { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }
 
     for (const o of orders) {
       for (const it of (o.items || [])) {
         const qty = Number(it.quantity || 1)
-        let lineTotal = 0
         if (it.itemType === 'rental') {
           const perDay = Number(it.rentalPerDay || it.price || 0)
           const start = it.rentalStartDate ? new Date(it.rentalStartDate) : null
@@ -179,26 +178,60 @@ export const getIncomeFromOrders = async (req, res) => {
             const ms = Math.max(0, end.setHours(0,0,0,0) - start.setHours(0,0,0,0))
             days = Math.max(1, Math.ceil(ms / (1000*60*60*24)) + 1)
           }
-          lineTotal = perDay * days * qty
+          const lineTotal = perDay * days * qty
+          totalsByType.rental = (totalsByType.rental || 0) + lineTotal
+          items.push({
+            orderId: o._id,
+            orderNumber: o.orderNumber,
+            createdAt: o.createdAt,
+            itemType: it.itemType,
+            title: it.title,
+            quantity: qty,
+            unitPrice: Number(it.rentalPerDay || it.price || 0),
+            lineTotal,
+          })
         } else {
           const price = Number(it.price || 0)
-          lineTotal = price * qty
+          if (it.itemType === 'listing') {
+            // price for listings is buyer unit price including commission markup
+            const buyerUnitPrice = price
+            const buyerLineTotal = buyerUnitPrice * qty
+            const commissionRate = getCommissionRate() || 0
+            const baseLineTotal = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+            const commission = Math.max(0, buyerLineTotal - baseLineTotal)
+            totalsByType.listingCommission = (totalsByType.listingCommission || 0) + commission
+            totalsByType.listingPassThrough = (totalsByType.listingPassThrough || 0) + baseLineTotal
+            items.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              createdAt: o.createdAt,
+              itemType: it.itemType,
+              title: it.title,
+              quantity: qty,
+              unitPrice: buyerUnitPrice,
+              lineTotal: buyerLineTotal,
+              listingCommission: commission,
+              listingBase: baseLineTotal,
+            })
+          } else {
+            const lineTotal = price * qty
+            totalsByType.inventory = (totalsByType.inventory || 0) + lineTotal
+            items.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              createdAt: o.createdAt,
+              itemType: it.itemType,
+              title: it.title,
+              quantity: qty,
+              unitPrice: Number(it.price || 0),
+              lineTotal,
+            })
+          }
         }
-        totalsByType[it.itemType] = (totalsByType[it.itemType] || 0) + lineTotal
-        items.push({
-          orderId: o._id,
-          orderNumber: o.orderNumber,
-          createdAt: o.createdAt,
-          itemType: it.itemType,
-          title: it.title,
-          quantity: qty,
-          unitPrice: it.itemType === 'rental' ? Number(it.rentalPerDay || it.price || 0) : Number(it.price || 0),
-          lineTotal,
-        })
       }
     }
 
-    const totalIncome = (totalsByType.inventory || 0) + (totalsByType.rental || 0) + (totalsByType.listing || 0)
+    const totalIncome = (totalsByType.inventory || 0) + (totalsByType.rental || 0) + (totalsByType.listingCommission || 0)
     return res.json({ totalsByType, totalIncome, items })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute income from orders' })

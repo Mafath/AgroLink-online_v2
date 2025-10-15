@@ -64,7 +64,7 @@ const AdminFinance = () => {
   const [expenseItems, setExpenseItems] = React.useState([])
   const [loadingIncome, setLoadingIncome] = React.useState(false)
   const [loadingExpenses, setLoadingExpenses] = React.useState(false)
-  const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
+  const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
@@ -563,8 +563,8 @@ const AdminFinance = () => {
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.rental||0).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
-                        <div className='text-xs text-gray-500'>Orders Income • Listings</div>
-                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listing||0).toLocaleString()}</div>
+                        <div className='text-xs text-gray-500'>Orders Income • Listing Commission</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listingCommission||0).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Delivery Fees</div>
@@ -608,11 +608,12 @@ const AdminFinance = () => {
                               <th className='py-3 px-5'>Qty</th>
                               <th className='py-3 px-5'>Unit</th>
                               <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Commission</th>
                             </tr>
                           </thead>
                           <tbody>
                             {companyIncome.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No order income yet</td></tr>
                             ) : (companyIncome.items
                                   .slice()
                                   .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
@@ -626,6 +627,7 @@ const AdminFinance = () => {
                                 <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
                                 <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
                                 <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.itemType==='listing' ? `LKR ${Number(row.listingCommission||0).toLocaleString()}` : '—'}</td>
                               </tr>
                             )))}
                           </tbody>
