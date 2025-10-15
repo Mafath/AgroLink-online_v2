@@ -3,7 +3,10 @@ import FinanceTransaction from '../models/financeTransaction.model.js'
 import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
 import Order from '../models/order.model.js'
+import Listing from '../models/listing.model.js'
 import Delivery from '../models/delivery.model.js'
+import { getCommissionRate, roundHalfUp2 } from '../lib/utils.js'
+import FinanceRecurring from '../models/financeRecurring.model.js'
 
 export const getSummary = async (req, res) => {
   try {
@@ -162,12 +165,11 @@ export const getIncomeFromOrders = async (req, res) => {
 
     const orders = await Order.find(filter).lean()
     const items = []
-    const totalsByType = { inventory: 0, rental: 0, listing: 0 }
+    const totalsByType = { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }
 
     for (const o of orders) {
       for (const it of (o.items || [])) {
         const qty = Number(it.quantity || 1)
-        let lineTotal = 0
         if (it.itemType === 'rental') {
           const perDay = Number(it.rentalPerDay || it.price || 0)
           const start = it.rentalStartDate ? new Date(it.rentalStartDate) : null
@@ -177,29 +179,164 @@ export const getIncomeFromOrders = async (req, res) => {
             const ms = Math.max(0, end.setHours(0,0,0,0) - start.setHours(0,0,0,0))
             days = Math.max(1, Math.ceil(ms / (1000*60*60*24)) + 1)
           }
-          lineTotal = perDay * days * qty
+          const lineTotal = perDay * days * qty
+          totalsByType.rental = (totalsByType.rental || 0) + lineTotal
+          items.push({
+            orderId: o._id,
+            orderNumber: o.orderNumber,
+            createdAt: o.createdAt,
+            itemType: it.itemType,
+            title: it.title,
+            quantity: qty,
+            unitPrice: Number(it.rentalPerDay || it.price || 0),
+            lineTotal,
+          })
         } else {
           const price = Number(it.price || 0)
-          lineTotal = price * qty
+          if (it.itemType === 'listing') {
+            // price for listings is buyer unit price including commission markup
+            const buyerUnitPrice = price
+            const buyerLineTotal = buyerUnitPrice * qty
+            const commissionRate = getCommissionRate() || 0
+            const baseLineTotal = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+            const commission = Math.max(0, buyerLineTotal - baseLineTotal)
+            totalsByType.listingCommission = (totalsByType.listingCommission || 0) + commission
+            totalsByType.listingPassThrough = (totalsByType.listingPassThrough || 0) + baseLineTotal
+            items.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              createdAt: o.createdAt,
+              itemType: it.itemType,
+              title: it.title,
+              quantity: qty,
+              unitPrice: buyerUnitPrice,
+              lineTotal: buyerLineTotal,
+              listingCommission: commission,
+              listingBase: baseLineTotal,
+            })
+          } else {
+            const lineTotal = price * qty
+            totalsByType.inventory = (totalsByType.inventory || 0) + lineTotal
+            items.push({
+              orderId: o._id,
+              orderNumber: o.orderNumber,
+              createdAt: o.createdAt,
+              itemType: it.itemType,
+              title: it.title,
+              quantity: qty,
+              unitPrice: Number(it.price || 0),
+              lineTotal,
+            })
+          }
         }
-        totalsByType[it.itemType] = (totalsByType[it.itemType] || 0) + lineTotal
-        items.push({
-          orderId: o._id,
-          orderNumber: o.orderNumber,
-          createdAt: o.createdAt,
-          itemType: it.itemType,
-          title: it.title,
-          quantity: qty,
-          unitPrice: it.itemType === 'rental' ? Number(it.rentalPerDay || it.price || 0) : Number(it.price || 0),
-          lineTotal,
-        })
       }
     }
 
-    const totalIncome = (totalsByType.inventory || 0) + (totalsByType.rental || 0) + (totalsByType.listing || 0)
+    const totalIncome = (totalsByType.inventory || 0) + (totalsByType.rental || 0) + (totalsByType.listingCommission || 0)
     return res.json({ totalsByType, totalIncome, items })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute income from orders' })
+  }
+}
+
+// Company income from delivery fees (order.deliveryFee)
+export const getIncomeFromDeliveryFees = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const filter = {}
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = new Date(from)
+      if (to) filter.createdAt.$lte = new Date(to)
+    }
+    // Exclude cancelled orders
+    filter.status = { $ne: 'CANCELLED' }
+
+    const orders = await Order.find(filter).select('_id orderNumber createdAt deliveryFee').lean()
+    const items = []
+    let total = 0
+    for (const o of orders) {
+      const fee = Number(o.deliveryFee || 0)
+      if (!fee) continue
+      total += fee
+      items.push({
+        orderId: o._id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt,
+        deliveryFee: fee,
+      })
+    }
+    return res.json({ total, count: items.length, items })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute delivery fee income' })
+  }
+}
+
+// Aggregated income by source for a date range
+export const getIncomeBySource = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const fromDate = from ? new Date(from) : null
+    const toDate = to ? new Date(to) : new Date()
+
+    // Delivery Fees
+    const orderFilter = { status: { $ne: 'CANCELLED' } }
+    if (fromDate || toDate) {
+      orderFilter.createdAt = {}
+      if (fromDate) orderFilter.createdAt.$gte = fromDate
+      if (toDate) orderFilter.createdAt.$lte = toDate
+    }
+    const orders = await Order.find(orderFilter).select('createdAt deliveryFee items orderNumber').lean()
+    const deliveryFees = orders.reduce((s,o)=> s + Number(o.deliveryFee||0), 0)
+
+    // Listing Commission (reuse logic similar to getIncomeFromOrders)
+    const commissionRate = getCommissionRate() || 0
+    let listingCommission = 0
+    for (const o of orders) {
+      for (const it of (o.items||[])) {
+        if (it.itemType !== 'listing') continue
+        const qty = Number(it.quantity||1)
+        const buyerUnitPrice = Number(it.price||0)
+        const buyerLineTotal = buyerUnitPrice * qty
+        const base = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+        const commission = Math.max(0, buyerLineTotal - base)
+        listingCommission += commission
+      }
+    }
+
+    // Rental Fees (platform fee) — placeholder 0 unless a fee model is configured
+    const rentalFees = 0
+
+    // Manual Income
+    const txFilter = { type: 'INCOME' }
+    if (fromDate || toDate) {
+      txFilter.date = {}
+      if (fromDate) txFilter.date.$gte = fromDate
+      if (toDate) txFilter.date.$lte = toDate
+    }
+    const manualTx = await FinanceTransaction.aggregate([
+      { $match: txFilter },
+      { $group: { _id: null, sum: { $sum: '$amount' } } }
+    ])
+    const manualIncome = manualTx?.[0]?.sum || 0
+
+    // Recurring Income — sum of active INCOME entries whose nextRunAt falls in range (simplified)
+    const recFilter = { type: 'INCOME', active: true }
+    if (fromDate || toDate) {
+      recFilter.nextRunAt = {}
+      if (fromDate) recFilter.nextRunAt.$gte = fromDate
+      if (toDate) recFilter.nextRunAt.$lte = toDate
+    }
+    const recAgg = await FinanceRecurring.aggregate([
+      { $match: recFilter },
+      { $group: { _id: null, sum: { $sum: '$amount' } } }
+    ])
+    const recurringIncome = recAgg?.[0]?.sum || 0
+
+    const total = deliveryFees + listingCommission + rentalFees + manualIncome + recurringIncome
+    return res.json({ deliveryFees, listingCommission, rentalFees, manualIncome, recurringIncome, total })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute income by source' })
   }
 }
 
@@ -247,24 +384,41 @@ export const getDriverPayouts = async (req, res) => {
 // Expenses: Farmer payouts from listing sales (after commission)
 export const getFarmerPayouts = async (req, res) => {
   try {
-    const { from, to, commissionPercent = '0' } = req.query
+    const { from, to } = req.query
     const filter = { status: { $ne: 'CANCELLED' } }
     if (from || to) {
       filter.createdAt = {}
       if (from) filter.createdAt.$gte = new Date(from)
       if (to) filter.createdAt.$lte = new Date(to)
     }
-    const commission = Number(commissionPercent) || 0
+    // Commission is applied as a markup to buyer price: final = base * (1 + rate)
+    // We must pay farmers the original base amount: base = final / (1 + rate)
+    const commissionRate = getCommissionRate() || 0 // decimal (e.g. 0.15)
     const orders = await Order.find(filter).lean()
+    // Preload listings referenced by order items so we can attach farmer names
+    // Build a set of listing ids from orders (only for 'listing' items)
+    const listingIdSet = new Set()
+    for (const o of orders) {
+      for (const it of (o.items || [])) {
+        if (it.itemType === 'listing' && it.listing) listingIdSet.add(String(it.listing))
+      }
+    }
+    const listingIds = Array.from(listingIdSet)
+    const listingDocs = listingIds.length > 0
+      ? await Listing.find({ _id: { $in: listingIds } }).populate('farmer', 'fullName email').lean()
+      : []
+    const listingIdToFarmer = new Map(listingDocs.map(ld => [String(ld._id), { name: ld.farmer?.fullName || '—', email: ld.farmer?.email || '' }]))
     const items = []
     let total = 0
     for (const o of orders) {
       for (const it of (o.items || [])) {
         if (it.itemType !== 'listing') continue
         const qty = Number(it.quantity || 1)
-        const price = Number(it.price || 0)
-        const lineTotal = price * qty
-        const payout = lineTotal * (1 - commission / 100)
+        const buyerUnitPrice = Number(it.price || 0) // includes commission markup
+        const buyerLineTotal = buyerUnitPrice * qty
+        // derive original farmer line total by reversing the markup
+        const originalLineTotal = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+        const payout = originalLineTotal
         total += payout
         items.push({
           orderId: o._id,
@@ -272,13 +426,15 @@ export const getFarmerPayouts = async (req, res) => {
           createdAt: o.createdAt,
           title: it.title,
           quantity: qty,
-          unitPrice: price,
-          lineTotal,
+          unitPrice: buyerUnitPrice,
+          lineTotal: buyerLineTotal,
           payout,
+          farmerName: listingIdToFarmer.get(String(it.listing))?.name || '—',
+          farmerEmail: listingIdToFarmer.get(String(it.listing))?.email || '',
         })
       }
     }
-    return res.json({ total, items, commissionPercent: commission })
+    return res.json({ total, items, commissionPercent: Math.round((commissionRate || 0) * 100) })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute farmer payouts' })
   }
