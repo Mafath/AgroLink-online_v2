@@ -97,10 +97,10 @@ const AdminFinance = () => {
   const [farmerRange, setFarmerRange] = React.useState('month')
   const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
   const [driverPaid, setDriverPaid] = React.useState({})
-  const [showDriverPayments, setShowDriverPayments] = React.useState(true)
+  const [showDriverPayments, setShowDriverPayments] = React.useState(false)
   const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 15 })
   const [driverRate, setDriverRate] = React.useState({ type: 'flat', value: '0' })
-  const [showFarmerPayments, setShowFarmerPayments] = React.useState(true)
+  const [showFarmerPayments, setShowFarmerPayments] = React.useState(false)
 
   React.useEffect(() => {
     const load = async () => {
