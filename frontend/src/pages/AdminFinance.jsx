@@ -67,9 +67,11 @@ const AdminFinance = () => {
   const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
-  const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
+  const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(false)
   const [deliveryIncome, setDeliveryIncome] = React.useState({ total: 0, count: 0, items: [] })
   const [sourceTotals, setSourceTotals] = React.useState({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
+  const [showListingIncome, setShowListingIncome] = React.useState(false)
+  const [showDeliveryIncomeDetails, setShowDeliveryIncomeDetails] = React.useState(false)
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
   const [creating, setCreating] = React.useState(false)
@@ -90,6 +92,7 @@ const AdminFinance = () => {
   const [recurringForm, setRecurringForm] = React.useState({ title: '', type: 'EXPENSE', amount: '', cadence: 'MONTHLY', nextRunAt: '', category: '' })
   const [allTransactions, setAllTransactions] = React.useState([])
   const [loadingReports, setLoadingReports] = React.useState(false)
+  const [showIncomeRecords, setShowIncomeRecords] = React.useState(false)
   const [driverRange, setDriverRange] = React.useState('month')
   const [farmerRange, setFarmerRange] = React.useState('month')
   const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
@@ -142,6 +145,8 @@ const AdminFinance = () => {
     if (activeTab === 'overview') {
       axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
       axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+      // Ensure income-by-source totals are available for overview donut (current month)
+      fetchIncomeBySource('month')
     }
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
   }, [activeTab])
@@ -552,6 +557,35 @@ const AdminFinance = () => {
                             )
                           })()}
                         </div>
+                        {/* Income by Source (moved here from Income tab) */}
+                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <PieChart className='size-5 text-gray-500' />
+                              <span>Income by Source</span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const labels = ['Delivery Fees','Listing Commission','Rental Fees','Manual Income','Recurring Income']
+                            const series = [
+                              Number(sourceTotals.deliveryFees||0),
+                              Number(sourceTotals.listingCommission||0),
+                              Number(sourceTotals.rentalFees||0),
+                              Number(sourceTotals.manualIncome||0),
+                              Number(sourceTotals.recurringIncome||0),
+                            ]
+                            const hasData = series.some(v=>v>0)
+                            return hasData ? (
+                              <Chart type='donut' height={260} options={{
+                                chart:{ toolbar:{ show:false }}, labels,
+                                legend:{ show:false }, dataLabels:{ enabled:false },
+                                colors:['#3b82f6','#22c55e','#8b5cf6','#f59e0b','#14b8a6']
+                              }} series={series} />
+                            ) : (
+                              <div className='text-sm text-gray-500'>No income in this range</div>
+                            )
+                          })()}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -563,7 +597,7 @@ const AdminFinance = () => {
                       <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
                       <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
                     </div>
-                    <div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
+                    <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.inventory||0).toLocaleString()}</div>
@@ -573,16 +607,12 @@ const AdminFinance = () => {
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.rental||0).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
-                        <div className='text-xs text-gray-500'>Orders Income • Listing Commission</div>
-                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listingCommission||0).toLocaleString()}</div>
+                        <div className='text-xs text-gray-500'>Orders Income • Listings</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number((companyIncome.totalsByType.listingCommission||0) + (companyIncome.totalsByType.listingPassThrough||0)).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Delivery Fees</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(deliveryIncome.total||0).toLocaleString()}</div>
-                      </div>
-                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
-                        <div className='text-xs text-gray-500'>Manual + Recurring</div>
-                        <div className='text-xl font-semibold mt-1'>LKR {Number((sourceTotals.manualIncome||0) + (sourceTotals.recurringIncome||0)).toLocaleString()}</div>
                       </div>
                     </div>
                     {/* removed charts from Income; moved to Overview */}
@@ -604,7 +634,6 @@ const AdminFinance = () => {
                                 <option value='all'>All Types</option>
                                 <option value='inventory'>Inventory</option>
                                 <option value='rental'>Rental</option>
-                                <option value='listing'>Listing</option>
                               </select>
                             </div>
                           }
@@ -622,16 +651,18 @@ const AdminFinance = () => {
                               <th className='py-3 px-5'>Qty</th>
                               <th className='py-3 px-5'>Unit</th>
                               <th className='py-3 px-5'>Line Total</th>
-                              <th className='py-3 px-5'>Commission</th>
                             </tr>
                           </thead>
                           <tbody>
                             {companyIncome.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No order income yet</td></tr>
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
                             ) : (companyIncome.items
                                   .slice()
                                   .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
-                                  .filter(row => incomeTypeFilter === 'all' ? true : row.itemType === incomeTypeFilter)
+                                  .filter(row => {
+                                    if (incomeTypeFilter === 'all') return row.itemType !== 'listing'
+                                    return row.itemType === incomeTypeFilter
+                                  })
                                   .map((row, idx) => (
                               <tr key={idx} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
@@ -640,8 +671,7 @@ const AdminFinance = () => {
                                 <td className='py-3 px-5 text-gray-700'>{row.title}</td>
                                 <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
                                 <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 text-gray-700'>{row.itemType==='listing' ? `LKR ${Number(row.listingCommission||0).toLocaleString()}` : '—'}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
                               </tr>
                             )))}
                           </tbody>
@@ -650,41 +680,71 @@ const AdminFinance = () => {
                       )}
                     </div>
 
-                    {/* Source breakdown donut */}
-                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                          <PieChart className='size-5 text-gray-500' />
-                          <span>Income by Source</span>
+                    {/* Income by Source donut moved to Overview */}
+
+                    {/* Listing Income Details (moved out of Order-based table) */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Listing Income Details' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowListingIncome(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showListingIncome ? '' : '-rotate-90'}`} />
+                          </button>
                         </div>
                       </div>
-                      {(() => {
-                        const labels = ['Delivery Fees','Listing Commission','Rental Fees','Manual Income','Recurring Income']
-                        const series = [
-                          Number(sourceTotals.deliveryFees||0),
-                          Number(sourceTotals.listingCommission||0),
-                          Number(sourceTotals.rentalFees||0),
-                          Number(sourceTotals.manualIncome||0),
-                          Number(sourceTotals.recurringIncome||0),
-                        ]
-                        const hasData = series.some(v=>v>0)
-                        return hasData ? (
-                          <Chart type='donut' height={260} options={{
-                            chart:{ toolbar:{ show:false }}, labels,
-                            legend:{ position:'bottom' }, dataLabels:{ enabled:false },
-                            colors:['#3b82f6','#22c55e','#8b5cf6','#f59e0b','#14b8a6']
-                          }} series={series} />
-                        ) : (
-                          <div className='text-sm text-gray-500'>No income in this range</div>
-                        )
-                      })()}
+                      {showListingIncome && (
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Created</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Total<br />Commission</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {companyIncome.items.filter(r=>r.itemType==='listing').length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No listing income yet</td></tr>
+                            ) : (companyIncome.items
+                                  .slice()
+                                  .filter(r=>r.itemType==='listing')
+                                  .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+                                  .map((row, idx) => (
+                              <tr key={idx} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{`LKR ${Number(row.listingCommission||0).toLocaleString()}`}</td>
+                              </tr>
+                            )))}
+                          </tbody>
+                        </table>
+                      </div>
+                      )}
                     </div>
 
                     {/* Delivery Fee Income Details */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5'>
-                        <SectionHeader icon={TrendingUp} title='Delivery Fee Income Details' />
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Delivery Fee Income Details' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowDeliveryIncomeDetails(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showDeliveryIncomeDetails ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
                       </div>
+                      {showDeliveryIncomeDetails && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -704,12 +764,13 @@ const AdminFinance = () => {
                               <tr key={idx} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
                                 <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
-                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.deliveryFee||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.deliveryFee||0).toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={TrendingUp} title='Add Income' />
@@ -726,9 +787,17 @@ const AdminFinance = () => {
                       </div>
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5'>
-                        <SectionHeader icon={TrendingUp} title='Income Records' />
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Income Records' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowIncomeRecords(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showIncomeRecords ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
                       </div>
+                      {showIncomeRecords && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -764,6 +833,7 @@ const AdminFinance = () => {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                   </div>
                 )}
