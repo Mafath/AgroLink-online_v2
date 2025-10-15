@@ -236,7 +236,7 @@ const AdminLogistics = () => {
         head: headers,
         body: data,
         startY: 115,
-        styles: { font: 'helvetica', fontSize: 9 },
+        styles: { font: 'helvetica', fontSize: 9, cellPadding: 4, minCellHeight: 12, lineWidth: 0 },
         headStyles: { fillColor: [13, 126, 121], textColor: [255,255,255] },
         alternateRowStyles: { fillColor: [245, 245, 245] },
         margin: { left: 20, right: 20 }
