@@ -924,7 +924,7 @@ if (!admin.apps.length) {
 // Firebase Authentication
 export const firebaseAuth = async (req, res) => {
   try {
-    const { idToken, email, fullName, profilePic } = req.body;
+    const { idToken, email, fullName, profilePic, role } = req.body;
 
     if (!idToken) {
       return res.status(400).json({ 
@@ -961,7 +961,7 @@ export const firebaseAuth = async (req, res) => {
           authProvider: 'firebase',
           profilePic: profilePic || '',
           isEmailVerified: true, // Firebase users are pre-verified
-          role: 'BUYER' // Default role, can be changed later
+          role: role || 'BUYER' // Use provided role or default to BUYER
         });
         await user.save();
       }
