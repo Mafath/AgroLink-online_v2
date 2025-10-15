@@ -43,7 +43,7 @@ const Marketplace = () => {
             setItems(res.data.data || res.data)
           }
         } else {
-          // Buyers see farmer listings
+          // Buyers see farmer listings (with finalPricePerKg from API)
           const res = await axiosInstance.get('/listings')
           setItems(res.data)
         }
@@ -171,8 +171,8 @@ const Marketplace = () => {
       }
     } else {
       // For listing items
-      if (sortBy === 'price_asc') return Number(a.pricePerKg) - Number(b.pricePerKg)
-      if (sortBy === 'price_desc') return Number(b.pricePerKg) - Number(a.pricePerKg)
+      if (sortBy === 'price_asc') return Number((a.finalPricePerKg ?? a.pricePerKg) || 0) - Number((b.finalPricePerKg ?? b.pricePerKg) || 0)
+      if (sortBy === 'price_desc') return Number((b.finalPricePerKg ?? b.pricePerKg) || 0) - Number((a.finalPricePerKg ?? a.pricePerKg) || 0)
       if (sortBy === 'harvested_asc') return new Date(a.harvestedAt) - new Date(b.harvestedAt)
       if (sortBy === 'harvested_desc') return new Date(b.harvestedAt) - new Date(a.harvestedAt)
       if (sortBy === 'capacity_asc') return Number(a.capacityKg) - Number(b.capacityKg)
@@ -381,7 +381,7 @@ const Marketplace = () => {
                     <div>LKR {Number(it.rentalPerDay).toFixed(2)} / day</div>
                   </>
                 ) : (
-                  <>LKR {Number(isFarmer ? it.price : it.pricePerKg).toFixed(2)} {isFarmer ? '' : '/ kg'}</>
+                  <>LKR {Number(isFarmer ? it.price : (it.finalPricePerKg ?? it.pricePerKg)).toFixed(2)} {isFarmer ? '' : '/ kg'}</>
                 )}
               </div>
               {isFarmer ? (
@@ -532,7 +532,7 @@ const Marketplace = () => {
                 <>
                   <div>
                     <div className='text-gray-500'>Price / kg</div>
-                    <div className='font-medium'>LKR {Number(selected.pricePerKg).toFixed(2)}</div>
+                    <div className='font-medium'>LKR {Number(selected.finalPricePerKg ?? selected.pricePerKg).toFixed(2)}</div>
                   </div>
                   <div>
                     <div className='text-gray-500'>Available</div>
