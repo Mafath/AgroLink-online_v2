@@ -214,13 +214,25 @@ const AdminLogistics = () => {
       pdf.setFont('helvetica', 'normal');
       pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63);
 
+      // Summary details (fill space between title and table)
+      const rowsSource = activeTab === 'assigned' ? sortedAssigned : activeTab === 'unassigned' ? sortedUnassigned : sortedCancelled;
+      const totalCount = rowsSource.length;
+      const dates = rowsSource.map(d => new Date(d?.createdAt || 0).getTime()).filter(n => Number.isFinite(n) && n > 0);
+      const minDate = dates.length ? new Date(Math.min(...dates)).toLocaleDateString() : '-';
+      const maxDate = dates.length ? new Date(Math.max(...dates)).toLocaleDateString() : '-';
+      const statusInfo = activeTab === 'assigned' && statusFilter !== 'all' ? `Filter: ${statusFilter}` : '';
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.text('Summary', 20, 75);
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(10);
+      pdf.text(`Total records: ${totalCount}`, 20, 83);
+      pdf.text(`Date range: ${minDate} - ${maxDate}`, 20, 91);
+      if (statusInfo) pdf.text(statusInfo, 120, 83);
+
       // Section title before table
       pdf.setFontSize(12);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Deliveries', 20, 105);
 
       // Table with consistent startY and styles
-      const rowsSource = activeTab === 'assigned' ? sortedAssigned : activeTab === 'unassigned' ? sortedUnassigned : sortedCancelled;
       const headers = [['Order', 'Customer', 'Phone', 'Address', 'Status', 'Driver', 'Created']];
       const data = rowsSource.map(d => [
         `#${d?.order?.orderNumber || 'N/A'}`,
