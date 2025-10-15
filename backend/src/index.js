@@ -16,6 +16,7 @@ import harvestRoutes from "./routes/harvest.route.js";
 import harvestReportRoutes from "./routes/harvestReport.route.js";
 import deliveryReviewRoutes from "./routes/deliveryReview.route.js";
 import financeRoutes from './routes/finance.route.js'
+import { getCommissionRate } from './lib/utils.js'
 
 
 const app = express();
@@ -53,5 +54,6 @@ app.use('/api/finance', financeRoutes);
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log('Server is running on port ' + PORT);
+  try { console.log('Effective COMMISSION_RATE:', getCommissionRate()); } catch {}
   connectDB();
 })
