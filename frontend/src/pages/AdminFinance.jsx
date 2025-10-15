@@ -65,13 +65,18 @@ const AdminFinance = () => {
   const [loadingIncome, setLoadingIncome] = React.useState(false)
   const [loadingExpenses, setLoadingExpenses] = React.useState(false)
   const [companyIncome, setCompanyIncome] = React.useState({ totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
-  const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
+  const [incomeRange, setIncomeRange] = React.useState('') // '', 'day' | 'week' | 'month' | 'lastMonth'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
-  const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
+  const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(false)
   const [deliveryIncome, setDeliveryIncome] = React.useState({ total: 0, count: 0, items: [] })
   const [sourceTotals, setSourceTotals] = React.useState({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
+  const [showListingIncome, setShowListingIncome] = React.useState(false)
+  const [showDeliveryIncomeDetails, setShowDeliveryIncomeDetails] = React.useState(false)
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
+  const [overviewIncome7d, setOverviewIncome7d] = React.useState([])
+  const [overviewExpense7d, setOverviewExpense7d] = React.useState([])
+  const [overviewRange, setOverviewRange] = React.useState('') // '' | 'day' | 'week' | 'month' | 'lastMonth'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
   const [selectedIncome, setSelectedIncome] = React.useState(null)
@@ -90,14 +95,15 @@ const AdminFinance = () => {
   const [recurringForm, setRecurringForm] = React.useState({ title: '', type: 'EXPENSE', amount: '', cadence: 'MONTHLY', nextRunAt: '', category: '' })
   const [allTransactions, setAllTransactions] = React.useState([])
   const [loadingReports, setLoadingReports] = React.useState(false)
-  const [driverRange, setDriverRange] = React.useState('month')
-  const [farmerRange, setFarmerRange] = React.useState('month')
+  const [showIncomeRecords, setShowIncomeRecords] = React.useState(false)
+  const [driverRange, setDriverRange] = React.useState('')
+  const [farmerRange, setFarmerRange] = React.useState('')
   const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
   const [driverPaid, setDriverPaid] = React.useState({})
-  const [showDriverPayments, setShowDriverPayments] = React.useState(true)
+  const [showDriverPayments, setShowDriverPayments] = React.useState(false)
   const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 15 })
   const [driverRate, setDriverRate] = React.useState({ type: 'flat', value: '0' })
-  const [showFarmerPayments, setShowFarmerPayments] = React.useState(true)
+  const [showFarmerPayments, setShowFarmerPayments] = React.useState(false)
 
   React.useEffect(() => {
     const load = async () => {
@@ -140,11 +146,33 @@ const AdminFinance = () => {
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange) }
     if (activeTab === 'overview') {
-      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
-      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+      const paramsFor = (range) => {
+        if (!range) return {}
+        const now = new Date()
+        if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
+        return { from, to }
+      }
+      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME', ...paramsFor(overviewRange) } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
+      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE', ...paramsFor(overviewRange) } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+      // Always fetch last 7 days (today and past 6 days) for the 7-day bar chart, ignoring filters
+      const nowIso = new Date().toISOString()
+      const d7 = new Date(); d7.setDate(d7.getDate() - 6)
+      const from7 = d7.toISOString()
+      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME', from: from7, to: nowIso } }).then(r=>setOverviewIncome7d(r.data||[])).catch(()=>setOverviewIncome7d([]))
+      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE', from: from7, to: nowIso } }).then(r=>setOverviewExpense7d(r.data||[])).catch(()=>setOverviewExpense7d([]))
+      fetchIncomeBySource(overviewRange)
+      fetchCompanyIncome(overviewRange)
+      fetchDeliveryIncome(overviewRange)
+      fetchDriverPayouts(overviewRange, driverRate)
+      fetchFarmerPayouts(overviewRange)
     }
     if (activeTab === 'reports' || activeTab === 'export') fetchAllTransactions()
-  }, [activeTab])
+  }, [activeTab, overviewRange, incomeRange, driverRange, farmerRange, driverRate])
 
   React.useEffect(() => { if (activeTab === 'expenses') fetchDriverPayouts(driverRange, driverRate) }, [driverRange, driverRate])
   React.useEffect(() => { if (activeTab === 'expenses') fetchFarmerPayouts(farmerRange) }, [farmerRange])
@@ -156,48 +184,48 @@ const AdminFinance = () => {
   }, [incomeRange])
   const fetchCompanyIncome = async (range = 'month') => {
     try {
-      // compute from/to
-      let from = null
-      let to = new Date().toISOString()
-      const now = new Date()
-      if (range === 'day') {
-        const d = new Date(now)
-        d.setDate(now.getDate() - 1)
-        from = d.toISOString()
-      } else if (range === 'week') {
-        const d = new Date(now)
-        d.setDate(now.getDate() - 7)
-        from = d.toISOString()
-      } else {
-        const d = new Date(now.getFullYear(), now.getMonth(), 1)
-        from = d.toISOString()
-      }
-      const res = await axiosInstance.get('/finance/income/orders', { params: { from, to } })
-      setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
+      const params = (() => {
+        if (!range) return {}
+        if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/orders', { params })
+      setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listingCommission: 0, listingPassThrough: 0 }, totalIncome: 0, items: [] })
     } catch {}
   }
 
   const fetchDeliveryIncome = async (range = 'month') => {
     try {
-      let from = null
-      let to = new Date().toISOString()
-      const now = new Date()
-      if (range === 'day') {
-        const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString()
-      } else if (range === 'week') {
-        const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString()
-      } else {
-        const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString()
-      }
-      const res = await axiosInstance.get('/finance/income/delivery-fees', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        if (range === 'lastMonth') {
+          const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+          const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999)
+          return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        }
+        const { from, to } = rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/delivery-fees', { params })
       setDeliveryIncome(res.data || { total: 0, count: 0, items: [] })
     } catch { setDeliveryIncome({ total: 0, count: 0, items: [] }) }
   }
 
   const fetchIncomeBySource = async (range = 'month') => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/income/by-source', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/income/by-source', { params })
       setSourceTotals(res.data || { deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 })
     } catch { setSourceTotals({ deliveryFees: 0, listingCommission: 0, rentalFees: 0, manualIncome: 0, recurringIncome: 0, total: 0 }) }
   }
@@ -266,25 +294,49 @@ const AdminFinance = () => {
 
   const rangeToFromTo = (range) => {
     const now = new Date()
-    let from
-    if (range === 'day') { const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString() }
-    else if (range === 'week') { const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString() }
-    else { const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString() }
-    return { from, to: new Date().toISOString() }
+    // Today: start of calendar day -> now
+    if (range === 'day') {
+      const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      return { from: startOfToday.toISOString(), to: new Date().toISOString() }
+    }
+    // This Week: Monday 00:00 -> now (ISO week with Monday as first day)
+    if (range === 'week') {
+      const day = now.getDay() || 7 // Sunday=0 -> 7
+      const monday = new Date(now)
+      monday.setDate(now.getDate() - (day - 1))
+      monday.setHours(0,0,0,0)
+      return { from: monday.toISOString(), to: new Date().toISOString() }
+    }
+    // This Month: first day of month 00:00 -> now
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: startOfMonth.toISOString(), to: new Date().toISOString() }
   }
 
   const fetchDriverPayouts = async (range, rate) => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/expenses/driver-payouts', { params: { from, to, rateType: rate.type, rateValue: rate.value } })
+      const params = (() => {
+        const base = { rateType: rate.type, rateValue: rate.value }
+        if (!range) return base
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { ...base, from, to }
+      })()
+      const res = await axiosInstance.get('/finance/expenses/driver-payouts', { params })
       setDriverPayouts(res.data || { total: 0, count: 0, items: [] })
     } catch {}
   }
 
   const fetchFarmerPayouts = async (range) => {
     try {
-      const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params: { from, to } })
+      const params = (() => {
+        if (!range) return {}
+        const { from, to } = range === 'lastMonth' ? (()=>{
+          const now = new Date(); const startPrev = new Date(now.getFullYear(), now.getMonth() - 1, 1); const endPrev = new Date(now.getFullYear(), now.getMonth(), 0); endPrev.setHours(23,59,59,999); return { from: startPrev.toISOString(), to: endPrev.toISOString() }
+        })() : rangeToFromTo(range)
+        return { from, to }
+      })()
+      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params })
       setFarmerPayouts(res.data || { total: 0, items: [], commissionPercent: 15 })
     } catch {}
   }
@@ -450,11 +502,33 @@ const AdminFinance = () => {
                 <div className='border-t border-gray-100 mt-3 pt-4' />
                 {activeTab === 'overview' && (
                   <div className='space-y-6'>
+                    <div className='flex items-center gap-2'>
+                      <button onClick={()=>setOverviewRange(r=> r==='lastMonth' ? '' : 'lastMonth')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='lastMonth'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='month' ? '' : 'month')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>setOverviewRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
+                    </div>
                     <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
-                      <StatCard icon={Wallet} title='Total Balance' value={loadingSummary ? '—' : `LKR ${summary.balance.toLocaleString()}`} trend='' positive={summary.balance >= 0} />
-                      <StatCard icon={TrendingUp} title='Income' value={loadingSummary ? '—' : `LKR ${summary.income.toLocaleString()}`} trend='' positive />
-                      <StatCard icon={Receipt} title='Expenses' value={loadingSummary ? '—' : `LKR ${summary.expenses.toLocaleString()}`} trend='' positive={false} />
-                      <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
+                      {(() => {
+                        const orderIncome = Number(companyIncome.totalsByType.inventory||0) + Number(companyIncome.totalsByType.rental||0)
+                        const listingIncome = Number(companyIncome.totalsByType.listingCommission||0) + Number(companyIncome.totalsByType.listingPassThrough||0)
+                        const deliveryIncomeTotal = Number(deliveryIncome.total||0)
+                        const totalIncome = orderIncome + listingIncome + deliveryIncomeTotal
+
+                        const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)
+                        const farmerTotal = Number(farmerPayouts.total||0)
+                        const totalExpenses = driverTotal + farmerTotal
+
+                        const netProfit = totalIncome - totalExpenses
+                        return (
+                          <>
+                            <StatCard icon={Wallet} title='Net Profit' value={`LKR ${netProfit.toLocaleString()}`} trend='' positive={netProfit >= 0} />
+                            <StatCard icon={TrendingUp} title='Total Income' value={`LKR ${totalIncome.toLocaleString()}`} trend='' positive />
+                            <StatCard icon={Receipt} title='Total Expenses' value={`LKR ${totalExpenses.toLocaleString()}`} trend='' positive={false} />
+                            <StatCard icon={Target} title='Savings Progress' value='—' trend='' positive />
+                          </>
+                        )
+                      })()}
                     </div>
                     <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
                       <div className='lg:col-span-3 space-y-6'>
@@ -462,30 +536,39 @@ const AdminFinance = () => {
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
                               <BarChart3 className='size-5 text-gray-500' />
-                              <span>Income vs Expenses (last 6 months)</span>
+                              <span>Income vs Expenses</span>
                             </div>
                           </div>
                           {(() => {
-                            const now = new Date()
+                            const parseAmount = (val) => {
+                              const s = String(val == null ? 0 : val)
+                              return Number(s.replace(/,/g,'').trim()) || 0
+                            }
                             const labels = []
                             const incomeSeries = []
                             const expenseSeries = []
-                            for (let i = 5; i >= 0; i--) {
-                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
-                              const monthIncome = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              const monthExpense = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              incomeSeries.push(monthIncome)
-                              expenseSeries.push(monthExpense)
+                            const today = new Date()
+                            const getDate = (t) => new Date(t.date || t.createdAt)
+                            for (let i = 6; i >= 0; i--) {
+                              const d = new Date(today)
+                              d.setDate(today.getDate() - i)
+                              labels.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
+                              const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                              const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
+                              const inc = (overviewIncomeTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                              const exp = (overviewExpenseTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                              incomeSeries.push(inc)
+                              expenseSeries.push(exp)
                             }
                             return (
                               <Chart type='bar' height={260} options={{
                                 chart:{ toolbar:{ show:false }},
-                                plotOptions:{ bar:{ columnWidth:'40%', borderRadius:4 }},
+                                plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
                                 grid:{ borderColor:'#eee' },
                                 xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
                                 yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#22c55e','#ef4444'], legend:{ position:'top' }
+                                colors:['#22c55e','#ef4444'], legend:{ position:'top' },
+                                tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
                               }} series={[ { name:'Income', data: incomeSeries }, { name:'Expenses', data: expenseSeries } ]} />
                             )
                           })()}
@@ -520,35 +603,108 @@ const AdminFinance = () => {
                             )
                           })()}
                         </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                            <BarChart3 className='size-5 text-gray-500' />
+                            <span>Income vs Expenses · Last 7 days</span>
+                          </div>
+                        </div>
+                        {(() => {
+                          const parseAmount = (val) => {
+                            const s = String(val == null ? 0 : val)
+                            return Number(s.replace(/,/g,'').trim()) || 0
+                          }
+                          const categories = []
+                          const incomeData = []
+                          const expenseData = []
+                          const srcInc = Array.isArray(overviewIncome7d) ? overviewIncome7d : []
+                          const srcExp = Array.isArray(overviewExpense7d) ? overviewExpense7d : []
+                          const getDate = (t) => new Date(t.date || t.createdAt)
+                          const today = new Date()
+                          for (let i = 6; i >= 0; i--) {
+                            const d = new Date(today)
+                            d.setDate(today.getDate() - i)
+                            categories.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
+                            const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                            const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
+                            const inc = srcInc.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                            const exp = srcExp.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                            incomeData.push(inc)
+                            expenseData.push(exp)
+                          }
+                          return (
+                            <Chart type='bar' height={260} options={{
+                              chart:{ toolbar:{ show:false }},
+                              plotOptions:{ bar:{ columnWidth:'60%', borderRadius:4 }},
+                              colors:['#22c55e','#ef4444'],
+                              grid:{ borderColor:'#eee' },
+                              xaxis:{ categories, labels:{ style:{ colors:'#9ca3af' } } },
+                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                              legend:{ show:true },
+                              tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
+                            }} series={[{ name:'Income', data: incomeData }, { name:'Expenses', data: expenseData }]} />
+                          )
+                        })()}
+                      </div>
                       </div>
                       <div className='lg:col-span-2 space-y-6'>
+                        {/* Income by Source (now first) */}
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
                               <PieChart className='size-5 text-gray-500' />
-                              <span>Expense Categories (this month)</span>
+                              <span>Income by Source</span>
                             </div>
                           </div>
                           {(() => {
-                            const now = new Date()
-                            const start = new Date(now.getFullYear(), now.getMonth(), 1)
-                            const catMap = new Map()
-                            for (const t of (overviewExpenseTx||[])) {
-                              const dt = new Date(t.date)
-                              if (dt < start) continue
-                              const key = t.category || 'Other'
-                              catMap.set(key, (catMap.get(key)||0) + Number(t.amount||0))
-                            }
-                            const labels = Array.from(catMap.keys())
-                            const series = labels.map(l=>catMap.get(l))
-                            return labels.length === 0 ? (
-                              <div className='text-sm text-gray-500'>No expenses this month</div>
-                            ) : (
+                            // Use four-category breakdown with explicit names
+                            const labels = [
+                              'Inventory Sales Income',
+                              'Equipment Rental Income',
+                              'Platform Listing Fees',
+                              'Logistics & Delivery Income',
+                            ]
+                            const series = [
+                              Number((companyIncome?.totalsByType?.inventory)||0),
+                              Number((companyIncome?.totalsByType?.rental)||0),
+                              Number((companyIncome?.totalsByType?.listingCommission)||0) + Number((companyIncome?.totalsByType?.listingPassThrough)||0),
+                              Number((deliveryIncome?.total)||0),
+                            ]
+                            const hasData = series.some(v=>v>0)
+                            return hasData ? (
                               <Chart type='donut' height={260} options={{
                                 chart:{ toolbar:{ show:false }}, labels,
-                                legend:{ show:false }, dataLabels:{ enabled:false },
-                                colors:['#8b5cf6', '#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#14b8a6', '#eab308']
+                                legend:{ show: true, position:'bottom' }, dataLabels:{ enabled:false },
+                                colors:['#22c55e','#8b5cf6','#f59e0b','#3b82f6']
                               }} series={series} />
+                            ) : (
+                              <div className='text-sm text-gray-500'>No income in this range</div>
+                            )
+                          })()}
+                        </div>
+                        {/* Expenses by Category (moved below) */}
+                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                          <div className='flex items-center justify-between mb-2'>
+                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                              <PieChart className='size-5 text-gray-500' />
+                              <span>Expenses by Category</span>
+                            </div>
+                          </div>
+                          {(() => {
+                            const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)
+                            const farmerTotal = Number(farmerPayouts.total||0)
+                            const labels = ['Driver Payments','Farmer Payments']
+                            const series = [driverTotal, farmerTotal]
+                            const hasData = series.some(v=>Number(v)>0)
+                            return hasData ? (
+                              <Chart type='donut' height={260} options={{
+                                chart:{ toolbar:{ show:false }}, labels,
+                                legend:{ show: true, position:'bottom' }, dataLabels:{ enabled:false },
+                                colors:['#ef4444', '#3b82f6']
+                              }} series={series} />
+                            ) : (
+                              <div className='text-sm text-gray-500'>No expenses in this range</div>
                             )
                           })()}
                         </div>
@@ -559,11 +715,12 @@ const AdminFinance = () => {
                 {activeTab === 'income' && (
                   <div className='space-y-6'>
                     <div className='flex items-center gap-2'>
-                      <button onClick={()=>setIncomeRange('day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
-                      <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
-                      <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='lastMonth' ? '' : 'lastMonth')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='lastMonth'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='month' ? '' : 'month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>setIncomeRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
-                    <div className='grid grid-cols-1 md:grid-cols-5 gap-4'>
+                    <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.inventory||0).toLocaleString()}</div>
@@ -573,16 +730,12 @@ const AdminFinance = () => {
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.rental||0).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
-                        <div className='text-xs text-gray-500'>Orders Income • Listing Commission</div>
-                        <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listingCommission||0).toLocaleString()}</div>
+                        <div className='text-xs text-gray-500'>Orders Income • Listings</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number((companyIncome.totalsByType.listingCommission||0) + (companyIncome.totalsByType.listingPassThrough||0)).toLocaleString()}</div>
                       </div>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Delivery Fees</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(deliveryIncome.total||0).toLocaleString()}</div>
-                      </div>
-                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
-                        <div className='text-xs text-gray-500'>Manual + Recurring</div>
-                        <div className='text-xl font-semibold mt-1'>LKR {Number((sourceTotals.manualIncome||0) + (sourceTotals.recurringIncome||0)).toLocaleString()}</div>
                       </div>
                     </div>
                     {/* removed charts from Income; moved to Overview */}
@@ -604,7 +757,6 @@ const AdminFinance = () => {
                                 <option value='all'>All Types</option>
                                 <option value='inventory'>Inventory</option>
                                 <option value='rental'>Rental</option>
-                                <option value='listing'>Listing</option>
                               </select>
                             </div>
                           }
@@ -622,16 +774,18 @@ const AdminFinance = () => {
                               <th className='py-3 px-5'>Qty</th>
                               <th className='py-3 px-5'>Unit</th>
                               <th className='py-3 px-5'>Line Total</th>
-                              <th className='py-3 px-5'>Commission</th>
                             </tr>
                           </thead>
                           <tbody>
                             {companyIncome.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No order income yet</td></tr>
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No order income yet</td></tr>
                             ) : (companyIncome.items
                                   .slice()
                                   .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
-                                  .filter(row => incomeTypeFilter === 'all' ? true : row.itemType === incomeTypeFilter)
+                                  .filter(row => {
+                                    if (incomeTypeFilter === 'all') return row.itemType !== 'listing'
+                                    return row.itemType === incomeTypeFilter
+                                  })
                                   .map((row, idx) => (
                               <tr key={idx} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
@@ -640,8 +794,7 @@ const AdminFinance = () => {
                                 <td className='py-3 px-5 text-gray-700'>{row.title}</td>
                                 <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
                                 <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 text-gray-700'>{row.itemType==='listing' ? `LKR ${Number(row.listingCommission||0).toLocaleString()}` : '—'}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
                               </tr>
                             )))}
                           </tbody>
@@ -650,41 +803,71 @@ const AdminFinance = () => {
                       )}
                     </div>
 
-                    {/* Source breakdown donut */}
-                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <div className='flex items-center justify-between mb-2'>
-                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                          <PieChart className='size-5 text-gray-500' />
-                          <span>Income by Source</span>
+                    {/* Income by Source donut moved to Overview */}
+
+                    {/* Listing Income Details (moved out of Order-based table) */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Listing Income Details' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowListingIncome(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showListingIncome ? '' : '-rotate-90'}`} />
+                          </button>
                         </div>
                       </div>
-                      {(() => {
-                        const labels = ['Delivery Fees','Listing Commission','Rental Fees','Manual Income','Recurring Income']
-                        const series = [
-                          Number(sourceTotals.deliveryFees||0),
-                          Number(sourceTotals.listingCommission||0),
-                          Number(sourceTotals.rentalFees||0),
-                          Number(sourceTotals.manualIncome||0),
-                          Number(sourceTotals.recurringIncome||0),
-                        ]
-                        const hasData = series.some(v=>v>0)
-                        return hasData ? (
-                          <Chart type='donut' height={260} options={{
-                            chart:{ toolbar:{ show:false }}, labels,
-                            legend:{ position:'bottom' }, dataLabels:{ enabled:false },
-                            colors:['#3b82f6','#22c55e','#8b5cf6','#f59e0b','#14b8a6']
-                          }} series={series} />
-                        ) : (
-                          <div className='text-sm text-gray-500'>No income in this range</div>
-                        )
-                      })()}
+                      {showListingIncome && (
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Created</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Total<br />Commission</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {companyIncome.items.filter(r=>r.itemType==='listing').length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No listing income yet</td></tr>
+                            ) : (companyIncome.items
+                                  .slice()
+                                  .filter(r=>r.itemType==='listing')
+                                  .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+                                  .map((row, idx) => (
+                              <tr key={idx} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(row.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.lineTotal||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>{`LKR ${Number(row.listingCommission||0).toLocaleString()}`}</td>
+                              </tr>
+                            )))}
+                          </tbody>
+                        </table>
+                      </div>
+                      )}
                     </div>
 
                     {/* Delivery Fee Income Details */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5'>
-                        <SectionHeader icon={TrendingUp} title='Delivery Fee Income Details' />
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Delivery Fee Income Details' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowDeliveryIncomeDetails(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showDeliveryIncomeDetails ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
                       </div>
+                      {showDeliveryIncomeDetails && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -704,12 +887,13 @@ const AdminFinance = () => {
                               <tr key={idx} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
                                 <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
-                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.deliveryFee||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 font-medium text-green-600'>LKR {Number(row.deliveryFee||0).toLocaleString()}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={TrendingUp} title='Add Income' />
@@ -726,9 +910,17 @@ const AdminFinance = () => {
                       </div>
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5'>
-                        <SectionHeader icon={TrendingUp} title='Income Records' />
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={TrendingUp} title='Income Records' />
+                        </div>
+                        <div>
+                          <button onClick={()=>setShowIncomeRecords(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showIncomeRecords ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
                       </div>
+                      {showIncomeRecords && (
                       <div className='overflow-x-auto'>
                         <table className='min-w-full text-sm'>
                           <thead>
@@ -764,27 +956,105 @@ const AdminFinance = () => {
                           </tbody>
                         </table>
                       </div>
+                      )}
                     </div>
                   </div>
                 )}
                 {activeTab === 'expenses' && (
                   <div className='space-y-6'>
                     <div className='flex items-center gap-2'>
-                      <button onClick={()=>{ setDriverRange('day'); setFarmerRange('day') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 24h</button>
-                      <button onClick={()=>{ setDriverRange('week'); setFarmerRange('week') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
-                      <button onClick={()=>{ setDriverRange('month'); setFarmerRange('month') }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='month' && farmerRange==='month' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='lastMonth' && farmerRange==='lastMonth') ? '' : 'lastMonth'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='lastMonth' && farmerRange==='lastMonth' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='month' && farmerRange==='month') ? '' : 'month'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='month' && farmerRange==='month' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
+                      <button onClick={()=>{ const v = (driverRange==='week' && farmerRange==='week') ? '' : 'week'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
+                      <button onClick={()=>{ const v = (driverRange==='day' && farmerRange==='day') ? '' : 'day'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                       <StatCard icon={Receipt} title='Driver Payments' value={`LKR ${((driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)).toLocaleString()}`} trend='' positive={false} />
                       <StatCard icon={Wallet} title='Farmer Payments' value={`LKR ${Number(farmerPayouts.total||0).toLocaleString()}`} trend='' positive={false} />
                     </div>
+
+                    {/* Farmer payouts (moved above driver payments) */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5 flex items-center justify-between'>
+                        <div className='flex items-center gap-3'>
+                          <SectionHeader icon={Receipt} title='Farmer Payments (after commission)' />
+                        </div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={farmerRange} onChange={e=>setFarmerRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
+                          <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
+                            <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
+                          </button>
+                        </div>
+                      </div>
+                      {showFarmerPayments && (
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Farmer</th>
+                              <th className='py-3 px-5'>Item</th>
+                              <th className='py-3 px-5'>Qty</th>
+                              <th className='py-3 px-5'>Unit</th>
+                              <th className='py-3 px-5'>Line Total</th>
+                              <th className='py-3 px-5'>Payout</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {farmerPayouts.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No payouts</td></tr>
+                            ) : farmerPayouts.items
+                                .slice()
+                                .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+                                .map((r, i) => (
+                              <tr key={i} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>{r.orderNumber || r.orderId}</div>
+                                  <div className='text-xs text-gray-500'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</div>
+                                </td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>{r.farmerName || '—'}</div>
+                                  {r.farmerEmail ? (
+                                    <div className='text-xs text-gray-500'>{r.farmerEmail}</div>
+                                  ) : null}
+                                </td>
+                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
+                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
+                                <td className='py-3 px-5 text-gray-700'>
+                                  <div>LKR {Number(r.lineTotal||0).toLocaleString()}</div>
+                                  {(() => {
+                                    const commission = Number(r.lineTotal||0) - Number(r.payout||0)
+                                    return commission > 0 ? (
+                                      <div className='text-xs text-green-700'>- LKR {commission.toLocaleString()}</div>
+                                    ) : null
+                                  })()}
+                                </td>
+                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(r.payout||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      )}
+                    </div>
+
                     {/* Driver payouts */}
                     <div className='bg-white border border-gray-200 rounded-2xl'>
                       <div className='p-5 flex items-center justify-between'>
                         <div className='flex items-center gap-3'>
                           <SectionHeader icon={Receipt} title='Driver Payments' />
                         </div>
-                        <div>
+                        <div className='flex items-center gap-2'>
+                          <select className='border rounded-md px-2 py-1.5 text-sm' value={driverRange} onChange={e=>setDriverRange(e.target.value)}>
+                            <option value='day'>Last 24h</option>
+                            <option value='week'>Last 7 days</option>
+                            <option value='month'>This Month</option>
+                          </select>
                           <button onClick={()=>setShowDriverPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
                             <ChevronDown className={`size-4 transition-transform ${showDriverPayments ? '' : '-rotate-90'}`} />
                           </button>
@@ -824,81 +1094,26 @@ const AdminFinance = () => {
                         </table>
                       </div>
                       )}
+                    </div>
 
-                      {/* Bar chart: deliveries completed by driver */}
-                      <div className='p-5'>
-                        <div className='bg-white rounded-xl border border-gray-200'>
-                          <div className='p-4 text-sm font-medium text-gray-700'>Deliveries by Driver · {Number(driverPayouts.count||0)} completed</div>
-                          <div className='px-4 pb-4'>
-                            <Chart type='bar' height={260} options={{
-                              chart:{ toolbar:{ show:false }},
-                              grid:{ borderColor:'#eee' },
-                              plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
-                              xaxis:{ categories: (driverPayouts.totalsByDriver||[]).map(d=>d.driverName||'—'), labels:{ style:{ colors:'#9ca3af' } } },
-                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                              colors:['#3b82f6']
-                            }} series={[{ name:'Completed', data: (driverPayouts.totalsByDriver||[]).map(d=>Number(d.deliveries||0)) }]} />
-                          </div>
+                    {/* Bar chart: deliveries completed by driver (moved outside the card) */}
+                    <div className='p-5'>
+                      <div className='bg-white rounded-xl border border-gray-200'>
+                        <div className='p-4 text-sm font-medium text-gray-700'>Deliveries by Driver · {Number(driverPayouts.count||0)} completed</div>
+                        <div className='px-4 pb-4'>
+                          <Chart type='bar' height={260} options={{
+                            chart:{ toolbar:{ show:false }},
+                            grid:{ borderColor:'#eee' },
+                            plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
+                            xaxis:{ categories: (driverPayouts.totalsByDriver||[]).map(d=>d.driverName||'—'), labels:{ style:{ colors:'#9ca3af' } } },
+                            yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                            colors:['#3b82f6']
+                          }} series={[{ name:'Completed', data: (driverPayouts.totalsByDriver||[]).map(d=>Number(d.deliveries||0)) }]} />
                         </div>
                       </div>
                     </div>
 
-                    {/* Farmer payouts */}
-                    <div className='bg-white border border-gray-200 rounded-2xl'>
-                      <div className='p-5 flex items-center justify-between'>
-                        <div className='flex items-center gap-3'>
-                          <SectionHeader icon={Receipt} title='Farmer Payments (after commission)' />
-                          <div className='text-sm text-gray-600'>Total: <span className='font-semibold'>LKR {Number(farmerPayouts.total||0).toLocaleString()}</span></div>
-                        </div>
-                        <div className='flex items-center gap-2'>
-                          <select className='border rounded-md px-2 py-1.5 text-sm' value={farmerRange} onChange={e=>setFarmerRange(e.target.value)}>
-                            <option value='day'>Last 24h</option>
-                            <option value='week'>Last 7 days</option>
-                            <option value='month'>This Month</option>
-                          </select>
-                          <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
-                            <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
-                          </button>
-                        </div>
-                      </div>
-                      {showFarmerPayments && (
-                      <div className='overflow-x-auto'>
-                        <table className='min-w-full text-sm'>
-                          <thead>
-                            <tr className='text-left text-gray-500 border-t border-b'>
-                              <th className='py-3 px-5'>Order</th>
-                              <th className='py-3 px-5'>Date</th>
-                              <th className='py-3 px-5'>Farmer</th>
-                              <th className='py-3 px-5'>Item</th>
-                              <th className='py-3 px-5'>Qty</th>
-                              <th className='py-3 px-5'>Unit</th>
-                              <th className='py-3 px-5'>Line Total</th>
-                              <th className='py-3 px-5'>Payout</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {farmerPayouts.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No payouts</td></tr>
-                            ) : farmerPayouts.items
-                                .slice()
-                                .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
-                                .map((r, i) => (
-                              <tr key={i} className='border-b last:border-b-0'>
-                                <td className='py-3 px-5 text-gray-700'>{r.orderNumber || r.orderId}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.farmerName || '—'}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.title}</td>
-                                <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
-                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 text-gray-700'>LKR {Number(r.lineTotal||0).toLocaleString()}</td>
-                                <td className='py-3 px-5 font-medium text-red-700'>LKR {Number(r.payout||0).toLocaleString()}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      )}
-                    </div>
+                    
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={Receipt} title='Log Expense' />
                       <div className='grid grid-cols-1 md:grid-cols-6 gap-3 text-sm'>
@@ -1025,7 +1240,7 @@ const AdminFinance = () => {
                       <div className='flex items-center justify-between mb-4'>
                         <div className='flex items-center gap-2 text-gray-800 font-semibold'>
                           <BarChart3 className='size-5 text-gray-500' />
-                          <span>Income vs Expenses (last 6 months)</span>
+                          <span>Income vs Expenses</span>
                         </div>
                       </div>
                       {loadingReports ? (
