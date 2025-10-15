@@ -298,9 +298,6 @@ const handleInputChange = (e) => {
     setLoading(true);
 
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
       // Validate cart items (allow inventory, listing, rental)
       const invalidItems = checkoutData.cart.filter(item => !item.itemId || !['inventory', 'listing', 'rental'].includes(item.itemType));
       if (invalidItems.length > 0) {
