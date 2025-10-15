@@ -74,6 +74,8 @@ const AdminFinance = () => {
   const [showDeliveryIncomeDetails, setShowDeliveryIncomeDetails] = React.useState(false)
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
+  const [overviewIncome7d, setOverviewIncome7d] = React.useState([])
+  const [overviewExpense7d, setOverviewExpense7d] = React.useState([])
   const [overviewRange, setOverviewRange] = React.useState('') // '' | 'day' | 'week' | 'month' | 'lastMonth'
   const [creating, setCreating] = React.useState(false)
   const [form, setForm] = React.useState({ type: 'INCOME', amount: '', date: '', category: '', description: '', source: '', receiptBase64: '' })
@@ -157,6 +159,12 @@ const AdminFinance = () => {
       }
       axiosInstance.get('/finance/transactions', { params: { type: 'INCOME', ...paramsFor(overviewRange) } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
       axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE', ...paramsFor(overviewRange) } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
+      // Always fetch last 7 days (today and past 6 days) for the 7-day bar chart, ignoring filters
+      const nowIso = new Date().toISOString()
+      const d7 = new Date(); d7.setDate(d7.getDate() - 6)
+      const from7 = d7.toISOString()
+      axiosInstance.get('/finance/transactions', { params: { type: 'INCOME', from: from7, to: nowIso } }).then(r=>setOverviewIncome7d(r.data||[])).catch(()=>setOverviewIncome7d([]))
+      axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE', from: from7, to: nowIso } }).then(r=>setOverviewExpense7d(r.data||[])).catch(()=>setOverviewExpense7d([]))
       fetchIncomeBySource(overviewRange)
       fetchCompanyIncome(overviewRange)
       fetchDeliveryIncome(overviewRange)
@@ -532,26 +540,35 @@ const AdminFinance = () => {
                             </div>
                           </div>
                           {(() => {
-                            const now = new Date()
+                            const parseAmount = (val) => {
+                              const s = String(val == null ? 0 : val)
+                              return Number(s.replace(/,/g,'').trim()) || 0
+                            }
                             const labels = []
                             const incomeSeries = []
                             const expenseSeries = []
-                            for (let i = 5; i >= 0; i--) {
-                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
-                              const monthIncome = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              const monthExpense = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              incomeSeries.push(monthIncome)
-                              expenseSeries.push(monthExpense)
+                            const today = new Date()
+                            const getDate = (t) => new Date(t.date || t.createdAt)
+                            for (let i = 6; i >= 0; i--) {
+                              const d = new Date(today)
+                              d.setDate(today.getDate() - i)
+                              labels.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
+                              const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                              const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
+                              const inc = (overviewIncomeTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                              const exp = (overviewExpenseTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                              incomeSeries.push(inc)
+                              expenseSeries.push(exp)
                             }
                             return (
                               <Chart type='bar' height={260} options={{
                                 chart:{ toolbar:{ show:false }},
-                                plotOptions:{ bar:{ columnWidth:'40%', borderRadius:4 }},
+                                plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
                                 grid:{ borderColor:'#eee' },
                                 xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
                                 yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#22c55e','#ef4444'], legend:{ position:'top' }
+                                colors:['#22c55e','#ef4444'], legend:{ position:'top' },
+                                tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
                               }} series={[ { name:'Income', data: incomeSeries }, { name:'Expenses', data: expenseSeries } ]} />
                             )
                           })()}
@@ -586,6 +603,50 @@ const AdminFinance = () => {
                             )
                           })()}
                         </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-5'>
+                        <div className='flex items-center justify-between mb-2'>
+                          <div className='flex items-center gap-2 text-gray-800 font-semibold'>
+                            <BarChart3 className='size-5 text-gray-500' />
+                            <span>Income vs Expenses · Last 7 days</span>
+                          </div>
+                        </div>
+                        {(() => {
+                          const parseAmount = (val) => {
+                            const s = String(val == null ? 0 : val)
+                            return Number(s.replace(/,/g,'').trim()) || 0
+                          }
+                          const categories = []
+                          const incomeData = []
+                          const expenseData = []
+                          const srcInc = Array.isArray(overviewIncome7d) ? overviewIncome7d : []
+                          const srcExp = Array.isArray(overviewExpense7d) ? overviewExpense7d : []
+                          const getDate = (t) => new Date(t.date || t.createdAt)
+                          const today = new Date()
+                          for (let i = 6; i >= 0; i--) {
+                            const d = new Date(today)
+                            d.setDate(today.getDate() - i)
+                            categories.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
+                            const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+                            const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
+                            const inc = srcInc.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                            const exp = srcExp.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
+                            incomeData.push(inc)
+                            expenseData.push(exp)
+                          }
+                          return (
+                            <Chart type='bar' height={260} options={{
+                              chart:{ toolbar:{ show:false }},
+                              plotOptions:{ bar:{ columnWidth:'60%', borderRadius:4 }},
+                              colors:['#22c55e','#ef4444'],
+                              grid:{ borderColor:'#eee' },
+                              xaxis:{ categories, labels:{ style:{ colors:'#9ca3af' } } },
+                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
+                              legend:{ show:true },
+                              tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
+                            }} series={[{ name:'Income', data: incomeData }, { name:'Expenses', data: expenseData }]} />
+                          )
+                        })()}
+                      </div>
                       </div>
                       <div className='lg:col-span-2 space-y-6'>
                         {/* Income by Source (now first) */}
