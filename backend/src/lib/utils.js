@@ -1,4 +1,25 @@
 import jwt from 'jsonwebtoken';
+
+// Commission utilities
+export const getCommissionRate = () => {
+  const raw = process.env.COMMISSION_RATE;
+  const rate = Number(raw);
+  if (!Number.isFinite(rate) || rate < 0) return 0; // default 0 if not configured
+  return rate;
+};
+
+export const roundHalfUp2 = (value) => {
+  const num = Number(value);
+  if (!Number.isFinite(num)) return 0;
+  // half-up to 2 decimals
+  return Math.round(num * 100 + Number.EPSILON) / 100;
+};
+
+export const computeFinalPriceWithCommission = (basePrice) => {
+  const rate = getCommissionRate();
+  const final = Number(basePrice) * (1 + rate);
+  return roundHalfUp2(final);
+};
 //to be able to generate a token, we are going to need an environment variable
 
 export const generateToken = (userId, res) => { //The res in this context refers to the response object provided by Express.js. It is used to send responses back to the client after the server has processed the request.
