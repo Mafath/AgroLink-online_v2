@@ -247,14 +247,14 @@ export const getDriverPayouts = async (req, res) => {
 // Expenses: Farmer payouts from listing sales (after commission)
 export const getFarmerPayouts = async (req, res) => {
   try {
-    const { from, to, commissionPercent = '0' } = req.query
+    const { from, to } = req.query
     const filter = { status: { $ne: 'CANCELLED' } }
     if (from || to) {
       filter.createdAt = {}
       if (from) filter.createdAt.$gte = new Date(from)
       if (to) filter.createdAt.$lte = new Date(to)
     }
-    const commission = Number(commissionPercent) || 0
+    const commission = 15
     const orders = await Order.find(filter).lean()
     const items = []
     let total = 0

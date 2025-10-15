@@ -93,9 +93,8 @@ const AdminFinance = () => {
   const [driverPayouts, setDriverPayouts] = React.useState({ total: 0, count: 0, items: [], totalsByDriver: [] })
   const [driverPaid, setDriverPaid] = React.useState({})
   const [showDriverPayments, setShowDriverPayments] = React.useState(true)
-  const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 0 })
+  const [farmerPayouts, setFarmerPayouts] = React.useState({ total: 0, items: [], commissionPercent: 15 })
   const [driverRate, setDriverRate] = React.useState({ type: 'flat', value: '0' })
-  const [farmerCommission, setFarmerCommission] = React.useState('0')
   const [showFarmerPayments, setShowFarmerPayments] = React.useState(true)
 
   React.useEffect(() => {
@@ -137,7 +136,7 @@ const AdminFinance = () => {
     if (activeTab === 'income') fetchTransactions('INCOME')
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
-    if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange, farmerCommission) }
+    if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange) }
     if (activeTab === 'overview') {
       axiosInstance.get('/finance/transactions', { params: { type: 'INCOME' } }).then(r=>setOverviewIncomeTx(r.data||[])).catch(()=>setOverviewIncomeTx([]))
       axiosInstance.get('/finance/transactions', { params: { type: 'EXPENSE' } }).then(r=>setOverviewExpenseTx(r.data||[])).catch(()=>setOverviewExpenseTx([]))
@@ -146,7 +145,7 @@ const AdminFinance = () => {
   }, [activeTab])
 
   React.useEffect(() => { if (activeTab === 'expenses') fetchDriverPayouts(driverRange, driverRate) }, [driverRange, driverRate])
-  React.useEffect(() => { if (activeTab === 'expenses') fetchFarmerPayouts(farmerRange, farmerCommission) }, [farmerRange, farmerCommission])
+  React.useEffect(() => { if (activeTab === 'expenses') fetchFarmerPayouts(farmerRange) }, [farmerRange])
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
@@ -253,11 +252,11 @@ const AdminFinance = () => {
     } catch {}
   }
 
-  const fetchFarmerPayouts = async (range, commission) => {
+  const fetchFarmerPayouts = async (range) => {
     try {
       const { from, to } = rangeToFromTo(range)
-      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params: { from, to, commissionPercent: commission } })
-      setFarmerPayouts(res.data || { total: 0, items: [], commissionPercent: Number(commission||0) })
+      const res = await axiosInstance.get('/finance/expenses/farmer-payouts', { params: { from, to } })
+      setFarmerPayouts(res.data || { total: 0, items: [], commissionPercent: 15 })
     } catch {}
   }
 
@@ -756,7 +755,6 @@ const AdminFinance = () => {
                             <option value='week'>Last 7 days</option>
                             <option value='month'>This Month</option>
                           </select>
-                          <input className='border rounded-md px-2 py-1.5 text-sm w-32' placeholder='Commission %' type='number' value={farmerCommission} onChange={e=>setFarmerCommission(e.target.value)} />
                           <button onClick={()=>setShowFarmerPayments(v=>!v)} className='border rounded-md px-2 py-1.5 hover:bg-gray-50'>
                             <ChevronDown className={`size-4 transition-transform ${showFarmerPayments ? '' : '-rotate-90'}`} />
                           </button>
