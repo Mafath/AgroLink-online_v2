@@ -68,6 +68,7 @@ const AdminFinance = () => {
   const [incomeRange, setIncomeRange] = React.useState('month') // 'day' | 'week' | 'month'
   const [incomeTypeFilter, setIncomeTypeFilter] = React.useState('all') // 'all' | 'inventory' | 'rental' | 'listing'
   const [showOrderIncomeDetails, setShowOrderIncomeDetails] = React.useState(true)
+  const [deliveryIncome, setDeliveryIncome] = React.useState({ total: 0, count: 0, items: [] })
   const [overviewIncomeTx, setOverviewIncomeTx] = React.useState([])
   const [overviewExpenseTx, setOverviewExpenseTx] = React.useState([])
   const [creating, setCreating] = React.useState(false)
@@ -134,7 +135,7 @@ const AdminFinance = () => {
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchTransactions('INCOME')
-    if (activeTab === 'income') fetchCompanyIncome(incomeRange)
+    if (activeTab === 'income') { fetchCompanyIncome(incomeRange); fetchDeliveryIncome(incomeRange) }
     if (activeTab === 'expenses') fetchTransactions('EXPENSE')
     if (activeTab === 'expenses') { fetchDriverPayouts(driverRange, driverRate); fetchFarmerPayouts(farmerRange) }
     if (activeTab === 'overview') {
@@ -149,6 +150,7 @@ const AdminFinance = () => {
 
   React.useEffect(() => {
     if (activeTab === 'income') fetchCompanyIncome(incomeRange)
+    if (activeTab === 'income') fetchDeliveryIncome(incomeRange)
   }, [incomeRange])
   const fetchCompanyIncome = async (range = 'month') => {
     try {
@@ -171,6 +173,23 @@ const AdminFinance = () => {
       const res = await axiosInstance.get('/finance/income/orders', { params: { from, to } })
       setCompanyIncome(res.data || { totalsByType: { inventory: 0, rental: 0, listing: 0 }, totalIncome: 0, items: [] })
     } catch {}
+  }
+
+  const fetchDeliveryIncome = async (range = 'month') => {
+    try {
+      let from = null
+      let to = new Date().toISOString()
+      const now = new Date()
+      if (range === 'day') {
+        const d = new Date(now); d.setDate(now.getDate() - 1); from = d.toISOString()
+      } else if (range === 'week') {
+        const d = new Date(now); d.setDate(now.getDate() - 7); from = d.toISOString()
+      } else {
+        const d = new Date(now.getFullYear(), now.getMonth(), 1); from = d.toISOString()
+      }
+      const res = await axiosInstance.get('/finance/income/delivery-fees', { params: { from, to } })
+      setDeliveryIncome(res.data || { total: 0, count: 0, items: [] })
+    } catch { setDeliveryIncome({ total: 0, count: 0, items: [] }) }
   }
 
   const onFileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -534,7 +553,7 @@ const AdminFinance = () => {
                       <button onClick={()=>setIncomeRange('week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Last 7 days</button>
                       <button onClick={()=>setIncomeRange('month')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='month'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Month</button>
                     </div>
-                    <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
+                    <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.inventory||0).toLocaleString()}</div>
@@ -546,6 +565,10 @@ const AdminFinance = () => {
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Listings</div>
                         <div className='text-xl font-semibold mt-1'>LKR {Number(companyIncome.totalsByType.listing||0).toLocaleString()}</div>
+                      </div>
+                      <div className='bg-white border border-gray-200 rounded-2xl p-4'>
+                        <div className='text-xs text-gray-500'>Delivery Fees</div>
+                        <div className='text-xl font-semibold mt-1'>LKR {Number(deliveryIncome.total||0).toLocaleString()}</div>
                       </div>
                     </div>
                     {/* removed charts from Income; moved to Overview */}
@@ -609,6 +632,38 @@ const AdminFinance = () => {
                         </table>
                       </div>
                       )}
+                    </div>
+
+                    {/* Delivery Fee Income Details */}
+                    <div className='bg-white border border-gray-200 rounded-2xl'>
+                      <div className='p-5'>
+                        <SectionHeader icon={TrendingUp} title='Delivery Fee Income Details' />
+                      </div>
+                      <div className='overflow-x-auto'>
+                        <table className='min-w-full text-sm'>
+                          <thead>
+                            <tr className='text-left text-gray-500 border-t border-b'>
+                              <th className='py-3 px-5'>Order</th>
+                              <th className='py-3 px-5'>Created</th>
+                              <th className='py-3 px-5'>Delivery Fee</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {deliveryIncome.items.length === 0 ? (
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={3}>No delivery fees</td></tr>
+                            ) : deliveryIncome.items
+                                  .slice()
+                                  .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0))
+                                  .map((row, idx) => (
+                              <tr key={idx} className='border-b last:border-b-0'>
+                                <td className='py-3 px-5 text-gray-700'>{row.orderNumber || row.orderId}</td>
+                                <td className='py-3 px-5 text-gray-700'>{row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 font-medium text-green-700'>LKR {Number(row.deliveryFee||0).toLocaleString()}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                       <SectionHeader icon={TrendingUp} title='Add Income' />

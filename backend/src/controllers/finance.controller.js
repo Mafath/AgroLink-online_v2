@@ -205,6 +205,39 @@ export const getIncomeFromOrders = async (req, res) => {
   }
 }
 
+// Company income from delivery fees (order.deliveryFee)
+export const getIncomeFromDeliveryFees = async (req, res) => {
+  try {
+    const { from, to } = req.query
+    const filter = {}
+    if (from || to) {
+      filter.createdAt = {}
+      if (from) filter.createdAt.$gte = new Date(from)
+      if (to) filter.createdAt.$lte = new Date(to)
+    }
+    // Exclude cancelled orders
+    filter.status = { $ne: 'CANCELLED' }
+
+    const orders = await Order.find(filter).select('_id orderNumber createdAt deliveryFee').lean()
+    const items = []
+    let total = 0
+    for (const o of orders) {
+      const fee = Number(o.deliveryFee || 0)
+      if (!fee) continue
+      total += fee
+      items.push({
+        orderId: o._id,
+        orderNumber: o.orderNumber,
+        createdAt: o.createdAt,
+        deliveryFee: fee,
+      })
+    }
+    return res.json({ total, count: items.length, items })
+  } catch (e) {
+    return res.status(500).json({ error: 'Failed to compute delivery fee income' })
+  }
+}
+
 // Expenses: Driver payouts
 export const getDriverPayouts = async (req, res) => {
   try {
