@@ -3,6 +3,7 @@ import FinanceTransaction from '../models/financeTransaction.model.js'
 import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
 import Order from '../models/order.model.js'
+import Listing from '../models/listing.model.js'
 import Delivery from '../models/delivery.model.js'
 import { getCommissionRate, roundHalfUp2 } from '../lib/utils.js'
 
@@ -259,6 +260,19 @@ export const getFarmerPayouts = async (req, res) => {
     // We must pay farmers the original base amount: base = final / (1 + rate)
     const commissionRate = getCommissionRate() || 0 // decimal (e.g. 0.15)
     const orders = await Order.find(filter).lean()
+    // Preload listings referenced by order items so we can attach farmer names
+    // Build a set of listing ids from orders (only for 'listing' items)
+    const listingIdSet = new Set()
+    for (const o of orders) {
+      for (const it of (o.items || [])) {
+        if (it.itemType === 'listing' && it.listing) listingIdSet.add(String(it.listing))
+      }
+    }
+    const listingIds = Array.from(listingIdSet)
+    const listingDocs = listingIds.length > 0
+      ? await Listing.find({ _id: { $in: listingIds } }).populate('farmer', 'fullName email').lean()
+      : []
+    const listingIdToFarmer = new Map(listingDocs.map(ld => [String(ld._id), { name: ld.farmer?.fullName || '—', email: ld.farmer?.email || '' }]))
     const items = []
     let total = 0
     for (const o of orders) {
@@ -280,6 +294,8 @@ export const getFarmerPayouts = async (req, res) => {
           unitPrice: buyerUnitPrice,
           lineTotal: buyerLineTotal,
           payout,
+          farmerName: listingIdToFarmer.get(String(it.listing))?.name || '—',
+          farmerEmail: listingIdToFarmer.get(String(it.listing))?.email || '',
         })
       }
     }

@@ -767,6 +767,7 @@ const AdminFinance = () => {
                             <tr className='text-left text-gray-500 border-t border-b'>
                               <th className='py-3 px-5'>Order</th>
                               <th className='py-3 px-5'>Date</th>
+                              <th className='py-3 px-5'>Farmer</th>
                               <th className='py-3 px-5'>Item</th>
                               <th className='py-3 px-5'>Qty</th>
                               <th className='py-3 px-5'>Unit</th>
@@ -776,7 +777,7 @@ const AdminFinance = () => {
                           </thead>
                           <tbody>
                             {farmerPayouts.items.length === 0 ? (
-                              <tr><td className='py-4 px-5 text-gray-500' colSpan={7}>No payouts</td></tr>
+                              <tr><td className='py-4 px-5 text-gray-500' colSpan={8}>No payouts</td></tr>
                             ) : farmerPayouts.items
                                 .slice()
                                 .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
@@ -784,6 +785,7 @@ const AdminFinance = () => {
                               <tr key={i} className='border-b last:border-b-0'>
                                 <td className='py-3 px-5 text-gray-700'>{r.orderNumber || r.orderId}</td>
                                 <td className='py-3 px-5 text-gray-700'>{r.createdAt ? new Date(r.createdAt).toLocaleDateString() : '—'}</td>
+                                <td className='py-3 px-5 text-gray-700'>{r.farmerName || '—'}</td>
                                 <td className='py-3 px-5 text-gray-700'>{r.title}</td>
                                 <td className='py-3 px-5 text-gray-700'>{r.quantity}</td>
                                 <td className='py-3 px-5 text-gray-700'>LKR {Number(r.unitPrice||0).toLocaleString()}</td>
