@@ -4,6 +4,7 @@ import cloudinary from '../lib/cloudinary.js'
 import { sendBudgetAlertEmail } from '../lib/emailService.js'
 import Order from '../models/order.model.js'
 import Delivery from '../models/delivery.model.js'
+import { getCommissionRate, roundHalfUp2 } from '../lib/utils.js'
 
 export const getSummary = async (req, res) => {
   try {
@@ -254,7 +255,9 @@ export const getFarmerPayouts = async (req, res) => {
       if (from) filter.createdAt.$gte = new Date(from)
       if (to) filter.createdAt.$lte = new Date(to)
     }
-    const commission = 15
+    // Commission is applied as a markup to buyer price: final = base * (1 + rate)
+    // We must pay farmers the original base amount: base = final / (1 + rate)
+    const commissionRate = getCommissionRate() || 0 // decimal (e.g. 0.15)
     const orders = await Order.find(filter).lean()
     const items = []
     let total = 0
@@ -262,9 +265,11 @@ export const getFarmerPayouts = async (req, res) => {
       for (const it of (o.items || [])) {
         if (it.itemType !== 'listing') continue
         const qty = Number(it.quantity || 1)
-        const price = Number(it.price || 0)
-        const lineTotal = price * qty
-        const payout = lineTotal * (1 - commission / 100)
+        const buyerUnitPrice = Number(it.price || 0) // includes commission markup
+        const buyerLineTotal = buyerUnitPrice * qty
+        // derive original farmer line total by reversing the markup
+        const originalLineTotal = commissionRate > 0 ? roundHalfUp2(buyerLineTotal / (1 + commissionRate)) : buyerLineTotal
+        const payout = originalLineTotal
         total += payout
         items.push({
           orderId: o._id,
@@ -272,13 +277,13 @@ export const getFarmerPayouts = async (req, res) => {
           createdAt: o.createdAt,
           title: it.title,
           quantity: qty,
-          unitPrice: price,
-          lineTotal,
+          unitPrice: buyerUnitPrice,
+          lineTotal: buyerLineTotal,
           payout,
         })
       }
     }
-    return res.json({ total, items, commissionPercent: commission })
+    return res.json({ total, items, commissionPercent: Math.round((commissionRate || 0) * 100) })
   } catch (e) {
     return res.status(500).json({ error: 'Failed to compute farmer payouts' })
   }
