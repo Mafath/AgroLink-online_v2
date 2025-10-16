@@ -443,7 +443,7 @@ const ProfilePage = () => {
                       setTouched((t) => ({ ...t, phone: true }))
                       setErrors((er) => ({ ...er, phone: validatePhone(phone) }))
                     }}
-                    placeholder='0712345678'
+                    placeholder='0XX XXX XXXX'
                     inputMode='numeric'
                     pattern='^0\d{9}$'
                     maxLength={10}

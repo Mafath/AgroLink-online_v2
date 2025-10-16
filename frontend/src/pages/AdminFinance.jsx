@@ -396,6 +396,245 @@ const AdminFinance = () => {
     } catch {}
   }
 
+  // Shared PDF header/footer to match Inventory PDFs exactly
+  const drawFinancePdfHeader = async (pdf, title) => {
+    // Top green and black bar (3/4 green, 1/4 black)
+    pdf.setFillColor(13, 126, 121)
+    pdf.rect(0, 0, 157.5, 8, 'F')
+    pdf.setFillColor(0, 0, 0)
+    pdf.rect(157.5, 0, 52.5, 8, 'F')
+
+    // Spacer and main area
+    pdf.setFillColor(255, 255, 255)
+    pdf.rect(0, 8, 210, 5, 'F')
+    pdf.rect(0, 13, 210, 25, 'F')
+
+    // Logo via html2canvas for consistent rendering
+    try {
+      const tempDiv = document.createElement('div')
+      tempDiv.style.position = 'absolute'
+      tempDiv.style.left = '-9999px'
+      tempDiv.style.top = '-9999px'
+      tempDiv.style.width = '60px'
+      tempDiv.style.height = '60px'
+      tempDiv.style.display = 'flex'
+      tempDiv.style.alignItems = 'center'
+      tempDiv.style.justifyContent = 'center'
+      tempDiv.innerHTML = `<img src="${logoImg}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />`
+      document.body.appendChild(tempDiv)
+      const canvas = await html2canvas(tempDiv, { width: 60, height: 60, backgroundColor: null, scale: 2 })
+      document.body.removeChild(tempDiv)
+      const logoDataURL = canvas.toDataURL('image/png')
+      pdf.addImage(logoDataURL, 'PNG', 15, 13, 16, 16)
+    } catch {}
+
+    // Gradient brand text
+    pdf.setFontSize(18); pdf.setFont('helvetica', 'bold')
+    const startColor = { r: 0, g: 128, b: 111 }
+    const endColor = { r: 139, g: 195, b: 75 }
+    const text = 'AgroLink'
+    const startX = 35
+    const letterPositions = [0, 4, 7.5, 9.5, 12.8, 16.7, 18.3, 21.5]
+    for (let i = 0; i < text.length; i++) {
+      const progress = i / (text.length - 1)
+      const r = Math.round(startColor.r + (endColor.r - startColor.r) * progress)
+      const g = Math.round(startColor.g + (endColor.g - startColor.g) * progress)
+      const b = Math.round(startColor.b + (endColor.b - startColor.b) * progress)
+      pdf.setTextColor(r, g, b)
+      pdf.text(text[i], startX + letterPositions[i], 23)
+    }
+    // Tagline
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(100, 100, 100)
+    pdf.text('Agricultural Technology Solutions', 35, 27)
+
+    // Vertical separator line
+    pdf.setDrawColor(200, 200, 200); pdf.setLineWidth(0.5); pdf.line(120, 17, 120, 33)
+
+    // Contact info right side
+    pdf.setFontSize(8); pdf.setFont('helvetica', 'bold'); pdf.setTextColor(0, 0, 0)
+    pdf.text('Phone:', 130, 21); pdf.setFont('helvetica', 'normal'); pdf.text('+94 71 920 7688', 145, 21)
+    pdf.setFont('helvetica', 'bold'); pdf.text('Web:', 130, 25); pdf.setFont('helvetica', 'normal'); pdf.text('www.AgroLink.org', 145, 25)
+    pdf.setFont('helvetica', 'bold'); pdf.text('Address:', 130, 29); pdf.setFont('helvetica', 'normal'); pdf.text('States Rd, Colombo 04, Sri Lanka', 145, 29)
+
+    // Bottom separator
+    pdf.setDrawColor(13, 126, 121); pdf.setLineWidth(1); pdf.line(20, 40, 190, 40)
+
+    // Title + generated line
+    pdf.setTextColor(0, 0, 0); pdf.setFontSize(18); pdf.setFont('helvetica', 'bold'); pdf.text(title, 20, 55)
+    pdf.setFontSize(10); pdf.setFont('helvetica', 'normal'); pdf.text(`Generated on: ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`, 20, 63)
+
+    return 75
+  }
+
+  const drawFinancePdfFooter = (pdf) => {
+    const pageCount = pdf.internal.getNumberOfPages()
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i)
+      // Footer line
+      pdf.setDrawColor(13, 126, 121); pdf.setLineWidth(1); pdf.line(20, 280, 190, 280)
+      // Footer text
+      pdf.setFontSize(8); pdf.setFont('helvetica', 'normal'); pdf.setTextColor(100, 100, 100)
+      pdf.text('AgroLink - Agricultural Technology Solutions', 20, 285)
+      pdf.text(`Page ${i} of ${pageCount}`, 160, 285)
+      pdf.text(`Generated on ${new Date().toLocaleDateString()}`, 20, 290)
+    }
+  }
+
+  const exportOverviewPDF = async () => {
+    try {
+      const pdf = new jsPDF('p','mm','a4')
+      const startY = await drawFinancePdfHeader(pdf, 'Finance Overview')
+
+      // Summary calculations
+      const orderIncome = Number(companyIncome.totalsByType.inventory||0) + Number(companyIncome.totalsByType.rental||0)
+      const listingIncome = Number(companyIncome.totalsByType.listingCommission||0) + Number(companyIncome.totalsByType.listingPassThrough||0)
+      const deliveryIncomeTotal = Number(deliveryIncome.total||0)
+      const totalIncome = orderIncome + listingIncome + deliveryIncomeTotal
+      const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*Number(driverRate||300)), 0)
+      const farmerTotal = Number(farmerPayouts.total||0)
+      const totalExpenses = driverTotal + farmerTotal
+      const netProfit = totalIncome - totalExpenses
+
+      autoTable(pdf, {
+        head: [[ 'Metric','Amount' ]],
+        body: [
+          ['Net Profit', `LKR ${Number(netProfit||0).toLocaleString()}`],
+          ['Total Income', `LKR ${Number(totalIncome||0).toLocaleString()}`],
+          ['Total Expenses', `LKR ${Number(totalExpenses||0).toLocaleString()}`],
+        ],
+        startY,
+        styles: { font:'helvetica', fontSize:10 },
+        headStyles: { fillColor: [34,197,94] }
+      })
+
+      // Income by Source
+      autoTable(pdf, {
+        head: [[ 'Income by Source','Amount' ]],
+        body: [
+          ['Inventory Sales Income', `LKR ${Number(companyIncome?.totalsByType?.inventory||0).toLocaleString()}`],
+          ['Equipment Rental Income', `LKR ${Number(companyIncome?.totalsByType?.rental||0).toLocaleString()}`],
+          ['Platform Listing Fees', `LKR ${Number((companyIncome?.totalsByType?.listingCommission||0) + (companyIncome?.totalsByType?.listingPassThrough||0)).toLocaleString()}`],
+          ['Logistics & Delivery Income', `LKR ${Number(deliveryIncome?.total||0).toLocaleString()}`],
+        ],
+        startY: (pdf.lastAutoTable && pdf.lastAutoTable.finalY) ? (pdf.lastAutoTable.finalY + 8) : 32,
+        styles: { font:'helvetica', fontSize:10 },
+        headStyles: { fillColor: [17,24,39] }
+      })
+
+      // Expenses by Category
+      autoTable(pdf, {
+        head: [[ 'Expenses by Category','Amount' ]],
+        body: [
+          ['Driver Payments', `LKR ${Number(driverTotal||0).toLocaleString()}`],
+          ['Farmer Payments', `LKR ${Number(farmerTotal||0).toLocaleString()}`],
+        ],
+        startY: (pdf.lastAutoTable && pdf.lastAutoTable.finalY) ? (pdf.lastAutoTable.finalY + 8) : 32,
+        styles: { font:'helvetica', fontSize:10 },
+        headStyles: { fillColor: [17,24,39] }
+      })
+
+      drawFinancePdfFooter(pdf)
+      pdf.save(`AgroLink-Finance-Overview-${new Date().toISOString().slice(0,10)}.pdf`)
+    } catch {}
+  }
+
+  const exportIncomePDF = async () => {
+    try {
+      const pdf = new jsPDF('p','mm','a4')
+      const startY = await drawFinancePdfHeader(pdf, 'Income Report')
+
+      // Summary
+      autoTable(pdf, {
+        head: [[ 'Metric','Amount' ]],
+        body: [
+          ['Orders Income • Inventory', `LKR ${Number(companyIncome?.totalsByType?.inventory||0).toLocaleString()}`],
+          ['Orders Income • Rentals', `LKR ${Number(companyIncome?.totalsByType?.rental||0).toLocaleString()}`],
+          ['Orders Income • Listings', `LKR ${Number((companyIncome?.totalsByType?.listingCommission||0) + (companyIncome?.totalsByType?.listingPassThrough||0)).toLocaleString()}`],
+          ['Delivery Fees', `LKR ${Number(deliveryIncome?.total||0).toLocaleString()}`],
+        ],
+        startY,
+        styles: { font:'helvetica', fontSize:10 },
+        headStyles: { fillColor: [34,197,94] }
+      })
+
+      // Order-based Income Details
+      const orderRows = (companyIncome.items||[])
+        .slice()
+        .sort((a,b)=> new Date(b.createdAt||b.date||0) - new Date(a.createdAt||a.date||0))
+        .map(row => [
+          row.orderNumber || row.orderId,
+          row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—',
+          String(row.itemType||'').toUpperCase(),
+          row.title,
+          row.quantity,
+          `LKR ${Number(row.unitPrice||0).toLocaleString()}`,
+          `LKR ${Number(row.lineTotal||0).toLocaleString()}`
+        ])
+      autoTable(pdf, {
+        head: [[ 'Order','Created','Type','Item','Qty','Unit','Line Total' ]],
+        body: orderRows,
+        startY: (pdf.lastAutoTable && pdf.lastAutoTable.finalY) ? (pdf.lastAutoTable.finalY + 8) : startY,
+        styles: { font:'helvetica', fontSize:9 },
+        headStyles: { fillColor: [17,24,39] },
+        columnStyles: { 3: { cellWidth: 60 } }
+      })
+
+      // Delivery Fee Income Details
+      const deliveryRows = (deliveryIncome.items||[])
+        .slice()
+        .sort((a,b)=> new Date(b.createdAt||0) - new Date(a.createdAt||0))
+        .map(row => [
+          row.orderNumber || row.orderId,
+          row.createdAt ? new Date(row.createdAt).toLocaleDateString() : '—',
+          `LKR ${Number(row.deliveryFee||0).toLocaleString()}`
+        ])
+      autoTable(pdf, {
+        head: [[ 'Order','Created','Delivery Fee' ]],
+        body: deliveryRows,
+        startY: (pdf.lastAutoTable && pdf.lastAutoTable.finalY) ? (pdf.lastAutoTable.finalY + 8) : startY,
+        styles: { font:'helvetica', fontSize:9 },
+        headStyles: { fillColor: [17,24,39] }
+      })
+      drawFinancePdfFooter(pdf)
+      pdf.save(`AgroLink-Finance-Income-${new Date().toISOString().slice(0,10)}.pdf`)
+    } catch {}
+  }
+
+  const exportExpensesPDF = async () => {
+    try {
+      const pdf = new jsPDF('p','mm','a4')
+      const startY = await drawFinancePdfHeader(pdf, 'Expenses Report')
+
+      const driverTotal = (driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*Number(driverRate||300)), 0)
+      const farmerTotal = Number(farmerPayouts.total||0)
+
+      autoTable(pdf, {
+        head: [[ 'Category','Amount' ]],
+        body: [
+          ['Driver Payments', `LKR ${Number(driverTotal||0).toLocaleString()}`],
+          ['Farmer Payments', `LKR ${Number(farmerTotal||0).toLocaleString()}`],
+        ],
+        startY,
+        styles: { font:'helvetica', fontSize:10 },
+        headStyles: { fillColor: [34,197,94] }
+      })
+
+      const driverRows = (driverPayouts.totalsByDriver||[])
+        .slice()
+        .sort((a,b)=> Number(b.deliveries||0) - Number(a.deliveries||0))
+        .map(d => [ d.driverName || d.driver || '—', Number(d.deliveries||0), `LKR ${Number((Number(d.deliveries||0)*Number(driverRate||300))||0).toLocaleString()}` ])
+      autoTable(pdf, {
+        head: [[ 'Driver','Deliveries','Payout' ]],
+        body: driverRows,
+        startY: (pdf.lastAutoTable && pdf.lastAutoTable.finalY) ? (pdf.lastAutoTable.finalY + 8) : startY,
+        styles: { font:'helvetica', fontSize:9 },
+        headStyles: { fillColor: [17,24,39] }
+      })
+      drawFinancePdfFooter(pdf)
+      pdf.save(`AgroLink-Finance-Expenses-${new Date().toISOString().slice(0,10)}.pdf`)
+    } catch {}
+  }
+
   // Budgets
   const fetchBudgets = async () => {
     setLoadingBudgets(true)
@@ -486,6 +725,7 @@ const AdminFinance = () => {
           <div className='space-y-6'>
             <div className='bg-white rounded-xl shadow-sm border border-gray-200'>
               <div className='px-4 pt-4'>
+                <div className='flex flex-wrap items-center justify-between gap-2'>
                 <div className='flex flex-wrap gap-2'>
                   {TABS.map(t => (
                     <button
@@ -496,6 +736,18 @@ const AdminFinance = () => {
                       {t.label}
                     </button>
                   ))}
+                  </div>
+                  <div className='flex items-center gap-2'>
+                    {activeTab === 'overview' && (
+                      <button onClick={exportOverviewPDF} className='px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900 inline-flex items-center gap-2'><FileDown className='size-4'/> Export PDF</button>
+                    )}
+                    {activeTab === 'income' && (
+                      <button onClick={exportIncomePDF} className='px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900 inline-flex items-center gap-2'><FileDown className='size-4'/> Export PDF</button>
+                    )}
+                    {activeTab === 'expenses' && (
+                      <button onClick={exportExpensesPDF} className='px-3 py-2 text-sm rounded-lg bg-black text-white hover:bg-gray-900 inline-flex items-center gap-2'><FileDown className='size-4'/> Export PDF</button>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className='px-4 pb-4'>
@@ -508,6 +760,7 @@ const AdminFinance = () => {
                       <button onClick={()=>setOverviewRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
                       <button onClick={()=>setOverviewRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${overviewRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
+                    
                     <div className='grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4'>
                       {(() => {
                         const orderIncome = Number(companyIncome.totalsByType.inventory||0) + Number(companyIncome.totalsByType.rental||0)
@@ -530,126 +783,7 @@ const AdminFinance = () => {
                         )
                       })()}
                     </div>
-                    <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
-                      <div className='lg:col-span-3 space-y-6'>
-                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                              <BarChart3 className='size-5 text-gray-500' />
-                              <span>Income vs Expenses</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const parseAmount = (val) => {
-                              const s = String(val == null ? 0 : val)
-                              return Number(s.replace(/,/g,'').trim()) || 0
-                            }
-                            const labels = []
-                            const incomeSeries = []
-                            const expenseSeries = []
-                            const today = new Date()
-                            const getDate = (t) => new Date(t.date || t.createdAt)
-                            for (let i = 6; i >= 0; i--) {
-                              const d = new Date(today)
-                              d.setDate(today.getDate() - i)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
-                              const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-                              const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
-                              const inc = (overviewIncomeTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                              const exp = (overviewExpenseTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                              incomeSeries.push(inc)
-                              expenseSeries.push(exp)
-                            }
-                            return (
-                              <Chart type='bar' height={260} options={{
-                                chart:{ toolbar:{ show:false }},
-                                plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
-                                grid:{ borderColor:'#eee' },
-                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
-                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#22c55e','#ef4444'], legend:{ position:'top' },
-                                tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
-                              }} series={[ { name:'Income', data: incomeSeries }, { name:'Expenses', data: expenseSeries } ]} />
-                            )
-                          })()}
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                              <LineChart className='size-5 text-gray-500' />
-                              <span>Monthly Balance Trend</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const now = new Date()
-                            const labels = []
-                            const values = []
-                            for (let i = 5; i >= 0; i--) {
-                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
-                              const inc = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              const exp = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              values.push(inc - exp)
-                            }
-                            return (
-                              <Chart type='line' height={260} options={{
-                                chart:{ toolbar:{ show:false }},
-                                stroke:{ width:3, curve:'smooth' },
-                                grid:{ borderColor:'#eee' },
-                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
-                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#111827'], legend:{ show:false }
-                              }} series={[ { name:'Balance', data: values } ]} />
-                            )
-                          })()}
-                        </div>
-                      <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                            <BarChart3 className='size-5 text-gray-500' />
-                            <span>Income vs Expenses · Last 7 days</span>
-                          </div>
-                        </div>
-                        {(() => {
-                          const parseAmount = (val) => {
-                            const s = String(val == null ? 0 : val)
-                            return Number(s.replace(/,/g,'').trim()) || 0
-                          }
-                          const categories = []
-                          const incomeData = []
-                          const expenseData = []
-                          const srcInc = Array.isArray(overviewIncome7d) ? overviewIncome7d : []
-                          const srcExp = Array.isArray(overviewExpense7d) ? overviewExpense7d : []
-                          const getDate = (t) => new Date(t.date || t.createdAt)
-                          const today = new Date()
-                          for (let i = 6; i >= 0; i--) {
-                            const d = new Date(today)
-                            d.setDate(today.getDate() - i)
-                            categories.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
-                            const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-                            const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
-                            const inc = srcInc.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                            const exp = srcExp.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                            incomeData.push(inc)
-                            expenseData.push(exp)
-                          }
-                          return (
-                            <Chart type='bar' height={260} options={{
-                              chart:{ toolbar:{ show:false }},
-                              plotOptions:{ bar:{ columnWidth:'60%', borderRadius:4 }},
-                              colors:['#22c55e','#ef4444'],
-                              grid:{ borderColor:'#eee' },
-                              xaxis:{ categories, labels:{ style:{ colors:'#9ca3af' } } },
-                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                              legend:{ show:true },
-                              tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
-                            }} series={[{ name:'Income', data: incomeData }, { name:'Expenses', data: expenseData }]} />
-                          )
-                        })()}
-                      </div>
-                      </div>
-                      <div className='lg:col-span-2 space-y-6'>
-                        {/* Income by Source (now first) */}
+                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
@@ -658,7 +792,6 @@ const AdminFinance = () => {
                             </div>
                           </div>
                           {(() => {
-                            // Use four-category breakdown with explicit names
                             const labels = [
                               'Inventory Sales Income',
                               'Equipment Rental Income',
@@ -683,7 +816,6 @@ const AdminFinance = () => {
                             )
                           })()}
                         </div>
-                        {/* Expenses by Category (moved below) */}
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
@@ -707,7 +839,6 @@ const AdminFinance = () => {
                               <div className='text-sm text-gray-500'>No expenses in this range</div>
                             )
                           })()}
-                        </div>
                       </div>
                     </div>
                   </div>
@@ -720,6 +851,7 @@ const AdminFinance = () => {
                       <button onClick={()=>setIncomeRange(r=> r==='week' ? '' : 'week')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='week'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
                       <button onClick={()=>setIncomeRange(r=> r==='day' ? '' : 'day')} className={`px-3 py-2 text-sm rounded-lg border ${incomeRange==='day'?'bg-gray-900 text-white border-gray-900':'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
+                    
                     <div className='grid grid-cols-1 md:grid-cols-4 gap-4'>
                       <div className='bg-white border border-gray-200 rounded-2xl p-4'>
                         <div className='text-xs text-gray-500'>Orders Income • Inventory</div>
@@ -968,6 +1100,7 @@ const AdminFinance = () => {
                       <button onClick={()=>{ const v = (driverRange==='week' && farmerRange==='week') ? '' : 'week'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='week' && farmerRange==='week' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>This Week</button>
                       <button onClick={()=>{ const v = (driverRange==='day' && farmerRange==='day') ? '' : 'day'; setDriverRange(v); setFarmerRange(v) }} className={`px-3 py-2 text-sm rounded-lg border ${driverRange==='day' && farmerRange==='day' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}>Today</button>
                     </div>
+                    
                     <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                       <StatCard icon={Receipt} title='Driver Payments' value={`LKR ${((driverPayouts.totalsByDriver||[]).reduce((s,d)=> s + (Number(d.deliveries||0)*300), 0)).toLocaleString()}`} trend='' positive={false} />
                       <StatCard icon={Wallet} title='Farmer Payments' value={`LKR ${Number(farmerPayouts.total||0).toLocaleString()}`} trend='' positive={false} />
@@ -1237,48 +1370,7 @@ const AdminFinance = () => {
                 {activeTab === 'reports' && (
                   <div className='space-y-6'>
                     <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <div className='flex items-center justify-between mb-4'>
-                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                          <BarChart3 className='size-5 text-gray-500' />
-                          <span>Income vs Expenses</span>
-                        </div>
-                      </div>
-                      {loadingReports ? (
-                        <div className='h-56 grid place-items-center text-gray-500'>Loading…</div>
-                      ) : (
-                        <Chart type='bar' height={260} options={{
-                          chart:{ toolbar:{ show:false }},
-                          plotOptions:{ bar:{ columnWidth:'40%', borderRadius:4 }},
-                          grid:{ borderColor:'#eee' },
-                          xaxis:{ categories: buildMonthlyBuckets().labels, labels:{ style:{ colors:'#9ca3af' } } },
-                          yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                          colors:['#22c55e','#ef4444'],
-                          legend:{ position:'top' }
-                        }} series={[
-                          { name:'Income', data: buildMonthlyBuckets().incomeSeries },
-                          { name:'Expenses', data: buildMonthlyBuckets().expenseSeries },
-                        ]} />
-                      )}
-                    </div>
-                    <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                      <div className='flex items-center justify-between mb-4'>
-                        <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                          <LineChart className='size-5 text-gray-500' />
-                          <span>Balance Trend</span>
-                        </div>
-                      </div>
-                      {loadingReports ? (
-                        <div className='h-56 grid place-items-center text-gray-500'>Loading…</div>
-                      ) : (
-                        <Chart type='line' height={260} options={{
-                          chart:{ toolbar:{ show:false }},
-                          stroke:{ width:3, curve:'smooth' },
-                          grid:{ borderColor:'#eee' },
-                          xaxis:{ categories: buildMonthlyBuckets().labels, labels:{ style:{ colors:'#9ca3af' } } },
-                          yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                          colors:['#111827'], legend:{ show:false }
-                        }} series={[{ name:'Balance', data: buildMonthlyBuckets().incomeSeries.map((v,i)=>v - buildMonthlyBuckets().expenseSeries[i]) }]} />
-                      )}
+                      <div className='text-sm text-gray-600'>No charts in Reports. Use Export tab for downloadable summaries.</div>
                     </div>
                   </div>
                 )}
