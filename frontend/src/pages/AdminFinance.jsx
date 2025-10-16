@@ -530,126 +530,7 @@ const AdminFinance = () => {
                         )
                       })()}
                     </div>
-                    <div className='grid grid-cols-1 lg:grid-cols-5 gap-6'>
-                      <div className='lg:col-span-3 space-y-6'>
-                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                              <BarChart3 className='size-5 text-gray-500' />
-                              <span>Income vs Expenses</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const parseAmount = (val) => {
-                              const s = String(val == null ? 0 : val)
-                              return Number(s.replace(/,/g,'').trim()) || 0
-                            }
-                            const labels = []
-                            const incomeSeries = []
-                            const expenseSeries = []
-                            const today = new Date()
-                            const getDate = (t) => new Date(t.date || t.createdAt)
-                            for (let i = 6; i >= 0; i--) {
-                              const d = new Date(today)
-                              d.setDate(today.getDate() - i)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
-                              const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-                              const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
-                              const inc = (overviewIncomeTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                              const exp = (overviewExpenseTx||[]).filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                              incomeSeries.push(inc)
-                              expenseSeries.push(exp)
-                            }
-                            return (
-                              <Chart type='bar' height={260} options={{
-                                chart:{ toolbar:{ show:false }},
-                                plotOptions:{ bar:{ columnWidth:'45%', borderRadius:4 }},
-                                grid:{ borderColor:'#eee' },
-                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
-                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#22c55e','#ef4444'], legend:{ position:'top' },
-                                tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
-                              }} series={[ { name:'Income', data: incomeSeries }, { name:'Expenses', data: expenseSeries } ]} />
-                            )
-                          })()}
-                        </div>
-                        <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                          <div className='flex items-center justify-between mb-2'>
-                            <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                              <LineChart className='size-5 text-gray-500' />
-                              <span>Monthly Balance Trend</span>
-                            </div>
-                          </div>
-                          {(() => {
-                            const now = new Date()
-                            const labels = []
-                            const values = []
-                            for (let i = 5; i >= 0; i--) {
-                              const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-                              labels.push(d.toLocaleDateString(undefined, { month: 'short', year: '2-digit' }))
-                              const inc = (overviewIncomeTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              const exp = (overviewExpenseTx||[]).filter(t => new Date(t.date).getFullYear()===d.getFullYear() && new Date(t.date).getMonth()===d.getMonth()).reduce((s,t)=>s+Number(t.amount||0),0)
-                              values.push(inc - exp)
-                            }
-                            return (
-                              <Chart type='line' height={260} options={{
-                                chart:{ toolbar:{ show:false }},
-                                stroke:{ width:3, curve:'smooth' },
-                                grid:{ borderColor:'#eee' },
-                                xaxis:{ categories: labels, labels:{ style:{ colors:'#9ca3af' } } },
-                                yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                                colors:['#111827'], legend:{ show:false }
-                              }} series={[ { name:'Balance', data: values } ]} />
-                            )
-                          })()}
-                        </div>
-                      <div className='bg-white border border-gray-200 rounded-2xl p-5'>
-                        <div className='flex items-center justify-between mb-2'>
-                          <div className='flex items-center gap-2 text-gray-800 font-semibold'>
-                            <BarChart3 className='size-5 text-gray-500' />
-                            <span>Income vs Expenses · Last 7 days</span>
-                          </div>
-                        </div>
-                        {(() => {
-                          const parseAmount = (val) => {
-                            const s = String(val == null ? 0 : val)
-                            return Number(s.replace(/,/g,'').trim()) || 0
-                          }
-                          const categories = []
-                          const incomeData = []
-                          const expenseData = []
-                          const srcInc = Array.isArray(overviewIncome7d) ? overviewIncome7d : []
-                          const srcExp = Array.isArray(overviewExpense7d) ? overviewExpense7d : []
-                          const getDate = (t) => new Date(t.date || t.createdAt)
-                          const today = new Date()
-                          for (let i = 6; i >= 0; i--) {
-                            const d = new Date(today)
-                            d.setDate(today.getDate() - i)
-                            categories.push(d.toLocaleDateString(undefined, { month: 'short', day: '2-digit' }))
-                            const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-                            const end = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23,59,59,999)
-                            const inc = srcInc.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                            const exp = srcExp.filter(t=>{ const dt=getDate(t); return dt>=start && dt<=end }).reduce((s,t)=>s+parseAmount(t.amount),0)
-                            incomeData.push(inc)
-                            expenseData.push(exp)
-                          }
-                          return (
-                            <Chart type='bar' height={260} options={{
-                              chart:{ toolbar:{ show:false }},
-                              plotOptions:{ bar:{ columnWidth:'60%', borderRadius:4 }},
-                              colors:['#22c55e','#ef4444'],
-                              grid:{ borderColor:'#eee' },
-                              xaxis:{ categories, labels:{ style:{ colors:'#9ca3af' } } },
-                              yaxis:{ labels:{ style:{ colors:'#9ca3af' } } },
-                              legend:{ show:true },
-                              tooltip:{ shared:true, intersect:false, y:{ formatter:(val)=> `LKR ${Number(val||0).toLocaleString()}` } }
-                            }} series={[{ name:'Income', data: incomeData }, { name:'Expenses', data: expenseData }]} />
-                          )
-                        })()}
-                      </div>
-                      </div>
-                      <div className='lg:col-span-2 space-y-6'>
-                        {/* Income by Source (now first) */}
+                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-6'>
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
@@ -658,7 +539,6 @@ const AdminFinance = () => {
                             </div>
                           </div>
                           {(() => {
-                            // Use four-category breakdown with explicit names
                             const labels = [
                               'Inventory Sales Income',
                               'Equipment Rental Income',
@@ -683,7 +563,6 @@ const AdminFinance = () => {
                             )
                           })()}
                         </div>
-                        {/* Expenses by Category (moved below) */}
                         <div className='bg-white border border-gray-200 rounded-2xl p-5'>
                           <div className='flex items-center justify-between mb-2'>
                             <div className='flex items-center gap-2 text-gray-800 font-semibold'>
@@ -707,7 +586,6 @@ const AdminFinance = () => {
                               <div className='text-sm text-gray-500'>No expenses in this range</div>
                             )
                           })()}
-                        </div>
                       </div>
                     </div>
                   </div>
