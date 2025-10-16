@@ -16,6 +16,9 @@ import {
   sendMessageToManager,
   getMyDeliveryMessages,
   replyToCustomerMessage,
+  adminUpdateManagerMessage,
+  adminDeleteManagerMessage,
+  adminDeleteDelivery,
 } from '../controllers/delivery.controller.js';
 
 const router = express.Router();
@@ -33,6 +36,7 @@ router.get('/:deliveryId/messages', requireAuth, requireRole('FARMER', 'BUYER'),
 router.get('/', requireAuth, requireRole('ADMIN'), adminListDeliveries);
 router.post('/:id/assign', requireAuth, requireRole('ADMIN'), assignDriver);
 router.patch('/:id/cancel', requireAuth, requireRole('ADMIN'), adminCancelDelivery);
+router.delete('/:id', requireAuth, requireRole('ADMIN'), adminDeleteDelivery);
 
 // Drivers view their deliveries and update status
 router.get('/driver/me', requireAuth, requireRole('DRIVER'), getDriverDeliveries);
@@ -44,6 +48,8 @@ router.get('/messages/unread-count', requireAuth, requireRole('ADMIN'), getUnrea
 router.patch('/messages/:messageId/read', requireAuth, requireRole('ADMIN'), markMessageAsRead);
 router.patch('/messages/read-all', requireAuth, requireRole('ADMIN'), markAllMessagesAsRead);
 router.post('/messages/:messageId/reply', requireAuth, requireRole('ADMIN'), replyToCustomerMessage);
+router.patch('/messages/:messageId', requireAuth, requireRole('ADMIN'), adminUpdateManagerMessage);
+router.delete('/messages/:messageId', requireAuth, requireRole('ADMIN'), adminDeleteManagerMessage);
 
 export default router;
 

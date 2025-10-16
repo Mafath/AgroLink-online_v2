@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Package, Users, Clock, CheckCircle, AlertCircle, Filter, MessageSquare, Eye, EyeOff, X } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import AdminSidebar from '../components/AdminSidebar';
+import { useAuthStore } from '../store/useAuthStore';
 
 const AdminLogistics = () => {
   const [deliveries, setDeliveries] = useState([]);
@@ -15,6 +17,9 @@ const AdminLogistics = () => {
   const [replyingToMessage, setReplyingToMessage] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [sendingReply, setSendingReply] = useState(false);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editText, setEditText] = useState('');
+  const authUser = useAuthStore((s) => s.authUser);
 
   useEffect(() => {
     fetchData();
@@ -25,7 +30,7 @@ const AdminLogistics = () => {
       const [deliveriesRes, driversRes, messagesRes] = await Promise.all([
         axiosInstance.get('/deliveries'),
         axiosInstance.get('/auth/admin/users?role=DRIVER'),
-        axiosInstance.get('/deliveries/messages?senderType=CUSTOMER&messageType=CUSTOMER_MESSAGE')
+        axiosInstance.get('/deliveries/messages')
       ]);
       
       setDeliveries(deliveriesRes.data);
@@ -64,6 +69,20 @@ const AdminLogistics = () => {
     }
   };
 
+  const deleteDelivery = async (deliveryId) => {
+    const confirmed = window.confirm('Permanently delete this delivery? This cannot be undone.');
+    if (!confirmed) return;
+    try {
+      await axiosInstance.delete(`/deliveries/${deliveryId}`);
+      toast.success('Delivery deleted');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to delete delivery:', error);
+      const message = error?.response?.data?.error?.message || 'Failed to delete delivery';
+      toast.error(message);
+    }
+  };
+
   const toggleMessageExpansion = (deliveryId) => {
     const newExpanded = new Set(expandedMessages);
     if (newExpanded.has(deliveryId)) {
@@ -78,7 +97,7 @@ const AdminLogistics = () => {
     try {
       await axiosInstance.patch(`/deliveries/messages/${messageId}/read`);
       // Refresh messages to update read status
-      const messagesRes = await axiosInstance.get('/deliveries/messages?senderType=CUSTOMER&messageType=CUSTOMER_MESSAGE');
+      const messagesRes = await axiosInstance.get('/deliveries/messages');
       setMessages(messagesRes.data);
     } catch (error) {
       console.error('Failed to mark message as read:', error);
@@ -104,7 +123,7 @@ const AdminLogistics = () => {
       });
       
       // Refresh messages to show the new reply
-      const messagesRes = await axiosInstance.get('/deliveries/messages?senderType=CUSTOMER&messageType=CUSTOMER_MESSAGE');
+      const messagesRes = await axiosInstance.get('/deliveries/messages');
       setMessages(messagesRes.data);
       
       setReplyingToMessage(null);
@@ -121,6 +140,45 @@ const AdminLogistics = () => {
   const handleReplyCancel = () => {
     setReplyingToMessage(null);
     setReplyText('');
+  };
+
+  const handleEditClick = (message) => {
+    setEditingMessage(message);
+    setEditText(message.message || '');
+  };
+
+  const handleEditCancel = () => {
+    setEditingMessage(null);
+    setEditText('');
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editText.trim() || !editingMessage) return;
+    try {
+      await axiosInstance.patch(`/deliveries/messages/${editingMessage._id}`, { message: editText.trim() });
+      const messagesRes = await axiosInstance.get('/deliveries/messages');
+      setMessages(messagesRes.data);
+      toast.success('Message updated');
+      setEditingMessage(null);
+      setEditText('');
+    } catch (error) {
+      console.error('Failed to update message:', error);
+      toast.error('Failed to update message');
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    const confirmed = window.confirm('Delete this message?');
+    if (!confirmed) return;
+    try {
+      await axiosInstance.delete(`/deliveries/messages/${messageId}`);
+      const messagesRes = await axiosInstance.get('/deliveries/messages');
+      setMessages(messagesRes.data);
+      toast.success('Message deleted');
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+      toast.error('Failed to delete message');
+    }
   };
 
   
@@ -434,17 +492,28 @@ const AdminLogistics = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => cancelDelivery(delivery._id)}
-                          disabled={delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'}
-                          className={`px-3 py-1 rounded border ${
-                            delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'
-                              ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
-                              : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
-                          }`}
-                        >
-                          Cancel Delivery
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => cancelDelivery(delivery._id)}
+                            disabled={delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'}
+                            className={`px-3 py-1 rounded border ${
+                              delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED'
+                                ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
+                                : 'bg-red-100 text-red-700 border-red-200 hover:bg-red-200'
+                            }`}
+                          >
+                            Cancel
+                          </button>
+                          {(delivery.status === 'COMPLETED' || delivery.status === 'CANCELLED') && (
+                            <button
+                              onClick={() => deleteDelivery(delivery._id)}
+                              title="Delete delivery"
+                              className="p-2 rounded hover:bg-red-50 text-red-600 hover:text-red-700"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -524,12 +593,16 @@ const AdminLogistics = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button
-                              disabled
-                              className={`px-3 py-1 rounded border bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed`}
-                            >
-                              Cancelled
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <span className="px-3 py-1 rounded border bg-gray-200 text-gray-500 border-gray-300">Cancelled</span>
+                              <button
+                                onClick={() => deleteDelivery(delivery._id)}
+                                title="Delete delivery"
+                                className="p-2 rounded hover:bg-red-50 text-red-600 hover:text-red-700"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                         
@@ -542,7 +615,9 @@ const AdminLogistics = () => {
                                   <MessageSquare className="w-4 h-4 mr-2" />
                                   Customer Messages ({deliveryMessages.length})
                                 </h4>
-                                {deliveryMessages.map((message, index) => (
+                                {deliveryMessages
+                                  .sort((a,b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+                                  .map((message, index) => (
                                   <div key={index} className={`p-3 rounded-lg border ${
                                     message.senderType === 'CUSTOMER' 
                                       ? (message.isRead ? 'bg-white border-gray-200' : 'bg-blue-50 border-blue-200')
@@ -579,6 +654,22 @@ const AdminLogistics = () => {
                                           >
                                             Reply
                                           </button>
+                                        )}
+                                        {message.senderType === 'MANAGER' && (
+                                          <>
+                                            <button
+                                              onClick={() => handleEditClick(message)}
+                                              className="px-2 py-1 text-xs bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                                            >
+                                              Edit
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteMessage(message._id)}
+                                              className="px-2 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                                            >
+                                              Delete
+                                            </button>
+                                          </>
                                         )}
                                       </div>
                                     </div>
@@ -654,6 +745,49 @@ const AdminLogistics = () => {
                 className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {sendingReply ? 'Sending...' : 'Send Reply'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {editingMessage && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Edit Your Message</h3>
+              <button
+                onClick={handleEditCancel}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="mb-4">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                placeholder="Update your message..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 resize-none"
+                rows={4}
+                maxLength={1000}
+              />
+              <div className="text-xs text-gray-500 mt-1">
+                {editText.length}/1000 characters
+              </div>
+            </div>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={handleEditCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleEditSubmit}
+                disabled={!editText.trim()}
+                className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Save Changes
               </button>
             </div>
           </div>

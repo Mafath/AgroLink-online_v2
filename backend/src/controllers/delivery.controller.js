@@ -105,13 +105,15 @@ export const assignDriver = async (req, res) => {
     const delivery = await Delivery.findById(id);
     if (!delivery) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found' } });
 
-    // Assign driver and set to assignment pending
+    // Assign driver and mark as ASSIGNED immediately
     delivery.driver = driverId;
     delivery.assignmentStatus = {
-      status: 'PENDING',
-      assignedAt: new Date()
+      status: 'ACCEPTED',
+      assignedAt: new Date(),
+      respondedAt: new Date(),
+      response: 'ACCEPTED'
     };
-    delivery.addStatus('ASSIGNMENT_PENDING', req.user._id);
+    delivery.addStatus('ASSIGNED', req.user._id);
     await delivery.save();
     
     return res.json(delivery);
@@ -554,4 +556,119 @@ export const replyToCustomerMessage = async (req, res) => {
   }
 };
 
+
+// Admin update own manager message
+export const adminUpdateManagerMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const { message } = req.body;
+
+    if (!message || message.trim().length === 0) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Message is required' } });
+    }
+
+    const managerMessage = await DeliveryManagerMessage.findById(messageId);
+    if (!managerMessage) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Message not found' } });
+    }
+
+    if (managerMessage.senderType !== 'MANAGER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only manager messages can be updated' } });
+    }
+
+    // Any admin can edit manager messages
+
+    managerMessage.message = message.trim();
+    await managerMessage.save();
+
+    const populated = await DeliveryManagerMessage.findById(managerMessage._id)
+      .populate('delivery', 'order requester status')
+      .populate('order', 'orderNumber total status')
+      .populate('createdBy', 'fullName email role');
+
+    return res.json(populated);
+  } catch (error) {
+    console.error('adminUpdateManagerMessage error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to update message' } });
+  }
+};
+
+// Admin delete own manager message
+export const adminDeleteManagerMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    const managerMessage = await DeliveryManagerMessage.findById(messageId);
+    if (!managerMessage) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Message not found' } });
+    }
+
+    if (managerMessage.senderType !== 'MANAGER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Only manager messages can be deleted' } });
+    }
+
+    // Any admin can delete manager messages
+
+    await DeliveryManagerMessage.findByIdAndDelete(messageId);
+    return res.json({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('adminDeleteManagerMessage error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to delete message' } });
+  }
+};
+
+// Admin delete a historical delivery (COMPLETED or CANCELLED)
+export const adminDeleteDelivery = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const delivery = await Delivery.findById(id).populate('order');
+    if (!delivery) {
+      return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Delivery not found' } });
+    }
+
+    if (!['COMPLETED', 'CANCELLED'].includes(delivery.status)) {
+      return res.status(400).json({ error: { code: 'BAD_REQUEST', message: 'Only completed or cancelled deliveries can be deleted' } });
+    }
+
+    // Unlink delivery from order if linked
+    if (delivery.order) {
+      try {
+        const Order = (await import('../models/order.model.js')).default;
+        const order = await Order.findById(delivery.order._id);
+        if (order) {
+          order.delivery = null;
+          await order.save();
+        }
+      } catch (e) {
+        // continue even if unlink fails
+        console.error('Failed to unlink order from delivery during delete:', e);
+      }
+    }
+
+    // Delete related manager messages
+    try {
+      await DeliveryManagerMessage.deleteMany({ delivery: delivery._id });
+    } catch (e) {
+      console.error('Failed to delete related delivery manager messages:', e);
+    }
+
+    // Optionally: delete review document if exists
+    try {
+      if (delivery.review) {
+        const DeliveryReview = (await import('../models/deliveryReview.model.js')).default;
+        await DeliveryReview.findByIdAndDelete(delivery.review);
+      }
+    } catch (e) {
+      console.error('Failed to delete delivery review during delete:', e);
+    }
+
+    await Delivery.findByIdAndDelete(delivery._id);
+
+    return res.json({ message: 'Delivery deleted successfully' });
+  } catch (error) {
+    console.error('adminDeleteDelivery error:', error);
+    return res.status(500).json({ error: { code: 'SERVER_ERROR', message: 'Failed to delete delivery' } });
+  }
+};
 
