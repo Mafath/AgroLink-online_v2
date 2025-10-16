@@ -7,6 +7,7 @@ import RentalItem from '../models/rentalItem.model.js';
 import RentalBooking from '../models/rentalBooking.model.js';
 import mongoose from 'mongoose';
 import { sendOrderPlacedEmail, sendOrderCancellationEmail } from '../lib/emailService.js';
+import { computeFinalPriceWithCommission } from '../lib/utils.js';
 import { logItemSold, getFarmerActivities, logBuyerOrderPlaced, logBuyerOrderCancelled, getBuyerActivities } from '../lib/activityService.js';
 
 // Helper function to update stock quantities (used for both orders and cancellations)
@@ -126,14 +127,15 @@ export const createOrder = async (req, res) => {
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${listing.cropName}` } });
         }
 
-        const itemTotal = listing.pricePerKg * item.quantity;
+        const finalPrice = computeFinalPriceWithCommission(listing.pricePerKg);
+        const itemTotal = finalPrice * item.quantity;
         subtotal += itemTotal;
 
         validatedItems.push({
           listing: listing._id,
           itemType: 'listing',
           quantity: item.quantity,
-          price: listing.pricePerKg,
+          price: finalPrice,
           title: listing.cropName,
           image: listing.images?.[0] || '',
         });
@@ -382,14 +384,15 @@ export const createOrderFromCart = async (req, res) => {
           return res.status(400).json({ error: { code: 'BAD_REQUEST', message: `Not enough stock for ${listing.cropName}` } });
         }
 
-        const itemTotal = listing.pricePerKg * cartItem.quantity;
+        const finalPrice = computeFinalPriceWithCommission(listing.pricePerKg);
+        const itemTotal = finalPrice * cartItem.quantity;
         subtotal += itemTotal;
 
         validatedItems.push({
           listing: listing._id,
           itemType: 'listing',
           quantity: cartItem.quantity,
-          price: listing.pricePerKg,
+          price: finalPrice,
           title: listing.cropName,
           image: listing.images?.[0] || '',
         });

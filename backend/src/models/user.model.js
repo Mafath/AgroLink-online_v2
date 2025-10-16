@@ -17,8 +17,22 @@ const userSchema = new mongoose.Schema(
     },
     passwordHash: {
       type: String,
-      required: true,
+      required: function() {
+        return !this.firebaseUid; // Only required if not using Firebase auth
+      },
       minlength: 8,
+    },
+    // Firebase authentication fields
+    firebaseUid: {
+      type: String,
+      unique: true,
+      sparse: true, // Allows multiple null values
+      trim: true,
+    },
+    authProvider: {
+      type: String,
+      enum: ["local", "firebase"],
+      default: "local",
     },
     role: {
       type: String,

@@ -2,6 +2,7 @@ import Cart from '../models/cart.model.js';
 import InventoryProduct from '../models/inventory.model.js';
 import Listing from '../models/listing.model.js';
 import RentalItem from '../models/rentalItem.model.js';
+import { computeFinalPriceWithCommission } from '../lib/utils.js';
 
 // Helper function to get item details from database
 const getItemDetails = async (itemId, itemType, rentalData = null) => {
@@ -23,7 +24,7 @@ const getItemDetails = async (itemId, itemType, rentalData = null) => {
     
     return {
       title: item.cropName,
-      price: item.pricePerKg,
+      price: computeFinalPriceWithCommission(item.pricePerKg),
       image: item.images?.[0] || '',
       category: item.category || '',
       maxQuantity: item.capacityKg,

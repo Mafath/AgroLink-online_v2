@@ -3,6 +3,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import { Link } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, Mail } from "lucide-react";
 import toast from "react-hot-toast";
+import { firebaseAuthService } from "../lib/firebaseAuth";
 // import Logo from "../assets/AgroLink logo3.png";
 import Logo from "../assets/AgroLink_logo3-removebg-preview.png";
 
@@ -14,7 +15,18 @@ const LoginPage = () => {
   });
   const [touched, setTouched] = useState({ email: false, password: false });
   const [errors, setErrors] = useState({ email: "", password: "" });
-  const { login, isLoggingIn } = useAuthStore();
+  const { login, isLoggingIn, loginWithToken } = useAuthStore();
+
+  const handleFirebaseSignIn = async () => {
+    try {
+      const result = await firebaseAuthService.signInWithGoogle();
+      loginWithToken(result.accessToken, result.user);
+      toast.success('Signed in with Google successfully!');
+    } catch (error) {
+      console.error('Firebase sign-in error:', error);
+      toast.error('Failed to sign in with Google. Please try again.');
+    }
+  };
 
   const validateEmail = (email) => {
     const normalized = email.trim().toLowerCase();
@@ -185,7 +197,7 @@ const LoginPage = () => {
           {/* Google OAuth Button */}
           <div className="mt-6">
             <button
-              onClick={() => toast.info('Google OAuth integration coming soon!')}
+              onClick={handleFirebaseSignIn}
               className="w-full inline-flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
             >
               <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
